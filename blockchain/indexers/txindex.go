@@ -8,11 +8,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
+	"github.com/bitgo/rmgd/blockchain"
+	"github.com/bitgo/rmgd/chaincfg/chainhash"
+	"github.com/bitgo/rmgd/database"
+	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/btcutil"
 )
 
 const (

@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/bitgo/rmgd/chaincfg/chainhash"
+	"github.com/bitgo/rmgd/wire"
 )
 
 // Bip16Activation is the timestamp where BIP0016 is valid to use in the
@@ -272,7 +272,8 @@ func calcSignatureHash(script []parsedOpcode, hashType SigHashType, tx *wire.Msg
 	// The SigHashSingle signature type signs only the corresponding input
 	// and output (the output with the same index number as the input).
 	//
-	// Since transactions can have more inputs than outputs, this means it
+	// Since transactions can have more
+	// inputs than outputs, this means it
 	// is improper to use SigHashSingle on input indices that don't have a
 	// corresponding output.
 	//

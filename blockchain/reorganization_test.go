@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
+	"github.com/bitgo/rmgd/blockchain"
+	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/btcutil"
 )
 
 // TestReorganization loads a set of test blocks which force a chain

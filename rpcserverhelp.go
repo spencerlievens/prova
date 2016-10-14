@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/btcsuite/btcd/btcjson"
+	"github.com/bitgo/rmgd/btcjson"
 )
 
 // helpDescsEnUS defines the English descriptions used for the help strings.

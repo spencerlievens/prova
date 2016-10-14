@@ -1,8 +1,8 @@
 btcd
 ====
 
-[![Build Status](https://travis-ci.org/btcsuite/btcd.png?branch=master)]
-(https://travis-ci.org/btcsuite/btcd)
+[![Build Status](https://travis-ci.org/bitgo/rmgd.png?branch=master)]
+(https://travis-ci.org/bitgo/rmgd)
 
 btcd is an alternative full node bitcoin implementation written in Go (golang).
 
@@ -39,7 +39,7 @@ which are both under active development.
 
 #### Windows - MSI Available
 
-https://github.com/btcsuite/btcd/releases
+https://github.com/bitgo/rmgd/releases
 
 #### Linux/BSD/MacOSX/POSIX - Build from Source
 
@@ -62,8 +62,8 @@ recommended that `GOPATH` is set to a directory in your home directory such as
 
 ```bash
 $ go get -u github.com/Masterminds/glide
-$ git clone https://github.com/btcsuite/btcd $GOPATH/src/github.com/btcsuite/btcd
-$ cd $GOPATH/src/github.com/btcsuite/btcd
+$ git clone https://github.com/bitgo/rmgd $GOPATH/src/github.com/bitgo/rmgd
+$ cd $GOPATH/src/github.com/bitgo/rmgd
 $ glide install
 $ go install . ./cmd/...
 ```
@@ -83,7 +83,7 @@ Install a newer MSI
 - Run the following commands to update btcd, all dependencies, and install it:
 
 ```bash
-$ cd $GOPATH/src/github.com/btcsuite/btcd
+$ cd $GOPATH/src/github.com/bitgo/rmgd
 $ git pull && glide install
 $ go install . ./cmd/...
 ```
@@ -119,12 +119,12 @@ To subscribe to a given list, send email to list+subscribe@opensource.conformal.
 
 ## Issue Tracker
 
-The [integrated github issue tracker](https://github.com/btcsuite/btcd/issues)
+The [integrated github issue tracker](https://github.com/bitgo/rmgd/issues)
 is used for this project.
 
 ## Documentation
 
-The documentation is a work-in-progress.  It is located in the [docs](https://github.com/btcsuite/btcd/tree/master/docs) folder.
+The documentation is a work-in-progress.  It is located in the [docs](https://github.com/bitgo/rmgd/tree/master/docs) folder.
 
 ## GPG Verification Key
 

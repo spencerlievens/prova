@@ -13,13 +13,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/mempool"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
+	"github.com/bitgo/rmgd/blockchain"
+	"github.com/bitgo/rmgd/chaincfg"
+	"github.com/bitgo/rmgd/chaincfg/chainhash"
+	"github.com/bitgo/rmgd/database"
+	"github.com/bitgo/rmgd/mempool"
+	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/btcutil"
 )
 
 const (

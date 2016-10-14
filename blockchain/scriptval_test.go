@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/txscript"
+	"github.com/bitgo/rmgd/blockchain"
+	"github.com/bitgo/rmgd/txscript"
 )
 
 // TestCheckBlockScripts ensures that validating the all of the scripts in a

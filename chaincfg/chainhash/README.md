@@ -1,11 +1,11 @@
 chainhash
 =========
 
-[![Build Status](http://img.shields.io/travis/btcsuite/btcd.svg)]
-(https://travis-ci.org/btcsuite/btcd) [![ISC License]
+[![Build Status](http://img.shields.io/travis/bitgo/rmgd.svg)]
+(https://travis-ci.org/bitgo/rmgd) [![ISC License]
 (http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)]
-(http://godoc.org/github.com/btcsuite/btcd/chaincfg/chainhash)
+(http://godoc.org/github.com/bitgo/rmgd/chaincfg/chainhash)
 
 chainhash provides a generic hash type and associated functions that allows the
 specific hash algorithm to be abstracted.
@@ -13,7 +13,7 @@ specific hash algorithm to be abstracted.
 ## Installation and Updating
 
 ```bash
-$ go get -u github.com/btcsuite/btcd/chaincfg/chainhash
+$ go get -u github.com/bitgo/rmgd/chaincfg/chainhash
 ```
 
 ## GPG Verification Key

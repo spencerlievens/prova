@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/btcsuite/btcd/wire"
+	"github.com/bitgo/rmgd/wire"
 
 	rpc "github.com/btcsuite/btcrpcclient"
-	"github.com/btcsuite/btcutil"
+	"github.com/bitgo/btcutil"
 )
 
 // nodeConfig contains all the args, and data required to launch a btcd process
