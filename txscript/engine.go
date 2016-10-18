@@ -393,6 +393,7 @@ func (vm *Engine) checkPubKeyEncoding(pubKey []byte) error {
 		// Compressed
 		return nil
 	}
+	// TODO(aztec): disallow uncompressed keys
 	if len(pubKey) == 65 && pubKey[0] == 0x04 {
 		// Uncompressed
 		return nil

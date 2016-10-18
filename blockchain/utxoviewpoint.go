@@ -195,6 +195,7 @@ func newUtxoEntry(version int32, isCoinBase bool, blockHeight int32) *UtxoEntry 
 // The unspent outputs are needed by other transactions for things such as
 // script validation and double spend prevention.
 type UtxoViewpoint struct {
+	// TODO(aztec): include administrative key registrations (admin, mining, co-signer)
 	entries  map[chainhash.Hash]*UtxoEntry
 	bestHash chainhash.Hash
 }

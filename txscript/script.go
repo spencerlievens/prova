@@ -51,6 +51,17 @@ func isSmallInt(op *opcode) bool {
 	return false
 }
 
+// isUint16 returns whether or not the opcode can represent a 32-bit integer
+func isUint32(op *opcode) bool {
+	if isSmallInt(op) {
+		return true
+	}
+	if op.value == OP_DATA_1 || op.value == OP_DATA_2 || op.value == OP_DATA_3 || op.value == OP_DATA_4 {
+		return true
+	}
+	return false
+}
+
 // isScriptHash returns true if the script passed is a pay-to-script-hash
 // transaction, false otherwise.
 func isScriptHash(pops []parsedOpcode) bool {
@@ -268,6 +279,7 @@ func removeOpcodeByData(pkscript []parsedOpcode, data []byte) []parsedOpcode {
 // calcSignatureHash will, given a script and hash type for the current script
 // engine instance, calculate the signature hash to be used for signing and
 // verification.
+// TODO(aztec): Redefine this completely to eliminate malleability (segwit)
 func calcSignatureHash(script []parsedOpcode, hashType SigHashType, tx *wire.MsgTx, idx int) []byte {
 	// The SigHashSingle signature type signs only the corresponding input
 	// and output (the output with the same index number as the input).
@@ -398,6 +410,9 @@ func getSigOpCount(pops []parsedOpcode, precise bool) int {
 			} else {
 				nSigs += MaxPubKeysPerMultiSig
 			}
+		case OP_CHECKSAFEMULTISIG:
+			// TODO(aztec): implement
+			fallthrough
 		default:
 			// Not a sigop.
 		}

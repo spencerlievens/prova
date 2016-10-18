@@ -5,8 +5,8 @@
 package txscript
 
 import (
-	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/btcutil"
+	"github.com/bitgo/rmgd/chaincfg"
 )
 
 const (
@@ -40,23 +40,27 @@ type ScriptClass byte
 
 // Classes of script payment known about in the blockchain.
 const (
-	NonStandardTy ScriptClass = iota // None of the recognized forms.
-	PubKeyTy                         // Pay pubkey.
-	PubKeyHashTy                     // Pay pubkey hash.
-	ScriptHashTy                     // Pay to script hash.
-	MultiSigTy                       // Multi signature.
-	NullDataTy                       // Empty data-only (provably prunable).
+	NonStandardTy  ScriptClass = iota // None of the recognized forms.
+	PubKeyTy                          // Pay pubkey.
+	PubKeyHashTy                      // Pay pubkey hash.
+	ScriptHashTy                      // Pay to script hash.
+	MultiSigTy                        // Multi signature.
+	NullDataTy                        // Empty data-only (provably prunable).
+	AztecTy                           // Aztec standard 2-of-3 type (subset of GeneralAztecTy)
+	GeneralAztecTy                    // Aztec (generalized m-of-n) script
 )
 
 // scriptClassToName houses the human-readable strings which describe each
 // script class.
 var scriptClassToName = []string{
-	NonStandardTy: "nonstandard",
-	PubKeyTy:      "pubkey",
-	PubKeyHashTy:  "pubkeyhash",
-	ScriptHashTy:  "scripthash",
-	MultiSigTy:    "multisig",
-	NullDataTy:    "nulldata",
+	NonStandardTy:  "nonstandard",
+	PubKeyTy:       "pubkey",
+	PubKeyHashTy:   "pubkeyhash",
+	ScriptHashTy:   "scripthash",
+	MultiSigTy:     "multisig",
+	NullDataTy:     "nulldata",
+	AztecTy:        "aztec",
+	GeneralAztecTy: "aztec",
 }
 
 // String implements the Stringer interface by returning the name of
@@ -88,6 +92,89 @@ func isPubkeyHash(pops []parsedOpcode) bool {
 		pops[3].opcode.value == OP_EQUALVERIFY &&
 		pops[4].opcode.value == OP_CHECKSIG
 
+}
+
+// isGeneralAztec returns true if the passed script is an Aztec script (generalized m-of-n)
+func isGeneralAztec(pops []parsedOpcode) bool {
+	// The absolute minimum is 3 keys:
+	// OP_2 <keyid> <keyid> <pubkey> OP_3 OP_CHECKMULTISIG
+	sLen := len(pops)
+	if sLen < 6 {
+		return false
+	}
+	if !isSmallInt(pops[0].opcode) {
+		return false
+	}
+	if !isSmallInt(pops[sLen-2].opcode) {
+		return false
+	}
+	if pops[sLen-1].opcode.value != OP_CHECKSAFEMULTISIG {
+		return false
+	}
+
+	// Get the number of sigs and keys for further validation
+	nSigs := asSmallInt(pops[0].opcode)
+	nKeys := asSmallInt(pops[sLen-2].opcode)
+
+	// No effective single-sig allowed
+	if nSigs < 2 {
+		return false
+	}
+
+	// Verify the number of pubkeys specified matches the actual number
+	// of pubkeys provided.
+	if sLen-2-1 != nKeys {
+		return false
+	}
+
+	// Run through the key ids and key hashes, counting each
+	// Also, require that key ids come first, followed by key hashes.
+	nKeyIDs := 0
+	nKeyHashes := 0
+	seenKeyIDs := make(map[int32]bool)
+	for _, pop := range pops[1 : sLen-2] {
+		dataLen := len(pop.data)
+		// Valid pubkey hashes are 20 bytes
+		if dataLen == 20 {
+			// Key hashes MUST come before any key ids
+			if nKeyIDs > 0 {
+				return false
+			}
+			nKeyHashes++
+		} else if dataLen <= 4 {
+			// Otherwise, it should look like a KeyID
+			scriptNum, err := makeScriptNum(pop.data, true, 4)
+			if err != nil {
+				return false
+			}
+			_, seen := seenKeyIDs[int32(scriptNum)]
+			if seen {
+				// Duplicate key ids not allowed
+				return false
+			}
+			seenKeyIDs[int32(scriptNum)] = true
+			nKeyIDs++
+		}
+	}
+
+	// Cannot allow raw key hashes to move funds without at least 1 KeyID
+	if nKeyHashes >= nSigs {
+		return false
+	}
+
+	// All key ids should be able to move funds in collaboration
+	if nKeyIDs < nSigs {
+		return false
+	}
+
+	return true
+}
+
+func isAztec(pops []parsedOpcode) bool {
+	return len(pops) == 6 &&
+		pops[0].opcode.value == OP_2 &&
+		pops[4].opcode.value == OP_3 &&
+		isGeneralAztec(pops)
 }
 
 // isMultiSig returns true if the passed script is a multisig transaction, false
@@ -154,6 +241,10 @@ func typeOfScript(pops []parsedOpcode) ScriptClass {
 		return MultiSigTy
 	} else if isNullData(pops) {
 		return NullDataTy
+	} else if isAztec(pops) {
+		return AztecTy
+	} else if isGeneralAztec(pops) {
+		return GeneralAztecTy
 	}
 	return NonStandardTy
 }
@@ -195,6 +286,15 @@ func expectedInputs(pops []parsedOpcode, class ScriptClass) int {
 		// additional item from the stack, add an extra expected input
 		// for the extra push that is required to compensate.
 		return asSmallInt(pops[0].opcode) + 1
+
+	case AztecTy:
+		fallthrough
+	case GeneralAztecTy:
+		// Standard Aztec script first push is a small number for the number
+		// of (sig, pubkey) pairs. Unlike multisig Bitcoin scripts, Aztec
+		// scripts use key hashes rather than keys, thus the keys must be
+		// included on redemption.
+		return asSmallInt(pops[0].opcode) * 2
 
 	case NullDataTy:
 		fallthrough
@@ -323,6 +423,22 @@ func payToPubKeyScript(serializedPubKey []byte) ([]byte, error) {
 		AddOp(OP_CHECKSIG).Script()
 }
 
+// payToAztecScript creates a new script to pay a transaction output to an
+// Aztec 2-of-3 address.
+func payToAztecScript(pubKeyHash []byte, keyIDs []btcutil.KeyID) ([]byte, error) {
+	if len(keyIDs) != 2 {
+		return nil, ErrBadNumRequired
+	}
+	return NewScriptBuilder().
+		AddOp(OP_2). // 2 signatures required
+		AddData(pubKeyHash).
+		AddInt64(int64(keyIDs[0])).
+		AddInt64(int64(keyIDs[1])).
+		AddOp(OP_3). // 3 keys in total
+		AddOp(OP_CHECKSAFEMULTISIG).
+		Script()
+}
+
 // PayToAddrScript creates a new script to pay a transaction output to a the
 // specified address.
 func PayToAddrScript(addr btcutil.Address) ([]byte, error) {
@@ -344,6 +460,12 @@ func PayToAddrScript(addr btcutil.Address) ([]byte, error) {
 			return nil, ErrUnsupportedAddress
 		}
 		return payToPubKeyScript(addr.ScriptAddress())
+
+	case *btcutil.AddressAztec:
+		if addr == nil {
+			return nil, ErrUnsupportedAddress
+		}
+		return payToAztecScript(addr.ScriptAddress(), addr.ScriptKeyIDs())
 	}
 
 	return nil, ErrUnsupportedAddress
@@ -433,11 +555,26 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 		// Therefore the script hash is the 2nd item on the stack.
 		// Skip the script hash if it's invalid for some reason.
 		requiredSigs = 1
-		addr, err := btcutil.NewAddressScriptHashFromHash(pops[1].data,
-			chainParams)
+		addr, err := btcutil.NewAddressScriptHashFromHash(pops[1].data, chainParams)
 		if err == nil {
 			addrs = append(addrs, addr)
 		}
+
+	case AztecTy:
+		requiredSigs = 2
+		key0, err0 := makeScriptNum(pops[2].data, true, 4)
+		key1, err1 := makeScriptNum(pops[3].data, true, 4)
+		keyIDs := []btcutil.KeyID{
+			btcutil.KeyID(key0),
+			btcutil.KeyID(key1),
+		}
+		addr, err := btcutil.NewAddressAztec(pops[1].data, keyIDs, chainParams)
+		if err == nil && err0 == nil && err1 == nil {
+			addrs = append(addrs, addr)
+		}
+
+	case GeneralAztecTy:
+		// TODO(aztec): define what to do for generalized aztec scripts
 
 	case MultiSigTy:
 		// A multi-signature script is of the form:

@@ -139,6 +139,7 @@ type Params struct {
 	// Address encoding magics
 	PubKeyHashAddrID byte // First byte of a P2PKH address
 	ScriptHashAddrID byte // First byte of a P2SH address
+	AztecAddrID      byte // First byte of an Aztec address
 	PrivateKeyID     byte // First byte of a WIF private key
 
 	// BIP32 hierarchical deterministic extended key magics
@@ -218,6 +219,7 @@ var MainNetParams = Params{
 	PubKeyHashAddrID: 0x00, // starts with 1
 	ScriptHashAddrID: 0x05, // starts with 3
 	PrivateKeyID:     0x80, // starts with 5 (uncompressed) or K (compressed)
+	AztecAddrID:      0x33, // starts with G
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x88, 0xad, 0xe4}, // starts with xprv
@@ -270,6 +272,7 @@ var RegressionNetParams = Params{
 	// Address encoding magics
 	PubKeyHashAddrID: 0x6f, // starts with m or n
 	ScriptHashAddrID: 0xc4, // starts with 2
+	AztecAddrID:      0x58, // starts with T
 	PrivateKeyID:     0xef, // starts with 9 (uncompressed) or c (compressed)
 
 	// BIP32 hierarchical deterministic extended key magics
@@ -330,6 +333,7 @@ var TestNet3Params = Params{
 	PubKeyHashAddrID: 0x6f, // starts with m or n
 	ScriptHashAddrID: 0xc4, // starts with 2
 	PrivateKeyID:     0xef, // starts with 9 (uncompressed) or c (compressed)
+	AztecAddrID:      0x58, // starts with T
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x35, 0x83, 0x94}, // starts with tprv
@@ -413,6 +417,7 @@ var (
 	registeredNets    = make(map[wire.BitcoinNet]struct{})
 	pubKeyHashAddrIDs = make(map[byte]struct{})
 	scriptHashAddrIDs = make(map[byte]struct{})
+	aztecAddrIDs      = make(map[byte]struct{})
 	hdPrivToPubKeyIDs = make(map[[4]byte][]byte)
 )
 
@@ -432,6 +437,9 @@ func Register(params *Params) error {
 	registeredNets[params.Net] = struct{}{}
 	pubKeyHashAddrIDs[params.PubKeyHashAddrID] = struct{}{}
 	scriptHashAddrIDs[params.ScriptHashAddrID] = struct{}{}
+	if params.AztecAddrID != 0 {
+		aztecAddrIDs[params.AztecAddrID] = struct{}{}
+	}
 	hdPrivToPubKeyIDs[params.HDPrivateKeyID] = params.HDPublicKeyID[:]
 	return nil
 }
@@ -463,6 +471,14 @@ func IsPubKeyHashAddrID(id byte) bool {
 // undeterminable (if both return true).
 func IsScriptHashAddrID(id byte) bool {
 	_, ok := scriptHashAddrIDs[id]
+	return ok
+}
+
+// IsAztecAddrID returns whether the id is an identifier known to prefix a
+// standard Aztec address on any default or registered network.  This is
+// used when decoding an address string into a specific address type.
+func IsAztecAddrID(id byte) bool {
+	_, ok := aztecAddrIDs[id]
 	return ok
 }
 

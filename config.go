@@ -746,6 +746,18 @@ func loadConfig() (*config, []string, error) {
 		cfg.miningAddrs = append(cfg.miningAddrs, addr)
 	}
 
+	// Add an aztec address for testing
+	aztecAddr, err := btcutil.NewAddressAztec(make([]byte, 20), []btcutil.KeyID{2147483647, 0x42424242}, activeNetParams.Params)
+	if err != nil {
+		str := "%s: failed to create aztec address: %v"
+		err := fmt.Errorf(str, funcName, err)
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, usageMessage)
+		return nil, nil, err
+	}
+	btcdLog.Infof(aztecAddr.String())
+	cfg.miningAddrs = append(cfg.miningAddrs, aztecAddr)
+
 	// Ensure there is at least one mining address when the generate flag is
 	// set.
 	if cfg.Generate && len(cfg.MiningAddrs) == 0 {

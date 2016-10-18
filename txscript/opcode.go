@@ -215,7 +215,7 @@ const (
 	OP_NOP1                = 0xb0 // 176
 	OP_NOP2                = 0xb1 // 177
 	OP_CHECKLOCKTIMEVERIFY = 0xb1 // 177 - AKA OP_NOP2
-	OP_NOP3                = 0xb2 // 178
+	OP_CHECKSAFEMULTISIG   = 0xb2 // 178
 	OP_NOP4                = 0xb3 // 179
 	OP_NOP5                = 0xb4 // 180
 	OP_NOP6                = 0xb5 // 181
@@ -496,10 +496,10 @@ var opcodeArray = [256]opcode{
 	OP_CHECKSIGVERIFY:      {OP_CHECKSIGVERIFY, "OP_CHECKSIGVERIFY", 1, opcodeCheckSigVerify},
 	OP_CHECKMULTISIG:       {OP_CHECKMULTISIG, "OP_CHECKMULTISIG", 1, opcodeCheckMultiSig},
 	OP_CHECKMULTISIGVERIFY: {OP_CHECKMULTISIGVERIFY, "OP_CHECKMULTISIGVERIFY", 1, opcodeCheckMultiSigVerify},
+	OP_CHECKSAFEMULTISIG:   {OP_CHECKSAFEMULTISIG, "OP_CHECKSAFEMULTISIG", 1, opcodeCheckSafeMultiSig},
 
 	// Reserved opcodes.
 	OP_NOP1:  {OP_NOP1, "OP_NOP1", 1, opcodeNop},
-	OP_NOP3:  {OP_NOP3, "OP_NOP3", 1, opcodeNop},
 	OP_NOP4:  {OP_NOP4, "OP_NOP4", 1, opcodeNop},
 	OP_NOP5:  {OP_NOP5, "OP_NOP5", 1, opcodeNop},
 	OP_NOP6:  {OP_NOP6, "OP_NOP6", 1, opcodeNop},
@@ -876,7 +876,7 @@ func opcodeN(op *parsedOpcode, vm *Engine) error {
 // the flag to discourage use of NOPs is set for select opcodes.
 func opcodeNop(op *parsedOpcode, vm *Engine) error {
 	switch op.opcode.value {
-	case OP_NOP1, OP_NOP3, OP_NOP4, OP_NOP5,
+	case OP_NOP1, OP_NOP4, OP_NOP5,
 		OP_NOP6, OP_NOP7, OP_NOP8, OP_NOP9, OP_NOP10:
 		if vm.hasFlag(ScriptDiscourageUpgradableNops) {
 			return fmt.Errorf("OP_NOP%d reserved for soft-fork "+
@@ -1968,9 +1968,215 @@ func opcodeCheckSigVerify(op *parsedOpcode, vm *Engine) error {
 // for whether or not it has already been parsed.  It is used to prevent parsing
 // the same signature multiple times when verifying a multisig.
 type parsedSigInfo struct {
+	pubKey          []byte
 	signature       []byte
 	parsedSignature *btcec.Signature
 	parsed          bool
+}
+
+// opcodeCheckSafeMultiSig expects the following items on the stack (from top down):
+//   NKH: the integer number of key-hashes
+//   ${NKH} entries of raw data representing public key hashes
+//   NSIG: the integer number of total signatures required
+//   ${NSIG} entries of { pubkey, signature } pairs (pubkey above signature on stack)
+//
+// All of the aforementioned stack items are replaced with a bool which
+// indicates if the requisite number of signatures were successfully verified.
+//
+// Note that keyids are a concept that must be handled entirely outside the scripting
+// engine, because they require reference to chain state. We handle translation of the
+// Aztec-conforming scripts into scripts that can be executed by the VM at a higher
+// layer. Scripts to be executed by this opcode handler MUST already have their
+// key-ids entirely translated into key-hashes.
+//
+// See the opcodeCheckSigVerify documentation for more details about the process
+// for verifying each signature.
+//
+// Stack transformation:
+// [... [{sig, pubkey} ...] numsigs [keyid ...] numkeyids [pubkeyhash ...] numpubkeyhashes] -> [... bool]
+func opcodeCheckSafeMultiSig(op *parsedOpcode, vm *Engine) error {
+	// Get number of hashes
+	numKeys, err := vm.dstack.PopInt()
+	if err != nil {
+		return err
+	}
+	numKeyHashes := int(numKeys.Int32())
+	if numKeyHashes < 0 || numKeyHashes > MaxPubKeysPerMultiSig {
+		// TODO(aztec): different limit here
+		return ErrStackTooManyPubKeys
+	}
+	vm.numOps += numKeyHashes
+	if vm.numOps > MaxOpsPerScript {
+		return ErrStackTooManyOperations
+	}
+
+	keyHashes := make([][]byte, 0, numKeyHashes)
+	for i := 0; i < numKeyHashes; i++ {
+		keyHash, err := vm.dstack.PopByteArray()
+		if err != nil {
+			return err
+		}
+		if len(keyHash) != ripemd160.Size {
+			return fmt.Errorf("too few valid key hashes found: %d < %d", i, numKeyHashes)
+		}
+		keyHashes = append(keyHashes, keyHash)
+	}
+
+	numSigs, err := vm.dstack.PopInt()
+	if err != nil {
+		return err
+	}
+	numSignatures := int(numSigs.Int32())
+	if numSignatures < 0 {
+		// Note: there are stricter limits imposed during script validation / translation. Should
+		// not ever be here.
+		return fmt.Errorf("number of signatures '%d' is less than 0",
+			numSignatures)
+	}
+	if numSignatures > numKeyHashes {
+		return fmt.Errorf("more signatures than pubkey hashes: %d > %d",
+			numSignatures, numKeyHashes)
+	}
+
+	signatures := make([]*parsedSigInfo, 0, numSignatures)
+	for i := 0; i < numSignatures; i++ {
+		signature, err := vm.dstack.PopByteArray()
+		if err != nil {
+			return err
+		}
+		pubKey, err := vm.dstack.PopByteArray()
+		if err != nil {
+			return err
+		}
+		sigInfo := &parsedSigInfo{pubKey: pubKey, signature: signature}
+		signatures = append(signatures, sigInfo)
+	}
+
+	// Get script starting from the most recent OP_CODESEPARATOR.
+	// TODO(aztec): Possibly remove
+	script := vm.subScript()
+
+	// Remove any of the signatures since there is no way for a signature to
+	// sign itself.
+	// TODO(aztec): this will likely change -- need to figure out if we really need to include the script when signing
+	for _, sigInfo := range signatures {
+		script = removeOpcodeByData(script, sigInfo.signature)
+		script = removeOpcodeByData(script, sigInfo.pubKey)
+	}
+
+	success := true
+	// Initially increment, since we decrement immediately at the top of loop
+	numKeyHashes++
+	pubKeyHashIdx := -1
+	signatureIdx := 0
+	for numSignatures > 0 {
+		// When there are more signatures than public key remaining,
+		// there is no way to succeed since too many signatures are
+		// invalid, so exit early.
+		pubKeyHashIdx++
+		numKeyHashes--
+		if numSignatures > numKeyHashes {
+			success = false
+			break
+		}
+
+		sigInfo := signatures[signatureIdx]
+		pubKey := sigInfo.pubKey
+		pubKeyHash := keyHashes[pubKeyHashIdx]
+
+		// The order of the signature and public key evaluation is
+		// important here since it can be distinguished by an
+		// OP_CHECKMULTISIG NOT when the strict encoding flag is set.
+
+		rawSig := sigInfo.signature
+		if len(rawSig) == 0 {
+			// Skip to the next pubkey if signature is empty.
+			continue
+		}
+
+		// If pubkey for this sig doesn't match the current hash, move on
+		hash256 := fastsha256.Sum256(pubKey)
+		hash160 := calcHash(hash256[:], ripemd160.New())
+		if !bytes.Equal(hash160, pubKeyHash) {
+			continue
+		}
+
+		// Split the signature into hash type and signature components.
+		hashType := SigHashType(rawSig[len(rawSig)-1])
+		signature := rawSig[:len(rawSig)-1]
+
+		// Only parse and check the signature encoding once.
+		var parsedSig *btcec.Signature
+		if !sigInfo.parsed {
+			if err := vm.checkHashTypeEncoding(hashType); err != nil {
+				return err
+			}
+			if err := vm.checkSignatureEncoding(signature); err != nil {
+				return err
+			}
+
+			// Parse the signature.
+			var err error
+			if vm.hasFlag(ScriptVerifyStrictEncoding) ||
+				vm.hasFlag(ScriptVerifyDERSignatures) {
+
+				parsedSig, err = btcec.ParseDERSignature(signature,
+					btcec.S256())
+			} else {
+				parsedSig, err = btcec.ParseSignature(signature,
+					btcec.S256())
+			}
+			sigInfo.parsed = true
+			if err != nil {
+				continue
+			}
+			sigInfo.parsedSignature = parsedSig
+		} else {
+			// Skip to the next pubkey if the signature is integervalid.
+			if sigInfo.parsedSignature == nil {
+				continue
+			}
+
+			// Use the already parsed signature.
+			parsedSig = sigInfo.parsedSignature
+		}
+
+		if err := vm.checkPubKeyEncoding(pubKey); err != nil {
+			return err
+		}
+
+		// Parse the pubkey.
+		parsedPubKey, err := btcec.ParsePubKey(pubKey, btcec.S256())
+		if err != nil {
+			return err
+		}
+
+		// Generate the signature hash based on the signature hash type.
+		hash := calcSignatureHash(script, hashType, &vm.tx, vm.txIdx)
+
+		var valid bool
+		if vm.sigCache != nil {
+			var sigHash chainhash.Hash
+			copy(sigHash[:], hash)
+
+			valid = vm.sigCache.Exists(sigHash, parsedSig, parsedPubKey)
+			if !valid && parsedSig.Verify(hash, parsedPubKey) {
+				vm.sigCache.Add(sigHash, parsedSig, parsedPubKey)
+				valid = true
+			}
+		} else {
+			valid = parsedSig.Verify(hash, parsedPubKey)
+		}
+
+		if valid {
+			// PubKey verified, move on to the next signature.
+			signatureIdx++
+			numSignatures--
+		}
+	}
+
+	vm.dstack.PushBool(success)
+	return nil
 }
 
 // opcodeCheckMultiSig treats the top item on the stack as an integer number of
