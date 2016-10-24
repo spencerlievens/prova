@@ -21,6 +21,7 @@ type GetBlockHeaderVerboseResult struct {
 	Difficulty    float64 `json:"difficulty"`
 	PreviousHash  string  `json:"previousblockhash,omitempty"`
 	NextHash      string  `json:"nextblockhash,omitempty"`
+	Signature     string  `json:"signature,omitempty"`
 }
 
 // GetBlockVerboseResult models the data from the getblock command when the
@@ -36,7 +37,7 @@ type GetBlockVerboseResult struct {
 	Tx            []string      `json:"tx,omitempty"`
 	RawTx         []TxRawResult `json:"rawtx,omitempty"`
 	Time          int64         `json:"time"`
-	Nonce         uint32        `json:"nonce"`
+	Nonce         uint64        `json:"nonce"`
 	Bits          string        `json:"bits"`
 	Difficulty    float64       `json:"difficulty"`
 	PreviousHash  string        `json:"previousblockhash"`

@@ -225,6 +225,7 @@ var helpDescsEnUS = map[string]string{
 	"getblockheaderverboseresult-difficulty":        "The proof-of-work difficulty as a multiple of the minimum difficulty",
 	"getblockheaderverboseresult-previousblockhash": "The hash of the previous block",
 	"getblockheaderverboseresult-nextblockhash":     "The hash of the next block (only if there is one)",
+	"getblockheaderverboseresult-signature":         "The signature of this block by the validator who created it",
 
 	// TemplateRequest help.
 	"templaterequest-mode":         "This is 'template', 'proposal', or omitted",

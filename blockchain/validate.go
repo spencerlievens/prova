@@ -5,17 +5,17 @@
 package blockchain
 
 import (
-	"encoding/binary"
 	"fmt"
 	"math"
 	"math/big"
 	"time"
 
+	"github.com/bitgo/btcutil"
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
 )
 
 const (
@@ -71,15 +71,6 @@ func isNullOutpoint(outpoint *wire.OutPoint) bool {
 		return true
 	}
 	return false
-}
-
-// ShouldHaveSerializedBlockHeight determines if a block should have a
-// serialized block height embedded within the scriptSig of its
-// coinbase transaction. Judgement is based on the block version in the block
-// header. Blocks with version 2 and above satisfy this criteria. See BIP0034
-// for further information.
-func ShouldHaveSerializedBlockHeight(header *wire.BlockHeader) bool {
-	return header.Version >= serializedHeightVersion
 }
 
 // IsCoinBaseTx determines whether or not a transaction is a coinbase.  A coinbase
@@ -563,52 +554,6 @@ func CheckBlockSanity(block *btcutil.Block, powLimit *big.Int, timeSource Median
 	return checkBlockSanity(block, powLimit, timeSource, BFNone)
 }
 
-// ExtractCoinbaseHeight attempts to extract the height of the block from the
-// scriptSig of a coinbase transaction.  Coinbase heights are only present in
-// blocks of version 2 or later.  This was added as part of BIP0034.
-func ExtractCoinbaseHeight(coinbaseTx *btcutil.Tx) (int32, error) {
-	sigScript := coinbaseTx.MsgTx().TxIn[0].SignatureScript
-	if len(sigScript) < 1 {
-		str := "the coinbase signature script for blocks of " +
-			"version %d or greater must start with the " +
-			"length of the serialized block height"
-		str = fmt.Sprintf(str, serializedHeightVersion)
-		return 0, ruleError(ErrMissingCoinbaseHeight, str)
-	}
-
-	serializedLen := int(sigScript[0])
-	if len(sigScript[1:]) < serializedLen {
-		str := "the coinbase signature script for blocks of " +
-			"version %d or greater must start with the " +
-			"serialized block height"
-		str = fmt.Sprintf(str, serializedLen)
-		return 0, ruleError(ErrMissingCoinbaseHeight, str)
-	}
-
-	serializedHeightBytes := make([]byte, 8, 8)
-	copy(serializedHeightBytes, sigScript[1:serializedLen+1])
-	serializedHeight := binary.LittleEndian.Uint64(serializedHeightBytes)
-
-	return int32(serializedHeight), nil
-}
-
-// checkSerializedHeight checks if the signature script in the passed
-// transaction starts with the serialized block height of wantHeight.
-func checkSerializedHeight(coinbaseTx *btcutil.Tx, wantHeight int32) error {
-	serializedHeight, err := ExtractCoinbaseHeight(coinbaseTx)
-	if err != nil {
-		return err
-	}
-
-	if serializedHeight != wantHeight {
-		str := fmt.Sprintf("the coinbase signature script serialized "+
-			"block height is %d when %d was expected",
-			serializedHeight, wantHeight)
-		return ruleError(ErrBadCoinbaseHeight, str)
-	}
-	return nil
-}
-
 // checkBlockHeaderContext peforms several validation checks on the block header
 // which depend on its position within the block chain.
 //
@@ -652,11 +597,28 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 			str = fmt.Sprintf(str, header.Timestamp, medianTime)
 			return ruleError(ErrTimeTooOld, str)
 		}
+
+		// Verify the block's signature by an active validator key
+		// TODO(aztec): Fully implement, using non-hardcoded validator key.
+		if len(b.chainParams.InitialValidatorPubKey) != 0 {
+			pubKey, err := btcec.ParsePubKey(b.chainParams.InitialValidatorPubKey, btcec.S256())
+			if err != nil {
+				return err
+			}
+			if !header.Verify(pubKey) {
+				return ruleError(ErrBadBlockSignature, "unable to validate block signature")
+			}
+		}
 	}
 
 	// The height of this block is one more than the referenced previous
-	// block.
+	// block. The header value for Height must be correct.
 	blockHeight := prevNode.height + 1
+	if header.Height != blockHeight {
+		str := "block height of %d is not the expected value of %d"
+		str = fmt.Sprintf(str, header.Height, blockHeight)
+		return ruleError(ErrBadHeight, str)
+	}
 
 	// Ensure chain matches up to predetermined checkpoints.
 	blockHash := header.BlockHash()
@@ -681,6 +643,7 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 		return ruleError(ErrForkTooOld, str)
 	}
 
+	// TODO(aztec): clean up / remove
 	if !fastAdd {
 		// Reject version 3 blocks once a majority of the network has
 		// upgraded.  This is part of BIP0065.
@@ -754,21 +717,6 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 				str := fmt.Sprintf("block contains unfinalized "+
 					"transaction %v", tx.Hash())
 				return ruleError(ErrUnfinalizedTx, str)
-			}
-		}
-
-		// Ensure coinbase starts with serialized block heights for
-		// blocks whose version is the serializedHeightVersion or newer
-		// once a majority of the network has upgraded.  This is part of
-		// BIP0034.
-		if ShouldHaveSerializedBlockHeight(header) &&
-			b.isMajorityVersion(serializedHeightVersion, prevNode,
-				b.chainParams.BlockEnforceNumRequired) {
-
-			coinbaseTx := block.Transactions()[0]
-			err := checkSerializedHeight(coinbaseTx, blockHeight)
-			if err != nil {
-				return err
 			}
 		}
 	}

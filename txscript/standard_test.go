@@ -10,9 +10,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/btcutil"
 )
 
 // decodeHex decodes the passed hex string and returns the resulting bytes.  It
@@ -525,6 +525,10 @@ func (b *bogusAddress) IsForNet(chainParams *chaincfg.Params) bool {
 // btcutil.Address interface.
 func (b *bogusAddress) String() string {
 	return ""
+}
+
+func (b *bogusAddress) ScriptKeyIDs() []btcutil.KeyID {
+	return make([]btcutil.KeyID, 0)
 }
 
 // TestPayToAddrScript ensures the PayToAddrScript function generates the

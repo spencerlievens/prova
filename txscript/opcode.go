@@ -215,7 +215,7 @@ const (
 	OP_NOP1                = 0xb0 // 176
 	OP_NOP2                = 0xb1 // 177
 	OP_CHECKLOCKTIMEVERIFY = 0xb1 // 177 - AKA OP_NOP2
-	OP_CHECKSAFEMULTISIG   = 0xb2 // 178
+	OP_NOP3                = 0xb2 // 178
 	OP_NOP4                = 0xb3 // 179
 	OP_NOP5                = 0xb4 // 180
 	OP_NOP6                = 0xb5 // 181
@@ -223,7 +223,7 @@ const (
 	OP_NOP8                = 0xb7 // 183
 	OP_NOP9                = 0xb8 // 184
 	OP_NOP10               = 0xb9 // 185
-	OP_UNKNOWN186          = 0xba // 186
+	OP_CHECKSAFEMULTISIG   = 0xba // 186
 	OP_UNKNOWN187          = 0xbb // 187
 	OP_UNKNOWN188          = 0xbc // 188
 	OP_UNKNOWN189          = 0xbd // 189
@@ -496,10 +496,10 @@ var opcodeArray = [256]opcode{
 	OP_CHECKSIGVERIFY:      {OP_CHECKSIGVERIFY, "OP_CHECKSIGVERIFY", 1, opcodeCheckSigVerify},
 	OP_CHECKMULTISIG:       {OP_CHECKMULTISIG, "OP_CHECKMULTISIG", 1, opcodeCheckMultiSig},
 	OP_CHECKMULTISIGVERIFY: {OP_CHECKMULTISIGVERIFY, "OP_CHECKMULTISIGVERIFY", 1, opcodeCheckMultiSigVerify},
-	OP_CHECKSAFEMULTISIG:   {OP_CHECKSAFEMULTISIG, "OP_CHECKSAFEMULTISIG", 1, opcodeCheckSafeMultiSig},
 
 	// Reserved opcodes.
 	OP_NOP1:  {OP_NOP1, "OP_NOP1", 1, opcodeNop},
+	OP_NOP3:  {OP_NOP3, "OP_NOP3", 1, opcodeNop},
 	OP_NOP4:  {OP_NOP4, "OP_NOP4", 1, opcodeNop},
 	OP_NOP5:  {OP_NOP5, "OP_NOP5", 1, opcodeNop},
 	OP_NOP6:  {OP_NOP6, "OP_NOP6", 1, opcodeNop},
@@ -508,8 +508,10 @@ var opcodeArray = [256]opcode{
 	OP_NOP9:  {OP_NOP9, "OP_NOP9", 1, opcodeNop},
 	OP_NOP10: {OP_NOP10, "OP_NOP10", 1, opcodeNop},
 
+	// Aztec opcodes
+	OP_CHECKSAFEMULTISIG: {OP_CHECKSAFEMULTISIG, "OP_CHECKSAFEMULTISIG", 1, opcodeCheckSafeMultiSig},
+
 	// Undefined opcodes.
-	OP_UNKNOWN186: {OP_UNKNOWN186, "OP_UNKNOWN186", 1, opcodeInvalid},
 	OP_UNKNOWN187: {OP_UNKNOWN187, "OP_UNKNOWN187", 1, opcodeInvalid},
 	OP_UNKNOWN188: {OP_UNKNOWN188, "OP_UNKNOWN188", 1, opcodeInvalid},
 	OP_UNKNOWN189: {OP_UNKNOWN189, "OP_UNKNOWN189", 1, opcodeInvalid},
@@ -876,7 +878,7 @@ func opcodeN(op *parsedOpcode, vm *Engine) error {
 // the flag to discourage use of NOPs is set for select opcodes.
 func opcodeNop(op *parsedOpcode, vm *Engine) error {
 	switch op.opcode.value {
-	case OP_NOP1, OP_NOP4, OP_NOP5,
+	case OP_NOP1, OP_NOP3, OP_NOP4, OP_NOP5,
 		OP_NOP6, OP_NOP7, OP_NOP8, OP_NOP9, OP_NOP10:
 		if vm.hasFlag(ScriptDiscourageUpgradableNops) {
 			return fmt.Errorf("OP_NOP%d reserved for soft-fork "+

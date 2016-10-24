@@ -27,6 +27,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/btcjson"
@@ -37,7 +38,6 @@ import (
 	"github.com/bitgo/rmgd/mining"
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
 	"github.com/btcsuite/fastsha256"
 	"github.com/btcsuite/websocket"
 )
@@ -1190,6 +1190,7 @@ func handleGetBlockHeader(s *rpcServer, cmd interface{}, closeChan <-chan struct
 		Time:          blockHeader.Timestamp.Unix(),
 		Bits:          strconv.FormatInt(int64(blockHeader.Bits), 16),
 		Difficulty:    getDifficultyRatio(blockHeader.Bits),
+		Signature:     blockHeader.Signature.String(),
 	}
 	return blockHeaderReply, nil
 }
@@ -1816,6 +1817,10 @@ func chainErrToGBTErrString(err error) string {
 		return "bad-diffbits"
 	case blockchain.ErrUnexpectedDifficulty:
 		return "bad-diffbits"
+	case blockchain.ErrBadHeight:
+		return "bad-height"
+	case blockchain.ErrBadBlockSignature:
+		return "bad-block-signature"
 	case blockchain.ErrHighHash:
 		return "high-hash"
 	case blockchain.ErrBadMerkleRoot:
@@ -1868,10 +1873,6 @@ func chainErrToGBTErrString(err error) string {
 		return "bad-cb-length"
 	case blockchain.ErrBadCoinbaseValue:
 		return "bad-cb-value"
-	case blockchain.ErrMissingCoinbaseHeight:
-		return "bad-cb-height"
-	case blockchain.ErrBadCoinbaseHeight:
-		return "bad-cb-height"
 	case blockchain.ErrScriptMalformed:
 		return "bad-script-malformed"
 	case blockchain.ErrScriptValidation:
@@ -2533,7 +2534,7 @@ func handleGetWorkRequest(s *rpcServer) (interface{}, error) {
 	// and it has been at least one minute since the last template was
 	// generated.
 	lastTxUpdate := s.server.txMemPool.LastUpdated()
-	latestHash, latestHeight := s.server.blockManager.chainState.Best()
+	latestHash, _ := s.server.blockManager.chainState.Best()
 	msgBlock := state.msgBlock
 	if msgBlock == nil || state.prevHash == nil ||
 		!state.prevHash.IsEqual(latestHash) ||
@@ -2588,17 +2589,6 @@ func handleGetWorkRequest(s *rpcServer) (interface{}, error) {
 		// while accounting for the median time of the past several
 		// blocks per the chain consensus rules.
 		UpdateBlockTime(msgBlock, s.server.blockManager)
-
-		// Increment the extra nonce and update the block template
-		// with the new value by regenerating the coinbase script and
-		// setting the merkle root to the new value.
-		state.extraNonce++
-		err := UpdateExtraNonce(msgBlock, latestHeight+1, state.extraNonce)
-		if err != nil {
-			errStr := fmt.Sprintf("Failed to update extra nonce: "+
-				"%v", err)
-			return nil, internalRPCError(errStr, "")
-		}
 
 		rpcsLog.Debugf("Updated block template (timestamp %v, extra "+
 			"nonce %d, target %064x, merkle root %s, signature "+

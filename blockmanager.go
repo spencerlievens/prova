@@ -13,13 +13,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/database"
 	"github.com/bitgo/rmgd/mempool"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
 )
 
 const (
@@ -612,19 +612,8 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 		// Extraction is only attempted if the block's version is
 		// high enough (ver 2+).
 		header := &bmsg.block.MsgBlock().Header
-		if blockchain.ShouldHaveSerializedBlockHeight(header) {
-			coinbaseTx := bmsg.block.Transactions()[0]
-			cbHeight, err := blockchain.ExtractCoinbaseHeight(coinbaseTx)
-			if err != nil {
-				bmgrLog.Warnf("Unable to extract height from "+
-					"coinbase tx: %v", err)
-			} else {
-				bmgrLog.Debugf("Extracted height of %v from "+
-					"orphan block", cbHeight)
-				heightUpdate = int32(cbHeight)
-				blkHashUpdate = blockHash
-			}
-		}
+		heightUpdate := header.Height
+		bmgrLog.Debugf("Extracted height of %v from orphan block", heightUpdate)
 
 		orphanRoot := b.chain.GetOrphanRoot(blockHash)
 		locator, err := b.chain.LatestBlockLocator()

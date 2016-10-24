@@ -73,6 +73,11 @@ type Params struct {
 	// GenesisHash is the starting block hash.
 	GenesisHash *chainhash.Hash
 
+	// Initial validator key is a validator key which may be used
+	// to create blocks before any additional validators have been provisioned
+	// TODO(aztec): change type to byte buffer or pubkey?
+	InitialValidatorPubKey []byte
+
 	// PowLimit defines the highest allowed proof of work value for a block
 	// as a uint256.
 	PowLimit *big.Int
@@ -240,8 +245,14 @@ var RegressionNetParams = Params{
 	DNSSeeds:    []string{},
 
 	// Chain parameters
-	GenesisBlock:             &regTestGenesisBlock,
-	GenesisHash:              &regTestGenesisHash,
+	GenesisBlock: &regTestGenesisBlock,
+	GenesisHash:  &regTestGenesisHash,
+	InitialValidatorPubKey: []byte{
+		0x03, 0x5f, 0x51, 0x03, 0x85, 0x2b, 0xd7, 0xd9,
+		0xc9, 0xc2, 0x8e, 0x44, 0xca, 0xf1, 0xf7, 0x18,
+		0x89, 0x41, 0xe1, 0x62, 0x95, 0x06, 0x2c, 0xa4,
+		0xc8, 0x99, 0x28, 0xa8, 0xcc, 0xff, 0x99, 0x3c, 0xd3,
+	},
 	PowLimit:                 regressionPowLimit,
 	PowLimitBits:             0x207fffff,
 	CoinbaseMaturity:         100,

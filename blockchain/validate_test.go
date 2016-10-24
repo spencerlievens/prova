@@ -5,16 +5,14 @@
 package blockchain_test
 
 import (
-	"math"
-	"reflect"
 	"testing"
 	"time"
 
+	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
 )
 
 // TestCheckConnectBlock tests the CheckConnectBlock function to ensure it
@@ -54,72 +52,6 @@ func TestCheckBlockSanity(t *testing.T) {
 	err = blockchain.CheckBlockSanity(block, powLimit, timeSource)
 	if err == nil {
 		t.Errorf("CheckBlockSanity: error is nil when it shouldn't be")
-	}
-}
-
-// TestCheckSerializedHeight tests the checkSerializedHeight function with
-// various serialized heights and also does negative tests to ensure errors
-// and handled properly.
-func TestCheckSerializedHeight(t *testing.T) {
-	// Create an empty coinbase template to be used in the tests below.
-	coinbaseOutpoint := wire.NewOutPoint(&chainhash.Hash{}, math.MaxUint32)
-	coinbaseTx := wire.NewMsgTx()
-	coinbaseTx.Version = 2
-	coinbaseTx.AddTxIn(wire.NewTxIn(coinbaseOutpoint, nil))
-
-	// Expected rule errors.
-	missingHeightError := blockchain.RuleError{
-		ErrorCode: blockchain.ErrMissingCoinbaseHeight,
-	}
-	badHeightError := blockchain.RuleError{
-		ErrorCode: blockchain.ErrBadCoinbaseHeight,
-	}
-
-	tests := []struct {
-		sigScript  []byte // Serialized data
-		wantHeight int32  // Expected height
-		err        error  // Expected error type
-	}{
-		// No serialized height length.
-		{[]byte{}, 0, missingHeightError},
-		// Serialized height length with no height bytes.
-		{[]byte{0x02}, 0, missingHeightError},
-		// Serialized height length with too few height bytes.
-		{[]byte{0x02, 0x4a}, 0, missingHeightError},
-		// Serialized height that needs 2 bytes to encode.
-		{[]byte{0x02, 0x4a, 0x52}, 21066, nil},
-		// Serialized height that needs 2 bytes to encode, but backwards
-		// endianness.
-		{[]byte{0x02, 0x4a, 0x52}, 19026, badHeightError},
-		// Serialized height that needs 3 bytes to encode.
-		{[]byte{0x03, 0x40, 0x0d, 0x03}, 200000, nil},
-		// Serialized height that needs 3 bytes to encode, but backwards
-		// endianness.
-		{[]byte{0x03, 0x40, 0x0d, 0x03}, 1074594560, badHeightError},
-	}
-
-	t.Logf("Running %d tests", len(tests))
-	for i, test := range tests {
-		msgTx := coinbaseTx.Copy()
-		msgTx.TxIn[0].SignatureScript = test.sigScript
-		tx := btcutil.NewTx(msgTx)
-
-		err := blockchain.TstCheckSerializedHeight(tx, test.wantHeight)
-		if reflect.TypeOf(err) != reflect.TypeOf(test.err) {
-			t.Errorf("checkSerializedHeight #%d wrong error type "+
-				"got: %v <%T>, want: %T", i, err, err, test.err)
-			continue
-		}
-
-		if rerr, ok := err.(blockchain.RuleError); ok {
-			trerr := test.err.(blockchain.RuleError)
-			if rerr.ErrorCode != trerr.ErrorCode {
-				t.Errorf("checkSerializedHeight #%d wrong "+
-					"error code got: %v, want: %v", i,
-					rerr.ErrorCode, trerr.ErrorCode)
-				continue
-			}
-		}
 	}
 }
 

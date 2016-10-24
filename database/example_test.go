@@ -10,11 +10,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/database"
 	_ "github.com/bitgo/rmgd/database/ffldb"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
 )
 
 // This example demonstrates creating a new database.
@@ -135,7 +135,7 @@ func Example_blockStorageAndRetrieval() {
 	// read-write transaction and store a genesis block in the database as
 	// and example.
 	err = db.Update(func(tx database.Tx) error {
-		genesisBlock := chaincfg.MainNetParams.GenesisBlock
+		genesisBlock := chaincfg.RegressionNetParams.GenesisBlock
 		return tx.StoreBlock(btcutil.NewBlock(genesisBlock))
 	})
 	if err != nil {
@@ -147,7 +147,7 @@ func Example_blockStorageAndRetrieval() {
 	// transaction and fetch the block stored above.
 	var loadedBlockBytes []byte
 	err = db.Update(func(tx database.Tx) error {
-		genesisHash := chaincfg.MainNetParams.GenesisHash
+		genesisHash := chaincfg.RegressionNetParams.GenesisHash
 		blockBytes, err := tx.FetchBlock(genesisHash)
 		if err != nil {
 			return err
@@ -173,5 +173,5 @@ func Example_blockStorageAndRetrieval() {
 	fmt.Printf("Serialized block size: %d bytes\n", len(loadedBlockBytes))
 
 	// Output:
-	// Serialized block size: 285 bytes
+	// Serialized block size: 385 bytes
 }

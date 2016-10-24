@@ -12,16 +12,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/mining"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
 )
 
 const (
 	// maxNonce is the maximum value a nonce can be in a block header.
-	maxNonce = ^uint32(0) // 2^32 - 1
+	maxNonce = ^uint64(0) // 2^64 - 1
 
 	// maxExtraNonce is the maximum value an extra nonce used in a coinbase
 	// transaction can be.
@@ -172,15 +172,6 @@ func (m *CPUMiner) submitBlock(block *btcutil.Block) bool {
 func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
 	ticker *time.Ticker, quit chan struct{}) bool {
 
-	// Choose a random extra nonce offset for this block template and
-	// worker.
-	enOffset, err := wire.RandomUint64()
-	if err != nil {
-		minrLog.Errorf("Unexpected error while generating random "+
-			"extra nonce offset: %v", err)
-		enOffset = 0
-	}
-
 	// Create a couple of convenience variables.
 	header := &msgBlock.Header
 	targetDifficulty := blockchain.CompactToBig(header.Bits)
@@ -190,64 +181,54 @@ func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
 	lastTxUpdate := m.txSource.LastUpdated()
 	hashesCompleted := uint64(0)
 
-	// Note that the entire extra nonce range is iterated and the offset is
-	// added relying on the fact that overflow will wrap around 0 as
-	// provided by the Go spec.
-	for extraNonce := uint64(0); extraNonce < maxExtraNonce; extraNonce++ {
-		// Update the extra nonce in the block template with the
-		// new value by regenerating the coinbase script and
-		// setting the merkle root to the new value.  The
-		UpdateExtraNonce(msgBlock, blockHeight, extraNonce+enOffset)
+	// Search through the entire nonce range for a solution while
+	// periodically checking for early quit and stale block
+	// conditions along with updates to the speed monitor.
+	for i := uint64(0); i <= maxNonce; i++ {
+		select {
+		case <-quit:
+			return false
 
-		// Search through the entire nonce range for a solution while
-		// periodically checking for early quit and stale block
-		// conditions along with updates to the speed monitor.
-		for i := uint32(0); i <= maxNonce; i++ {
-			select {
-			case <-quit:
+		case <-ticker.C:
+			m.updateHashes <- hashesCompleted
+			hashesCompleted = 0
+
+			// The current block is stale if the best block
+			// has changed.
+			bestHash, _ := m.server.blockManager.chainState.Best()
+			if !header.PrevBlock.IsEqual(bestHash) {
 				return false
-
-			case <-ticker.C:
-				m.updateHashes <- hashesCompleted
-				hashesCompleted = 0
-
-				// The current block is stale if the best block
-				// has changed.
-				bestHash, _ := m.server.blockManager.chainState.Best()
-				if !header.PrevBlock.IsEqual(bestHash) {
-					return false
-				}
-
-				// The current block is stale if the memory pool
-				// has been updated since the block template was
-				// generated and it has been at least one
-				// minute.
-				if lastTxUpdate != m.txSource.LastUpdated() &&
-					time.Now().After(lastGenerated.Add(time.Minute)) {
-
-					return false
-				}
-
-				UpdateBlockTime(msgBlock, m.server.blockManager)
-
-			default:
-				// Non-blocking select to fall through
 			}
 
-			// Update the nonce and hash the block header.  Each
-			// hash is actually a double sha256 (two hashes), so
-			// increment the number of hashes completed for each
-			// attempt accordingly.
-			header.Nonce = i
-			hash := header.BlockHash()
-			hashesCompleted += 2
+			// The current block is stale if the memory pool
+			// has been updated since the block template was
+			// generated and it has been at least one
+			// minute.
+			if lastTxUpdate != m.txSource.LastUpdated() &&
+				time.Now().After(lastGenerated.Add(time.Minute)) {
 
-			// The block is solved when the new block hash is less
-			// than the target difficulty.  Yay!
-			if blockchain.HashToBig(&hash).Cmp(targetDifficulty) <= 0 {
-				m.updateHashes <- hashesCompleted
-				return true
+				return false
 			}
+
+			UpdateBlockTime(msgBlock, m.server.blockManager)
+
+		default:
+			// Non-blocking select to fall through
+		}
+
+		// Update the nonce and hash the block header.  Each
+		// hash is actually a double sha256 (two hashes), so
+		// increment the number of hashes completed for each
+		// attempt accordingly.
+		header.Nonce = i
+		hash := header.BlockHash()
+		hashesCompleted += 2
+
+		// The block is solved when the new block hash is less
+		// than the target difficulty.  Yay!
+		if blockchain.HashToBig(&hash).Cmp(targetDifficulty) <= 0 {
+			m.updateHashes <- hashesCompleted
+			return true
 		}
 	}
 

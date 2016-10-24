@@ -6,19 +6,30 @@ package wire
 
 import (
 	"bytes"
+	"encoding/hex"
 	"io"
 	"time"
+	// "log"
 
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 )
 
+const BlockSignatureSize = 80
+
+type BlockSignature [BlockSignatureSize]byte
+
+// String returns the Hash as the hexadecimal string of the signature
+func (sig BlockSignature) String() string {
+	return hex.EncodeToString(sig[:])
+}
+
 // BlockVersion is the current latest supported block version.
+// TODO(aztec): change this
 const BlockVersion = 4
 
 // MaxBlockHeaderPayload is the maximum number of bytes a block header can be.
-// Version 4 bytes + Timestamp 4 bytes + Bits 4 bytes + Nonce 4 bytes +
-// PrevBlock and MerkleRoot hashes.
-const MaxBlockHeaderPayload = 16 + (chainhash.HashSize * 2)
+const MaxBlockHeaderPayload = 36 + (chainhash.HashSize * 2) + BlockSignatureSize
 
 // BlockHeader defines information about a block and is used in the bitcoin
 // block (MsgBlock) and headers (MsgHeaders) messages.
@@ -32,20 +43,34 @@ type BlockHeader struct {
 	// Merkle tree reference to hash of all transactions for the block.
 	MerkleRoot chainhash.Hash
 
-	// Time the block was created.  This is, unfortunately, encoded as a
-	// uint32 on the wire and therefore is limited to 2106.
+	// Time the block was created. Encoded as int64 on the wire.
 	Timestamp time.Time
 
 	// Difficulty target for the block.
 	Bits uint32
 
-	// Nonce used to generate the block.
-	Nonce uint32
+	// Height is the block height in the block chain.
+	// NOTE: intentionally signed to allow -1 as an unspecified value
+	Height int32
+
+	// Size is the size of the serialized block in its entirety.
+	// TODO(aztec): implement
+	Size uint32
+
+	// Nonce used to generate the block (64 bits, to avoid extraNonce)
+	Nonce uint64
+
+	// Key ID of the key used for signing
+	// TODO(aztec): implement
+	SigKeyID uint32
+
+	// Signature of (PrevBlock|Merkle root) by validation key
+	Signature BlockSignature
 }
 
 // blockHeaderLen is a constant that represents the number of bytes for a block
 // header.
-const blockHeaderLen = 80
+const blockHeaderLen = MaxBlockHeaderPayload
 
 // BlockHash computes the block identifier hash for the given block header.
 func (h *BlockHeader) BlockHash() chainhash.Hash {
@@ -95,11 +120,69 @@ func (h *BlockHeader) Serialize(w io.Writer) error {
 	return writeBlockHeader(w, 0, h)
 }
 
+// hashForSigning gets the double SHA256 hash of (Version|Timestamp|PrevBlock|MerkleRoot)
+// which is used for the validator's signature.
+func (h *BlockHeader) hashForSigning() []byte {
+	buf := bytes.NewBuffer(make([]byte, 0, 12+2*chainhash.HashSize))
+	err := writeElements(buf, h.Version, h.Timestamp.Unix(), &h.PrevBlock, &h.MerkleRoot)
+	if err != nil {
+		return nil
+	}
+	return chainhash.DoubleHashB(buf.Bytes())
+}
+
+// Sign uses the supplied private key to sign the signing-hash of the block
+// header, and sets it in the Signature field.
+func (h *BlockHeader) Sign(key *btcec.PrivateKey) error {
+	hash := h.hashForSigning()
+	signature, err := key.Sign(hash)
+	if err != nil {
+		return err
+	}
+	serialized := signature.Serialize()
+	// log.Printf("SIGNED hash=%v sig=%v prevblock=%v merkle=%v ",
+	// 	hex.EncodeToString(hash),
+	// 	hex.EncodeToString(serialized),
+	// 	hex.EncodeToString(h.PrevBlock[:]),
+	// 	hex.EncodeToString(h.MerkleRoot[:]),
+	// )
+	copy(h.Signature[:], serialized)
+	return nil
+}
+
+// TempTempAutoSign is a temporary function that uses a hard-coded key
+// for signing the block.
+// TODO(aztec): this is temporary for testing. Need to have a configurable
+// mining key which is stored in memory.
+func (h *BlockHeader) TempTempAutoSign() error {
+	keyBytes, _ := hex.DecodeString("c345ff4a207ed945ac3040a933f386676e9c034f261ad4306f8b34d828eecde6")
+	key, _ := btcec.PrivKeyFromBytes(btcec.S256(), keyBytes)
+	return h.Sign(key)
+}
+
+// Verify checks the signature on the block using the supplied public key.
+func (h *BlockHeader) Verify(pubKey *btcec.PublicKey) bool {
+	sig, err := btcec.ParseDERSignature(h.Signature[:], btcec.S256())
+	if err != nil {
+		return false
+	}
+	hash := h.hashForSigning()
+	ret := sig.Verify(hash, pubKey)
+	// log.Printf("VERIFY result=%v, hash=%v sig=%v prevblock=%v merkle=%v, ",
+	// 	ret,
+	// 	hex.EncodeToString(hash),
+	// 	hex.EncodeToString(sig.Serialize()),
+	// 	hex.EncodeToString(h.PrevBlock[:]),
+	// 	hex.EncodeToString(h.MerkleRoot[:]),
+	// )
+	return ret
+}
+
 // NewBlockHeader returns a new BlockHeader using the provided previous block
 // hash, merkle root hash, difficulty bits, and nonce used to generate the
 // block with defaults for the remaining fields.
 func NewBlockHeader(prevHash *chainhash.Hash, merkleRootHash *chainhash.Hash,
-	bits uint32, nonce uint32) *BlockHeader {
+	bits uint32, nonce uint64) *BlockHeader {
 
 	// Limit the timestamp to one second precision since the protocol
 	// doesn't support better.
@@ -118,7 +201,7 @@ func NewBlockHeader(prevHash *chainhash.Hash, merkleRootHash *chainhash.Hash,
 // decoding from the wire.
 func readBlockHeader(r io.Reader, pver uint32, bh *BlockHeader) error {
 	err := readElements(r, &bh.Version, &bh.PrevBlock, &bh.MerkleRoot,
-		(*uint32Time)(&bh.Timestamp), &bh.Bits, &bh.Nonce)
+		(*int64Time)(&bh.Timestamp), &bh.Bits, &bh.Height, &bh.Size, &bh.Nonce, &bh.SigKeyID, &bh.Signature)
 	if err != nil {
 		return err
 	}
@@ -130,9 +213,8 @@ func readBlockHeader(r io.Reader, pver uint32, bh *BlockHeader) error {
 // encoding block headers to be stored to disk, such as in a database, as
 // opposed to encoding for the wire.
 func writeBlockHeader(w io.Writer, pver uint32, bh *BlockHeader) error {
-	sec := uint32(bh.Timestamp.Unix())
 	err := writeElements(w, bh.Version, &bh.PrevBlock, &bh.MerkleRoot,
-		sec, bh.Bits, bh.Nonce)
+		bh.Timestamp.Unix(), bh.Bits, bh.Height, bh.Size, bh.Nonce, bh.SigKeyID, bh.Signature)
 	if err != nil {
 		return err
 	}

@@ -51,7 +51,7 @@ func isSmallInt(op *opcode) bool {
 	return false
 }
 
-// isUint16 returns whether or not the opcode can represent a 32-bit integer
+// isUint32 returns whether or not the opcode can represent a 32-bit integer
 func isUint32(op *opcode) bool {
 	if isSmallInt(op) {
 		return true

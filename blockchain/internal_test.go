@@ -29,10 +29,6 @@ func TstTimeSorter(times []time.Time) sort.Interface {
 	return timeSorter(times)
 }
 
-// TstCheckSerializedHeight makes the internal checkSerializedHeight function
-// available to the test package.
-var TstCheckSerializedHeight = checkSerializedHeight
-
 // TstSetMaxMedianTimeEntries makes the ability to set the maximum number of
 // median time entries available to the test package.
 func TstSetMaxMedianTimeEntries(val int) {

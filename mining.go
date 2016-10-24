@@ -7,16 +7,15 @@ package main
 import (
 	"container/heap"
 	"container/list"
-	"fmt"
 	"time"
 
+	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/mempool"
 	"github.com/bitgo/rmgd/mining"
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
 )
 
 const (
@@ -730,6 +729,10 @@ mempoolLoop:
 		Timestamp:  ts,
 		Bits:       reqDifficulty,
 	}
+
+	// Sign the block
+	msgBlock.Header.TempTempAutoSign()
+
 	for _, tx := range blockTxns {
 		if err := msgBlock.AddTransaction(tx.MsgTx()); err != nil {
 			return nil, err
@@ -787,33 +790,8 @@ func UpdateBlockTime(msgBlock *wire.MsgBlock, bManager *blockManager) error {
 		msgBlock.Header.Bits = difficulty
 	}
 
-	return nil
-}
+	// Re-sign the block, since we updated the block time
+	msgBlock.Header.TempTempAutoSign()
 
-// UpdateExtraNonce updates the extra nonce in the coinbase script of the passed
-// block by regenerating the coinbase script with the passed value and block
-// height.  It also recalculates and updates the new merkle root that results
-// from changing the coinbase script.
-func UpdateExtraNonce(msgBlock *wire.MsgBlock, blockHeight int32, extraNonce uint64) error {
-	coinbaseScript, err := standardCoinbaseScript(blockHeight, extraNonce)
-	if err != nil {
-		return err
-	}
-	if len(coinbaseScript) > blockchain.MaxCoinbaseScriptLen {
-		return fmt.Errorf("coinbase transaction script length "+
-			"of %d is out of range (min: %d, max: %d)",
-			len(coinbaseScript), blockchain.MinCoinbaseScriptLen,
-			blockchain.MaxCoinbaseScriptLen)
-	}
-	msgBlock.Transactions[0].TxIn[0].SignatureScript = coinbaseScript
-
-	// TODO(davec): A btcutil.Block should use saved in the state to avoid
-	// recalculating all of the other transaction hashes.
-	// block.Transactions[0].InvalidateCache()
-
-	// Recalculate the merkle root with the updated extra nonce.
-	block := btcutil.NewBlock(msgBlock)
-	merkles := blockchain.BuildMerkleTreeStore(block.Transactions())
-	msgBlock.Header.MerkleRoot = *merkles[len(merkles)-1]
 	return nil
 }
