@@ -128,6 +128,43 @@ func TestTx(t *testing.T) {
 	return
 }
 
+// TestTxHashStripped generates the hash of a stripped transaction, excluding
+// all scriptSigs, correctly.
+func TestTxHashStripped(t *testing.T) {
+
+	hashStr := "12d9670a57d494ef1c68731357868862b4ed5871b71942e5b607d8e62e2412eb"
+	wantHash, err := chainhash.NewHashFromStr(hashStr)
+	if err != nil {
+		t.Errorf("NewHashFromStr: %v", err)
+		return
+	}
+
+	msgTx := NewMsgTx()
+	txIn := TxIn{
+		PreviousOutPoint: OutPoint{
+			Hash:  chainhash.Hash{},
+			Index: 0xffffffff,
+		},
+		SignatureScript: []byte{0x04, 0x31, 0xdc, 0x00, 0x1b, 0x01, 0x62},
+		Sequence:        0xffffffff,
+	}
+	txOut := TxOut{
+		Value: 5000000000,
+		PkScript: []byte{},
+	}
+	msgTx.AddTxIn(&txIn)
+	msgTx.AddTxOut(&txOut)
+	msgTx.LockTime = 0
+
+	// Ensure the hash produced is expected.
+	txHash := msgTx.TxHashStripped()
+	if !txHash.IsEqual(wantHash) {
+		t.Errorf("TxHash: wrong hash - got %v, want %v",
+			spew.Sprint(txHash), spew.Sprint(wantHash))
+	}
+
+}
+
 // TestTxHash tests the ability to generate the hash of a transaction accurately.
 func TestTxHash(t *testing.T) {
 	// Hash of first transaction from block 113875.
@@ -370,6 +407,59 @@ func TestTxWireErrors(t *testing.T) {
 			continue
 		}
 	}
+}
+
+// TestTxSerializeStripped tests MsgTx serialize without scriptSigs.
+func TestTxSerializeStripped(t *testing.T) {
+	noTx := NewMsgTx()
+	noTx.Version = 1
+	noTxEncoded := []byte{
+		0x01, 0x00, 0x00, 0x00, // Version
+		0x00,                   // Varint for number of input transactions
+		0x00,                   // Varint for number of output transactions
+		0x00, 0x00, 0x00, 0x00, // Lock time
+	}
+
+	tests := []struct {
+		in           *MsgTx // Message to encode
+		out          *MsgTx // Expected decoded message
+		buf          []byte // Serialized data
+		pkScriptLocs []int  // Expected output script locations
+	}{
+		// No transactions.
+		{
+			noTx,
+			noTx,
+			noTxEncoded,
+			nil,
+		},
+
+		// Multiple transactions.
+		{
+			stripTx,
+			stripTx,
+			stripTxEncoded,
+			nil,
+		},
+	}
+
+	t.Logf("Running %d tests", len(tests))
+	for i, test := range tests {
+		// Serialize the transaction.
+		var buf bytes.Buffer
+		err := test.in.SerializeStripped(&buf)
+		if err != nil {
+			t.Errorf("SerializeStripped #%d error %v", i, err)
+			continue
+		}
+		if !bytes.Equal(buf.Bytes(), test.buf) {
+			t.Errorf("SerializeStripped #%d\n got: %s want: %s", i,
+				spew.Sdump(buf.Bytes()), spew.Sdump(test.buf))
+			continue
+		}
+
+	}
+
 }
 
 // TestTxSerialize tests MsgTx serialize and deserialize.
@@ -625,8 +715,11 @@ func TestTxSerializeSize(t *testing.T) {
 		// No inputs or outpus.
 		{noTx, 10},
 
-		// Transcaction with an input and an output.
+		// Transaction with an input and an output.
 		{multiTx, 210},
+
+		// Transaction with an input and an output.
+		{stripTx, 67},
 	}
 
 	t.Logf("Running %d tests", len(tests))
@@ -638,6 +731,79 @@ func TestTxSerializeSize(t *testing.T) {
 			continue
 		}
 	}
+}
+
+// TestTxSerializeSizeStripped performs tests to ensure the serialize size for 
+//various transactions is accurate.
+func TestTxSerializeSizeStripped(t *testing.T) {
+	// Empty tx message.
+	noTx := NewMsgTx()
+	noTx.Version = 1
+
+	tests := []struct {
+		in   *MsgTx // Tx to encode
+		size int    // Expected serialized size
+	}{
+		// No inputs or outpus.
+		{noTx, 10},
+
+		// Transaction with an input and an output.
+		{multiTx, 203},
+
+		// Transaction with an input and an output.
+		{stripTx, 60},
+	}
+
+	t.Logf("Running %d tests", len(tests))
+	for i, test := range tests {
+		serializedSize := test.in.SerializeSizeStripped()
+		if serializedSize != test.size {
+			t.Errorf("MsgTx.SerializeSizeStripped: #%d got: %d, want: %d", i,
+				serializedSize, test.size)
+			continue
+		}
+	}
+}
+
+// stripTx is a MsgTx with an input and empty output.
+var stripTx = &MsgTx{
+	Version: 1,
+	TxIn: []*TxIn{
+		{
+			PreviousOutPoint: OutPoint{
+				Hash:  chainhash.Hash{},
+				Index: 0xffffffff,
+			},
+			SignatureScript: []byte{
+				0x04, 0x31, 0xdc, 0x00, 0x1b, 0x01, 0x62,
+			},
+			Sequence: 0xffffffff,
+		},
+	},
+	TxOut: []*TxOut{
+		{
+			Value: 0x12a05f200,
+			PkScript: []byte{},
+		},
+	},
+	LockTime: 0,
+}
+
+// stripTxEncoded is encoding for stripTx withouth scriptSig
+var stripTxEncoded = []byte{
+	0x01, 0x00, 0x00, 0x00, // Version
+	0x01, // Varint for number of input transactions
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Previous output hash
+	0xff, 0xff, 0xff, 0xff, // Prevous output index
+	0x00,                                     // scryptSig length set to 0
+	0xff, 0xff, 0xff, 0xff, // Sequence
+	0x01,                                           // Varint for number of output transactions
+	0x00, 0xf2, 0x05, 0x2a, 0x01, 0x00, 0x00, 0x00, // Transaction amount
+	0x00, // Varint for length of pk script
+	0x00, 0x00, 0x00, 0x00, // Lock time
 }
 
 // multiTx is a MsgTx with an input and output and used in various tests.

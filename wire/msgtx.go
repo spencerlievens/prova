@@ -74,6 +74,11 @@ const (
 	// peers.  Thus, the peak usage of the free list is 12,500 * 512 =
 	// 6,400,000 bytes.
 	freeListMaxItems = 12500
+
+	// StrippedTxInSize is the length of a TxIn stripped of its scriptSigs
+	// calculated by: Outpoint Hash 32 bytes + Outpoint Index 4 bytes +
+	// Sequence 4 bytes + 0x00 byte for length of scriptSig
+	StrippedTxInSize = 41
 )
 
 // scriptFreeList defines a free list of byte slices (up to the maximum number
@@ -236,6 +241,18 @@ func (msg *MsgTx) AddTxIn(ti *TxIn) {
 // AddTxOut adds a transaction output to the message.
 func (msg *MsgTx) AddTxOut(to *TxOut) {
 	msg.TxOut = append(msg.TxOut, to)
+}
+
+// TxHashStripped generates the hash for a transaction not including
+// its scriptSigs.
+func (msg *MsgTx) TxHashStripped() chainhash.Hash {
+	// Encode the transaction and calculate double sha256 on the result.
+	// Ignore the error returns since the only way the encode could fail
+	// is being out of memory or due to nil pointers, both of which would
+	// cause a run-time panic.
+	buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSizeStripped()))
+	_ = msg.SerializeStripped(buf)
+	return chainhash.DoubleHashH(buf.Bytes())
 }
 
 // TxHash generates the Hash for the transaction.
@@ -482,11 +499,9 @@ func (msg *MsgTx) Deserialize(r io.Reader) error {
 	return msg.BtcDecode(r, 0)
 }
 
-// BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
-// This is part of the Message interface implementation.
-// See Serialize for encoding transactions to be stored to disk, such as in a
-// database, as opposed to encoding transactions for the wire.
-func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
+// strippableBtcEncode encodes the receiver to w using the bitcoin protocol
+// encoding. It allows to strip out the scriptSigs from the txIns.
+func (msg *MsgTx) btcEncode(w io.Writer, pver uint32, strip bool) error {
 	err := binarySerializer.PutUint32(w, littleEndian, uint32(msg.Version))
 	if err != nil {
 		return err
@@ -499,7 +514,7 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
 	}
 
 	for _, ti := range msg.TxIn {
-		err = writeTxIn(w, pver, msg.Version, ti)
+		err = writeTxIn(w, pver, msg.Version, ti, strip)
 		if err != nil {
 			return err
 		}
@@ -526,6 +541,14 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
 	return nil
 }
 
+// BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
+// This is part of the Message interface implementation.
+// See Serialize for encoding transactions to be stored to disk, such as in a
+// database, as opposed to encoding transactions for the wire.
+func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
+	return msg.btcEncode(w, pver, false)
+}
+
 // Serialize encodes the transaction to w using a format that suitable for
 // long-term storage such as a database while respecting the Version field in
 // the transaction.  This function differs from BtcEncode in that BtcEncode
@@ -540,20 +563,34 @@ func (msg *MsgTx) Serialize(w io.Writer) error {
 	// At the current time, there is no difference between the wire encoding
 	// at protocol version 0 and the stable long-term storage format.  As
 	// a result, make use of BtcEncode.
-	return msg.BtcEncode(w, 0)
+	return msg.btcEncode(w, 0, false)
 
 }
 
-// SerializeSize returns the number of bytes it would take to serialize the
-// the transaction.
-func (msg *MsgTx) SerializeSize() int {
+// serializeStripped is same like Serialize, except inputs have no scriptSigs.
+func (msg *MsgTx) SerializeStripped(w io.Writer) error {
+	return msg.btcEncode(w, 0, true)
+
+}
+
+// serializeSize returns the number of bytes it would take to serialize the
+// transaction, excluding any scriptSigs in the inputs, if strip == true
+func (msg *MsgTx) serializeSize(strip bool) int {
 	// Version 4 bytes + LockTime 4 bytes + Serialized varint size for the
 	// number of transaction inputs and outputs.
 	n := 8 + VarIntSerializeSize(uint64(len(msg.TxIn))) +
 		VarIntSerializeSize(uint64(len(msg.TxOut)))
 
-	for _, txIn := range msg.TxIn {
-		n += txIn.SerializeSize()
+	if strip {
+		// StrippedTxInSize is the length of a TxIn stripped of its scriptSigs
+		// calculated by: Outpoint Hash 32 bytes + Outpoint Index 4 bytes +
+		// Sequence 4 bytes + 0x00 byte for length of scriptSig
+		n += StrippedTxInSize * len(msg.TxIn)
+	} else {
+		// calculate length of full inputs
+		for _, txIn := range msg.TxIn {
+			n += txIn.SerializeSize()
+		}
 	}
 
 	for _, txOut := range msg.TxOut {
@@ -561,6 +598,18 @@ func (msg *MsgTx) SerializeSize() int {
 	}
 
 	return n
+}
+
+// SerializeSize returns the number of bytes it would take to serialize the
+// transaction.
+func (msg *MsgTx) SerializeSize() int {
+	return msg.serializeSize(false)
+}
+
+// SerializeSizeStripped returns the number of bytes it would take to serialize the
+// transaction, excluding any scriptSigs in the inputs.
+func (msg *MsgTx) SerializeSizeStripped() int {
+	return msg.serializeSize(true)
 }
 
 // Command returns the protocol command string for the message.  This is part
@@ -710,13 +759,17 @@ func readTxIn(r io.Reader, pver uint32, version int32, ti *TxIn) error {
 
 // writeTxIn encodes ti to the bitcoin protocol encoding for a transaction
 // input (TxIn) to w.
-func writeTxIn(w io.Writer, pver uint32, version int32, ti *TxIn) error {
+func writeTxIn(w io.Writer, pver uint32, version int32, ti *TxIn, strip bool) error {
 	err := writeOutPoint(w, pver, version, &ti.PreviousOutPoint)
 	if err != nil {
 		return err
 	}
 
-	err = WriteVarBytes(w, pver, ti.SignatureScript)
+	if strip {
+		err = WriteVarInt(w, pver, 0)
+	} else {
+		err = WriteVarBytes(w, pver, ti.SignatureScript)
+	}
 	if err != nil {
 		return err
 	}

@@ -7,8 +7,8 @@ package blockchain
 import (
 	"math"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/btcutil"
+	"github.com/bitgo/rmgd/chaincfg/chainhash"
 )
 
 // nextPowerOfTwo returns the next highest power of two from a given number if
@@ -52,7 +52,7 @@ func HashMerkleBranches(left *chainhash.Hash, right *chainhash.Hash) *chainhash.
 //	        /                           \
 //	  h12 = h(h1 + h2)            h34 = h(h3 + h4)
 //	   /            \              /            \
-//	h1 = h(tx1)  h2 = h(tx2)    h3 = h(tx3)  h4 = h(tx4)
+//	h1 = h(stx1) h2 = h(stx2)   h3 = h(tx1)  h4 = h(tx2)
 //
 // The above stored as a linear array is as follows:
 //
@@ -70,17 +70,22 @@ func BuildMerkleTreeStore(transactions []*btcutil.Tx) []*chainhash.Hash {
 	// Calculate how many entries are required to hold the binary merkle
 	// tree as a linear array and create an array of that size.
 	nextPoT := nextPowerOfTwo(len(transactions))
-	arraySize := nextPoT*2 - 1
+	// A merkle tree with some N == Power-of-Two-number of leaves has N - 1 nodes.
+	// This would require an array length of nextPoT * 2 - 1.
+	// We want every txHash being represented twice, stripped and unstripped,
+	// hence, the size is calculated as nextPot * 4 - 1
+	arraySize := nextPoT*2*2 - 1
 	merkles := make([]*chainhash.Hash, arraySize)
 
 	// Create the base transaction hashes and populate the array with them.
 	for i, tx := range transactions {
-		merkles[i] = tx.Hash()
+		merkles[i] = tx.HashStripped()
+		merkles[i+nextPoT] = tx.Hash()
 	}
 
 	// Start the array offset after the last transaction and adjusted to the
 	// next power of two.
-	offset := nextPoT
+	offset := nextPoT * 2
 	for i := 0; i < arraySize-1; i += 2 {
 		switch {
 		// When there is no left child node, the parent is nil too.

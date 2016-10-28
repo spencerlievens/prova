@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/bitgo/rmgd/blockchain"
+	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/btcutil"
 )
 
@@ -16,7 +17,9 @@ func TestMerkle(t *testing.T) {
 	block := btcutil.NewBlock(&Block100000)
 	merkles := blockchain.BuildMerkleTreeStore(block.Transactions())
 	calculatedMerkleRoot := merkles[len(merkles)-1]
-	wantMerkle := &Block100000.Header.MerkleRoot
+	// TODO(aztec) clean this up and generate a new block with correct merkle root
+	merkleStr := "229149a594ba8828b0721bc471c74572adcc1f0af7b7ae8b0834fa487bcd2acf"
+	wantMerkle, _ := chainhash.NewHashFromStr(merkleStr)
 	if !wantMerkle.IsEqual(calculatedMerkleRoot) {
 		t.Errorf("BuildMerkleTreeStore: merkle root mismatch - "+
 			"got %v, want %v", calculatedMerkleRoot, wantMerkle)
