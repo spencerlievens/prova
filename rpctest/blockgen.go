@@ -80,9 +80,8 @@ func solveBlock(header *wire.BlockHeader, targetDifficulty *big.Int) bool {
 // standardCoinbaseScript returns a standard script suitable for use as the
 // signature script of the coinbase transaction of a new block. In particular,
 // it starts with the block height that is required by version 2 blocks.
-func standardCoinbaseScript(nextBlockHeight int32, extraNonce uint64) ([]byte, error) {
-	return txscript.NewScriptBuilder().AddInt64(int64(nextBlockHeight)).
-		AddInt64(int64(extraNonce)).Script()
+func standardCoinbaseScript(nextBlockHeight int32) ([]byte, error) {
+	return txscript.NewScriptBuilder().AddInt64(int64(nextBlockHeight)).Script()
 }
 
 // createCoinbaseTx returns a coinbase transaction paying an appropriate
@@ -131,8 +130,7 @@ func createBlock(prevBlock *btcutil.Block, inclusionTxs []*btcutil.Tx,
 		ts = prevBlock.MsgBlock().Header.Timestamp.Add(time.Second)
 	}
 
-	extraNonce := uint64(0)
-	coinbaseScript, err := standardCoinbaseScript(blockHeight, extraNonce)
+	coinbaseScript, err := standardCoinbaseScript(blockHeight)
 	if err != nil {
 		return nil, err
 	}
