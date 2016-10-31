@@ -15,9 +15,9 @@ import (
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/database"
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
 )
 
 const (
@@ -90,7 +90,7 @@ func newBlockNode(blockHeader *wire.BlockHeader, blockHash *chainhash.Hash, heig
 // is a normal block plus an expiration time to prevent caching the orphan
 // forever.
 type orphanBlock struct {
-	block      *btcutil.Block
+	block      *rmgutil.Block
 	expiration time.Time
 }
 
@@ -203,12 +203,12 @@ type BlockChain struct {
 	orphans      map[chainhash.Hash]*orphanBlock
 	prevOrphans  map[chainhash.Hash][]*orphanBlock
 	oldestOrphan *orphanBlock
-	blockCache   map[chainhash.Hash]*btcutil.Block
+	blockCache   map[chainhash.Hash]*rmgutil.Block
 
 	// These fields are related to checkpoint handling.  They are protected
 	// by the chain lock.
 	nextCheckpoint  *chaincfg.Checkpoint
-	checkpointBlock *btcutil.Block
+	checkpointBlock *rmgutil.Block
 
 	// The state is used as a fairly efficient way to cache information
 	// about the current best chain state that is returned to callers when
@@ -344,7 +344,7 @@ func (b *BlockChain) removeOrphanBlock(orphan *orphanBlock) {
 // It also imposes a maximum limit on the number of outstanding orphan
 // blocks and will remove the oldest received orphan block if the limit is
 // exceeded.
-func (b *BlockChain) addOrphanBlock(block *btcutil.Block) {
+func (b *BlockChain) addOrphanBlock(block *rmgutil.Block) {
 	// Remove expired orphan blocks.
 	for _, oBlock := range b.orphans {
 		if time.Now().After(oBlock.expiration) {
@@ -460,7 +460,7 @@ func (b *BlockChain) loadBlockNode(dbTx database.Tx, hash *chainhash.Hash) (*blo
 // it.  The returned node will be nil if the genesis block is passed.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) getPrevNodeFromBlock(block *btcutil.Block) (*blockNode, error) {
+func (b *BlockChain) getPrevNodeFromBlock(block *rmgutil.Block) (*blockNode, error) {
 	// Genesis block.
 	prevHash := &block.MsgBlock().Header.PrevBlock
 	if prevHash.IsEqual(zeroHash) {
@@ -744,7 +744,7 @@ func (b *BlockChain) getReorganizeNodes(node *blockNode) (*list.List, *list.List
 
 // dbMaybeStoreBlock stores the provided block in the database if it's not
 // already there.
-func dbMaybeStoreBlock(dbTx database.Tx, block *btcutil.Block) error {
+func dbMaybeStoreBlock(dbTx database.Tx, block *rmgutil.Block) error {
 	hasBlock, err := dbTx.HasBlock(block.Hash())
 	if err != nil {
 		return err
@@ -767,7 +767,7 @@ func dbMaybeStoreBlock(dbTx database.Tx, block *btcutil.Block) error {
 // it would be inefficient to repeat it.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) connectBlock(node *blockNode, block *btcutil.Block, view *UtxoViewpoint, stxos []spentTxOut) error {
+func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, view *UtxoViewpoint, stxos []spentTxOut) error {
 	// Make sure it's extending the end of the best chain.
 	prevHash := &block.MsgBlock().Header.PrevBlock
 	if !prevHash.IsEqual(b.bestNode.hash) {
@@ -885,7 +885,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *btcutil.Block, view *U
 // the main (best) chain.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) disconnectBlock(node *blockNode, block *btcutil.Block, view *UtxoViewpoint) error {
+func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, view *UtxoViewpoint) error {
 	// Make sure the node being disconnected is the end of the best chain.
 	if !node.hash.IsEqual(b.bestNode.hash) {
 		return AssertError("disconnectBlock must be called with the " +
@@ -908,7 +908,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *btcutil.Block, view
 	}
 
 	// Load the previous block since some details for it are needed below.
-	var prevBlock *btcutil.Block
+	var prevBlock *rmgutil.Block
 	err = b.db.View(func(dbTx database.Tx) error {
 		var err error
 		prevBlock, err = dbFetchBlockByHash(dbTx, prevNode.hash)
@@ -1005,7 +1005,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *btcutil.Block, view
 }
 
 // countSpentOutputs returns the number of utxos the passed block spends.
-func countSpentOutputs(block *btcutil.Block) int {
+func countSpentOutputs(block *rmgutil.Block) int {
 	// Exclude the coinbase transaction since it can't spend anything.
 	var numSpent int
 	for _, tx := range block.Transactions()[1:] {
@@ -1042,7 +1042,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	// be loaded from the database during the reorg check phase below and
 	// then they are needed again when doing the actual database updates.
 	// Rather than doing two loads, cache the loaded data into these slices.
-	detachBlocks := make([]*btcutil.Block, 0, detachNodes.Len())
+	detachBlocks := make([]*rmgutil.Block, 0, detachNodes.Len())
 	detachSpentTxOuts := make([][]spentTxOut, 0, detachNodes.Len())
 
 	// Disconnect all of the blocks back to the point of the fork.  This
@@ -1053,7 +1053,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	view.SetBestHash(b.bestNode.hash)
 	for e := detachNodes.Front(); e != nil; e = e.Next() {
 		n := e.Value.(*blockNode)
-		var block *btcutil.Block
+		var block *rmgutil.Block
 		err := b.db.View(func(dbTx database.Tx) error {
 			var err error
 			block, err = dbFetchBlockByHash(dbTx, n.hash)
@@ -1217,7 +1217,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 //    modifying the state are avoided.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) connectBestChain(node *blockNode, block *btcutil.Block, flags BehaviorFlags) (bool, error) {
+func (b *BlockChain) connectBestChain(node *blockNode, block *rmgutil.Block, flags BehaviorFlags) (bool, error) {
 	fastAdd := flags&BFFastAdd == BFFastAdd
 	dryRun := flags&BFDryRun == BFDryRun
 
@@ -1406,11 +1406,11 @@ type IndexManager interface {
 
 	// ConnectBlock is invoked when a new block has been connected to the
 	// main chain.
-	ConnectBlock(database.Tx, *btcutil.Block, *UtxoViewpoint) error
+	ConnectBlock(database.Tx, *rmgutil.Block, *UtxoViewpoint) error
 
 	// DisconnectBlock is invoked when a block has been disconnected from
 	// the main chain.
-	DisconnectBlock(database.Tx, *btcutil.Block, *UtxoViewpoint) error
+	DisconnectBlock(database.Tx, *rmgutil.Block, *UtxoViewpoint) error
 }
 
 // Config is a descriptor which specifies the blockchain instance configuration.
@@ -1502,7 +1502,7 @@ func New(config *Config) (*BlockChain, error) {
 		depNodes:            make(map[chainhash.Hash][]*blockNode),
 		orphans:             make(map[chainhash.Hash]*orphanBlock),
 		prevOrphans:         make(map[chainhash.Hash][]*orphanBlock),
-		blockCache:          make(map[chainhash.Hash]*btcutil.Block),
+		blockCache:          make(map[chainhash.Hash]*rmgutil.Block),
 	}
 
 	// Initialize the chain state from the passed database.  When the db

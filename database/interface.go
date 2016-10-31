@@ -9,7 +9,7 @@ package database
 
 import (
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/btcutil"
+	"github.com/bitgo/rmgd/rmgutil"
 )
 
 // Cursor represents a cursor over key/value pairs and nested buckets of a
@@ -227,7 +227,7 @@ type Tx interface {
 	//   - ErrTxClosed if the transaction has already been closed
 	//
 	// Other errors are possible depending on the implementation.
-	StoreBlock(block *btcutil.Block) error
+	StoreBlock(block *rmgutil.Block) error
 
 	// HasBlock returns whether or not a block with the given hash exists
 	// in the database.

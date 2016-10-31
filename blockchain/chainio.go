@@ -13,8 +13,8 @@ import (
 
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/database"
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
 )
 
 var (
@@ -406,7 +406,7 @@ func serializeSpendJournalEntry(stxos []spentTxOut) []byte {
 // view MUST have the utxos referenced by all of the transactions available for
 // the passed block since that information is required to reconstruct the spent
 // txouts.
-func dbFetchSpendJournalEntry(dbTx database.Tx, block *btcutil.Block, view *UtxoViewpoint) ([]spentTxOut, error) {
+func dbFetchSpendJournalEntry(dbTx database.Tx, block *rmgutil.Block, view *UtxoViewpoint) ([]spentTxOut, error) {
 	// Exclude the coinbase transaction since it can't spend anything.
 	spendBucket := dbTx.Metadata().Bucket(spendJournalBucketName)
 	serialized := spendBucket.Get(block.Hash()[:])
@@ -1049,7 +1049,7 @@ func dbPutBestState(dbTx database.Tx, snapshot *BestState, workSum *big.Int) err
 // the genesis block, so it must only be called on an uninitialized database.
 func (b *BlockChain) createChainState() error {
 	// Create a new node from the genesis block and set it as the best node.
-	genesisBlock := btcutil.NewBlock(b.chainParams.GenesisBlock)
+	genesisBlock := rmgutil.NewBlock(b.chainParams.GenesisBlock)
 	header := &genesisBlock.MsgBlock().Header
 	node := newBlockNode(header, genesisBlock.Hash(), 0)
 	node.inMainChain = true
@@ -1220,8 +1220,8 @@ func dbFetchHeaderByHeight(dbTx database.Tx, height int32) (*wire.BlockHeader, e
 
 // dbFetchBlockByHash uses an existing database transaction to retrieve the raw
 // block for the provided hash, deserialize it, retrieve the appropriate height
-// from the index, and return a btcutil.Block with the height set.
-func dbFetchBlockByHash(dbTx database.Tx, hash *chainhash.Hash) (*btcutil.Block, error) {
+// from the index, and return a rmgutil.Block with the height set.
+func dbFetchBlockByHash(dbTx database.Tx, hash *chainhash.Hash) (*rmgutil.Block, error) {
 	// First find the height associated with the provided hash in the index.
 	blockHeight, err := dbFetchHeightByHash(dbTx, hash)
 	if err != nil {
@@ -1235,7 +1235,7 @@ func dbFetchBlockByHash(dbTx database.Tx, hash *chainhash.Hash) (*btcutil.Block,
 	}
 
 	// Create the encapsulated block and set the height appropriately.
-	block, err := btcutil.NewBlockFromBytes(blockBytes)
+	block, err := rmgutil.NewBlockFromBytes(blockBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -1245,9 +1245,9 @@ func dbFetchBlockByHash(dbTx database.Tx, hash *chainhash.Hash) (*btcutil.Block,
 }
 
 // dbFetchBlockByHeight uses an existing database transaction to retrieve the
-// raw block for the provided height, deserialize it, and return a btcutil.Block
+// raw block for the provided height, deserialize it, and return a rmgutil.Block
 // with the height set.
-func dbFetchBlockByHeight(dbTx database.Tx, height int32) (*btcutil.Block, error) {
+func dbFetchBlockByHeight(dbTx database.Tx, height int32) (*rmgutil.Block, error) {
 	// First find the hash associated with the provided height in the index.
 	hash, err := dbFetchHashByHeight(dbTx, height)
 	if err != nil {
@@ -1261,7 +1261,7 @@ func dbFetchBlockByHeight(dbTx database.Tx, height int32) (*btcutil.Block, error
 	}
 
 	// Create the encapsulated block and set the height appropriately.
-	block, err := btcutil.NewBlockFromBytes(blockBytes)
+	block, err := rmgutil.NewBlockFromBytes(blockBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -1321,8 +1321,8 @@ func (b *BlockChain) BlockHashByHeight(blockHeight int32) (*chainhash.Hash, erro
 // BlockByHeight returns the block at the given height in the main chain.
 //
 // This function is safe for concurrent access.
-func (b *BlockChain) BlockByHeight(blockHeight int32) (*btcutil.Block, error) {
-	var block *btcutil.Block
+func (b *BlockChain) BlockByHeight(blockHeight int32) (*rmgutil.Block, error) {
+	var block *rmgutil.Block
 	err := b.db.View(func(dbTx database.Tx) error {
 		var err error
 		block, err = dbFetchBlockByHeight(dbTx, blockHeight)
@@ -1335,8 +1335,8 @@ func (b *BlockChain) BlockByHeight(blockHeight int32) (*btcutil.Block, error) {
 // the appropriate chain height set.
 //
 // This function is safe for concurrent access.
-func (b *BlockChain) BlockByHash(hash *chainhash.Hash) (*btcutil.Block, error) {
-	var block *btcutil.Block
+func (b *BlockChain) BlockByHash(hash *chainhash.Hash) (*rmgutil.Block, error) {
+	var block *rmgutil.Block
 	err := b.db.View(func(dbTx database.Tx) error {
 		var err error
 		block, err = dbFetchBlockByHash(dbTx, hash)

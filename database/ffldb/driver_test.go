@@ -15,7 +15,7 @@ import (
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/database"
 	"github.com/bitgo/rmgd/database/ffldb"
-	"github.com/bitgo/btcutil"
+	"github.com/bitgo/rmgd/rmgutil"
 )
 
 // dbType is the database type name for this driver.
@@ -171,7 +171,7 @@ func TestPersistence(t *testing.T) {
 		"b1key2": "foo2",
 		"b1key3": "foo3",
 	}
-	genesisBlock := btcutil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
+	genesisBlock := rmgutil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
 	genesisHash := chaincfg.MainNetParams.GenesisHash
 	err = db.Update(func(tx database.Tx) error {
 		metadataBucket := tx.Metadata()

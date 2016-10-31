@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/btcsuite/btclog"
-	"github.com/bitgo/btcutil"
 )
 
 // blockProgressLogger provides periodic logging for other services in order
@@ -36,7 +36,7 @@ func newBlockProgressLogger(progressMessage string, logger btclog.Logger) *block
 // LogBlockHeight logs a new block height as an information message to show
 // progress to the user. In order to prevent spam, it limits logging to one
 // message every 10 seconds with duration and totals included.
-func (b *blockProgressLogger) LogBlockHeight(block *btcutil.Block) {
+func (b *blockProgressLogger) LogBlockHeight(block *rmgutil.Block) {
 	b.Lock()
 	defer b.Unlock()
 

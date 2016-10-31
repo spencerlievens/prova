@@ -9,16 +9,16 @@ import (
 	"math"
 	"runtime"
 
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
 )
 
 // txValidateItem holds a transaction along with which input to validate.
 type txValidateItem struct {
 	txInIndex int
 	txIn      *wire.TxIn
-	tx        *btcutil.Tx
+	tx        *rmgutil.Tx
 }
 
 // txValidator provides a type which asynchronously validates transaction
@@ -192,7 +192,7 @@ func newTxValidator(utxoView *UtxoViewpoint, flags txscript.ScriptFlags, sigCach
 
 // ValidateTransactionScripts validates the scripts for the passed transaction
 // using multiple goroutines.
-func ValidateTransactionScripts(tx *btcutil.Tx, utxoView *UtxoViewpoint, flags txscript.ScriptFlags, sigCache *txscript.SigCache) error {
+func ValidateTransactionScripts(tx *rmgutil.Tx, utxoView *UtxoViewpoint, flags txscript.ScriptFlags, sigCache *txscript.SigCache) error {
 	// Collect all of the transaction inputs and required information for
 	// validation.
 	txIns := tx.MsgTx().TxIn
@@ -222,7 +222,7 @@ func ValidateTransactionScripts(tx *btcutil.Tx, utxoView *UtxoViewpoint, flags t
 
 // checkBlockScripts executes and validates the scripts for all transactions in
 // the passed block using multiple goroutines.
-func checkBlockScripts(block *btcutil.Block, utxoView *UtxoViewpoint, scriptFlags txscript.ScriptFlags, sigCache *txscript.SigCache) error {
+func checkBlockScripts(block *rmgutil.Block, utxoView *UtxoViewpoint, scriptFlags txscript.ScriptFlags, sigCache *txscript.SigCache) error {
 	// Collect all of the transaction inputs and required information for
 	// validation for all transactions in the block into a single slice.
 	numInputs := 0

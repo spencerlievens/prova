@@ -17,9 +17,9 @@ import (
 
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
 	"github.com/btcsuite/btcrpcclient"
-	"github.com/bitgo/btcutil"
 )
 
 const (
@@ -293,7 +293,7 @@ func (h *Harness) connectRPCClient() error {
 // wallet.
 //
 // This function is safe for concurrent access.
-func (h *Harness) NewAddress() (btcutil.Address, error) {
+func (h *Harness) NewAddress() (rmgutil.Address, error) {
 	return h.wallet.NewAddress()
 }
 
@@ -301,7 +301,7 @@ func (h *Harness) NewAddress() (btcutil.Address, error) {
 // wallet.
 //
 // This function is safe for concurrent access.
-func (h *Harness) ConfirmedBalance() btcutil.Amount {
+func (h *Harness) ConfirmedBalance() rmgutil.Amount {
 	return h.wallet.ConfirmedBalance()
 }
 
@@ -311,7 +311,7 @@ func (h *Harness) ConfirmedBalance() btcutil.Amount {
 //
 // This function is safe for concurrent access.
 func (h *Harness) SendOutputs(targetOutputs []*wire.TxOut,
-	feeRate btcutil.Amount) (*chainhash.Hash, error) {
+	feeRate rmgutil.Amount) (*chainhash.Hash, error) {
 
 	return h.wallet.SendOutputs(targetOutputs, feeRate)
 }
@@ -327,7 +327,7 @@ func (h *Harness) SendOutputs(targetOutputs []*wire.TxOut,
 //
 // This function is safe for concurrent access.
 func (h *Harness) CreateTransaction(targetOutputs []*wire.TxOut,
-	feeRate btcutil.Amount) (*wire.MsgTx, error) {
+	feeRate rmgutil.Amount) (*wire.MsgTx, error) {
 
 	return h.wallet.CreateTransaction(targetOutputs, feeRate)
 }
@@ -357,8 +357,8 @@ func (h *Harness) RPCConfig() btcrpcclient.ConnConfig {
 // blockTime parameter if one doesn't wish to set a custom time.
 //
 // This function is safe for concurrent access.
-func (h *Harness) GenerateAndSubmitBlock(txns []*btcutil.Tx, blockVersion int32,
-	blockTime time.Time) (*btcutil.Block, error) {
+func (h *Harness) GenerateAndSubmitBlock(txns []*rmgutil.Tx, blockVersion int32,
+	blockTime time.Time) (*rmgutil.Block, error) {
 
 	h.Lock()
 	defer h.Unlock()
@@ -375,7 +375,7 @@ func (h *Harness) GenerateAndSubmitBlock(txns []*btcutil.Tx, blockVersion int32,
 	if err != nil {
 		return nil, err
 	}
-	prevBlock := btcutil.NewBlock(mBlock)
+	prevBlock := rmgutil.NewBlock(mBlock)
 	prevBlock.SetHeight(prevBlockHeight)
 
 	// Create a new block including the specified transactions

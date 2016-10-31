@@ -254,7 +254,7 @@ information.
 	  Bitcoin scripts
     * [database](https://github.com/bitgo/rmgd/tree/master/database) -
 	  Provides a database interface for the Bitcoin block chain
-    * [btcutil](https://github.com/bitgo/btcutil) - Provides Bitcoin-specific
+    * [rmgutil](https://github.com/bitgo/rmgd/rmgutil) - Provides Bitcoin-specific
 	  convenience functions and types
     * [chainhash](https://github.com/bitgo/rmgd/tree/master/chaincfg/chainhash) -
           Provides a generic hash type and associated functions that allows the

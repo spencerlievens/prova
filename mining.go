@@ -9,11 +9,11 @@ import (
 	"container/list"
 	"time"
 
-	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/mempool"
 	"github.com/bitgo/rmgd/mining"
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
 )
@@ -41,7 +41,7 @@ const (
 // transaction to be prioritized and track dependencies on other transactions
 // which have not been mined into a block yet.
 type txPrioItem struct {
-	tx       *btcutil.Tx
+	tx       *rmgutil.Tx
 	fee      int64
 	priority float64
 	feePerKB int64
@@ -209,7 +209,7 @@ func standardCoinbaseScript(nextBlockHeight int32) ([]byte, error) {
 //
 // See the comment for NewBlockTemplate for more information about why the nil
 // address handling is useful.
-func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight int32, addr btcutil.Address) (*btcutil.Tx, error) {
+func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight int32, addr rmgutil.Address) (*rmgutil.Tx, error) {
 	// Create the script to pay to the provided payment address if one was
 	// specified.  Otherwise create a script that allows the coinbase to be
 	// redeemable by anyone.
@@ -243,13 +243,13 @@ func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight int32, addr btcutil
 			activeNetParams.Params),
 		PkScript: pkScript,
 	})
-	return btcutil.NewTx(tx), nil
+	return rmgutil.NewTx(tx), nil
 }
 
 // spendTransaction updates the passed view by marking the inputs to the passed
 // transaction as spent.  It also adds all outputs in the passed transaction
 // which are not provably unspendable as available unspent transaction outputs.
-func spendTransaction(utxoView *blockchain.UtxoViewpoint, tx *btcutil.Tx, height int32) error {
+func spendTransaction(utxoView *blockchain.UtxoViewpoint, tx *rmgutil.Tx, height int32) error {
 	for _, txIn := range tx.MsgTx().TxIn {
 		originHash := &txIn.PreviousOutPoint.Hash
 		originIndex := txIn.PreviousOutPoint.Index
@@ -265,7 +265,7 @@ func spendTransaction(utxoView *blockchain.UtxoViewpoint, tx *btcutil.Tx, height
 
 // logSkippedDeps logs any dependencies which are also skipped as a result of
 // skipping a transaction while generating a block template at the trace level.
-func logSkippedDeps(tx *btcutil.Tx, deps *list.List) {
+func logSkippedDeps(tx *rmgutil.Tx, deps *list.List) {
 	if deps == nil {
 		return
 	}
@@ -378,7 +378,7 @@ func medianAdjustedTime(chainState *chainState, timeSource blockchain.MedianTime
 //  |  transactions (while block size   |   |
 //  |  <= policy.BlockMinSize)          |   |
 //   -----------------------------------  --
-func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress btcutil.Address) (*BlockTemplate, error) {
+func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress rmgutil.Address) (*BlockTemplate, error) {
 	var txSource mining.TxSource = server.txMemPool
 	blockManager := server.blockManager
 	timeSource := server.timeSource
@@ -423,7 +423,7 @@ func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress btcuti
 	// generated block with reserved space.  Also create a utxo view to
 	// house all of the input transactions so multiple lookups can be
 	// avoided.
-	blockTxns := make([]*btcutil.Tx, 0, len(sourceTxns))
+	blockTxns := make([]*rmgutil.Tx, 0, len(sourceTxns))
 	blockTxns = append(blockTxns, coinbaseTx)
 	blockUtxos := blockchain.NewUtxoViewpoint()
 
@@ -741,7 +741,7 @@ mempoolLoop:
 	// Finally, perform a full check on the created block against the chain
 	// consensus rules to ensure it properly connects to the current best
 	// chain with no issues.
-	block := btcutil.NewBlock(&msgBlock)
+	block := rmgutil.NewBlock(&msgBlock)
 	block.SetHeight(nextBlockHeight)
 	if err := blockManager.chain.CheckConnectBlock(block); err != nil {
 		return nil, err

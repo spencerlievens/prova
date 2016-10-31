@@ -23,8 +23,8 @@ import (
 	"github.com/bitgo/rmgd/database"
 	_ "github.com/bitgo/rmgd/database/ffldb"
 	"github.com/bitgo/rmgd/mempool"
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
 	flags "github.com/btcsuite/go-flags"
 	"github.com/btcsuite/go-socks/socks"
 )
@@ -56,7 +56,7 @@ const (
 )
 
 var (
-	btcdHomeDir        = btcutil.AppDataDir("btcd", false)
+	btcdHomeDir        = rmgutil.AppDataDir("btcd", false)
 	defaultConfigFile  = filepath.Join(btcdHomeDir, defaultConfigFilename)
 	defaultDataDir     = filepath.Join(btcdHomeDir, defaultDataDirname)
 	knownDbTypes       = database.SupportedDrivers()
@@ -147,8 +147,8 @@ type config struct {
 	lookup             func(string) ([]net.IP, error)
 	oniondial          func(string, string) (net.Conn, error)
 	dial               func(string, string) (net.Conn, error)
-	miningAddrs        []btcutil.Address
-	minRelayTxFee      btcutil.Amount
+	miningAddrs        []rmgutil.Address
+	minRelayTxFee      rmgutil.Amount
 }
 
 // serviceOptions defines the configuration options for btcd as a service on
@@ -635,7 +635,7 @@ func loadConfig() (*config, []string, error) {
 	}
 
 	// Validate the the minrelaytxfee.
-	cfg.minRelayTxFee, err = btcutil.NewAmount(cfg.MinRelayTxFee)
+	cfg.minRelayTxFee, err = rmgutil.NewAmount(cfg.MinRelayTxFee)
 	if err != nil {
 		str := "%s: invalid minrelaytxfee: %v"
 		err := fmt.Errorf(str, funcName, err)
@@ -704,10 +704,10 @@ func loadConfig() (*config, []string, error) {
 	}
 
 	// Check getwork keys are valid and saved parsed versions.
-	cfg.miningAddrs = make([]btcutil.Address, 0, len(cfg.GetWorkKeys)+
+	cfg.miningAddrs = make([]rmgutil.Address, 0, len(cfg.GetWorkKeys)+
 		len(cfg.MiningAddrs))
 	for _, strAddr := range cfg.GetWorkKeys {
-		addr, err := btcutil.DecodeAddress(strAddr,
+		addr, err := rmgutil.DecodeAddress(strAddr,
 			activeNetParams.Params)
 		if err != nil {
 			str := "%s: getworkkey '%s' failed to decode: %v"
@@ -728,7 +728,7 @@ func loadConfig() (*config, []string, error) {
 
 	// Check mining addresses are valid and saved parsed versions.
 	for _, strAddr := range cfg.MiningAddrs {
-		addr, err := btcutil.DecodeAddress(strAddr, activeNetParams.Params)
+		addr, err := rmgutil.DecodeAddress(strAddr, activeNetParams.Params)
 		if err != nil {
 			str := "%s: mining address '%s' failed to decode: %v"
 			err := fmt.Errorf(str, funcName, strAddr, err)
@@ -747,7 +747,7 @@ func loadConfig() (*config, []string, error) {
 	}
 
 	// Add an aztec address for testing
-	aztecAddr, err := btcutil.NewAddressAztec(make([]byte, 20), []btcutil.KeyID{2147483647, 0x42424242}, activeNetParams.Params)
+	aztecAddr, err := rmgutil.NewAddressAztec(make([]byte, 20), []rmgutil.KeyID{2147483647, 0x42424242}, activeNetParams.Params)
 	if err != nil {
 		str := "%s: failed to create aztec address: %v"
 		err := fmt.Errorf(str, funcName, err)

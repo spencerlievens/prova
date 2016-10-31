@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/bitgo/rmgd/btcjson"
-	"github.com/bitgo/btcutil"
+	"github.com/bitgo/rmgd/rmgutil"
 	flags "github.com/btcsuite/go-flags"
 )
 
@@ -26,9 +26,9 @@ const (
 )
 
 var (
-	btcdHomeDir           = btcutil.AppDataDir("btcd", false)
-	btcctlHomeDir         = btcutil.AppDataDir("btcctl", false)
-	btcwalletHomeDir      = btcutil.AppDataDir("btcwallet", false)
+	btcdHomeDir           = rmgutil.AppDataDir("btcd", false)
+	btcctlHomeDir         = rmgutil.AppDataDir("btcctl", false)
+	btcwalletHomeDir      = rmgutil.AppDataDir("btcwallet", false)
 	defaultConfigFile     = filepath.Join(btcctlHomeDir, "btcctl.conf")
 	defaultRPCServer      = "localhost"
 	defaultRPCCertFile    = filepath.Join(btcdHomeDir, "rpc.cert")

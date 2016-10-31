@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/mining"
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
 )
 
@@ -116,7 +116,7 @@ out:
 
 // submitBlock submits the passed block to network after ensuring it passes all
 // of the consensus validation rules.
-func (m *CPUMiner) submitBlock(block *btcutil.Block) bool {
+func (m *CPUMiner) submitBlock(block *rmgutil.Block) bool {
 	m.submitBlockLock.Lock()
 	defer m.submitBlockLock.Unlock()
 
@@ -156,7 +156,7 @@ func (m *CPUMiner) submitBlock(block *btcutil.Block) bool {
 	// The block was accepted.
 	coinbaseTx := block.MsgBlock().Transactions[0].TxOut[0]
 	minrLog.Infof("Block submitted via CPU miner accepted (hash %s, "+
-		"amount %v)", block.Hash(), btcutil.Amount(coinbaseTx.Value))
+		"amount %v)", block.Hash(), rmgutil.Amount(coinbaseTx.Value))
 	return true
 }
 
@@ -301,7 +301,7 @@ out:
 		// a new block template can be generated.  When the return is
 		// true a solution was found, so submit the solved block.
 		if m.solveBlock(template.Block, curHeight+1, ticker, quit) {
-			block := btcutil.NewBlock(template.Block)
+			block := rmgutil.NewBlock(template.Block)
 			m.submitBlock(block)
 		}
 	}
@@ -563,7 +563,7 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 		// a new block template can be generated.  When the return is
 		// true a solution was found, so submit the solved block.
 		if m.solveBlock(template.Block, curHeight+1, ticker, nil) {
-			block := btcutil.NewBlock(template.Block)
+			block := rmgutil.NewBlock(template.Block)
 			m.submitBlock(block)
 			blockHashes[i] = block.Hash()
 			i++

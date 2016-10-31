@@ -5,8 +5,8 @@
 package txscript
 
 import (
-	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/chaincfg"
+	"github.com/bitgo/rmgd/rmgutil"
 )
 
 const (
@@ -425,7 +425,7 @@ func payToPubKeyScript(serializedPubKey []byte) ([]byte, error) {
 
 // payToAztecScript creates a new script to pay a transaction output to an
 // Aztec 2-of-3 address.
-func payToAztecScript(pubKeyHash []byte, keyIDs []btcutil.KeyID) ([]byte, error) {
+func payToAztecScript(pubKeyHash []byte, keyIDs []rmgutil.KeyID) ([]byte, error) {
 	if len(keyIDs) != 2 {
 		return nil, ErrBadNumRequired
 	}
@@ -441,27 +441,27 @@ func payToAztecScript(pubKeyHash []byte, keyIDs []btcutil.KeyID) ([]byte, error)
 
 // PayToAddrScript creates a new script to pay a transaction output to a the
 // specified address.
-func PayToAddrScript(addr btcutil.Address) ([]byte, error) {
+func PayToAddrScript(addr rmgutil.Address) ([]byte, error) {
 	switch addr := addr.(type) {
-	case *btcutil.AddressPubKeyHash:
+	case *rmgutil.AddressPubKeyHash:
 		if addr == nil {
 			return nil, ErrUnsupportedAddress
 		}
 		return payToPubKeyHashScript(addr.ScriptAddress())
 
-	case *btcutil.AddressScriptHash:
+	case *rmgutil.AddressScriptHash:
 		if addr == nil {
 			return nil, ErrUnsupportedAddress
 		}
 		return payToScriptHashScript(addr.ScriptAddress())
 
-	case *btcutil.AddressPubKey:
+	case *rmgutil.AddressPubKey:
 		if addr == nil {
 			return nil, ErrUnsupportedAddress
 		}
 		return payToPubKeyScript(addr.ScriptAddress())
 
-	case *btcutil.AddressAztec:
+	case *rmgutil.AddressAztec:
 		if addr == nil {
 			return nil, ErrUnsupportedAddress
 		}
@@ -475,7 +475,7 @@ func PayToAddrScript(addr btcutil.Address) ([]byte, error) {
 // nrequired of the keys in pubkeys are required to have signed the transaction
 // for success.  An ErrBadNumRequired will be returned if nrequired is larger
 // than the number of keys provided.
-func MultiSigScript(pubkeys []*btcutil.AddressPubKey, nrequired int) ([]byte, error) {
+func MultiSigScript(pubkeys []*rmgutil.AddressPubKey, nrequired int) ([]byte, error) {
 	if len(pubkeys) < nrequired {
 		return nil, ErrBadNumRequired
 	}
@@ -513,8 +513,8 @@ func PushedData(script []byte) ([][]byte, error) {
 // signatures associated with the passed PkScript.  Note that it only works for
 // 'standard' transaction script types.  Any data such as public keys which are
 // invalid are omitted from the results.
-func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (ScriptClass, []btcutil.Address, int, error) {
-	var addrs []btcutil.Address
+func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (ScriptClass, []rmgutil.Address, int, error) {
+	var addrs []rmgutil.Address
 	var requiredSigs int
 
 	// No valid addresses or required signatures if the script doesn't
@@ -532,7 +532,7 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 		// Therefore the pubkey hash is the 3rd item on the stack.
 		// Skip the pubkey hash if it's invalid for some reason.
 		requiredSigs = 1
-		addr, err := btcutil.NewAddressPubKeyHash(pops[2].data,
+		addr, err := rmgutil.NewAddressPubKeyHash(pops[2].data,
 			chainParams)
 		if err == nil {
 			addrs = append(addrs, addr)
@@ -544,7 +544,7 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 		// Therefore the pubkey is the first item on the stack.
 		// Skip the pubkey if it's invalid for some reason.
 		requiredSigs = 1
-		addr, err := btcutil.NewAddressPubKey(pops[0].data, chainParams)
+		addr, err := rmgutil.NewAddressPubKey(pops[0].data, chainParams)
 		if err == nil {
 			addrs = append(addrs, addr)
 		}
@@ -555,7 +555,7 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 		// Therefore the script hash is the 2nd item on the stack.
 		// Skip the script hash if it's invalid for some reason.
 		requiredSigs = 1
-		addr, err := btcutil.NewAddressScriptHashFromHash(pops[1].data, chainParams)
+		addr, err := rmgutil.NewAddressScriptHashFromHash(pops[1].data, chainParams)
 		if err == nil {
 			addrs = append(addrs, addr)
 		}
@@ -564,11 +564,11 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 		requiredSigs = 2
 		key0, err0 := makeScriptNum(pops[2].data, true, 4)
 		key1, err1 := makeScriptNum(pops[3].data, true, 4)
-		keyIDs := []btcutil.KeyID{
-			btcutil.KeyID(key0),
-			btcutil.KeyID(key1),
+		keyIDs := []rmgutil.KeyID{
+			rmgutil.KeyID(key0),
+			rmgutil.KeyID(key1),
 		}
-		addr, err := btcutil.NewAddressAztec(pops[1].data, keyIDs, chainParams)
+		addr, err := rmgutil.NewAddressAztec(pops[1].data, keyIDs, chainParams)
 		if err == nil && err0 == nil && err1 == nil {
 			addrs = append(addrs, addr)
 		}
@@ -586,9 +586,9 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 		numPubKeys := asSmallInt(pops[len(pops)-2].opcode)
 
 		// Extract the public keys while skipping any that are invalid.
-		addrs = make([]btcutil.Address, 0, numPubKeys)
+		addrs = make([]rmgutil.Address, 0, numPubKeys)
 		for i := 0; i < numPubKeys; i++ {
-			addr, err := btcutil.NewAddressPubKey(pops[i+1].data,
+			addr, err := rmgutil.NewAddressPubKey(pops[i+1].data,
 				chainParams)
 			if err == nil {
 				addrs = append(addrs, addr)

@@ -8,13 +8,13 @@ import (
 	"testing"
 
 	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/btcutil"
+	"github.com/bitgo/rmgd/rmgutil"
 )
 
 // BenchmarkIsCoinBase performs a simple benchmark against the IsCoinBase
 // function.
 func BenchmarkIsCoinBase(b *testing.B) {
-	tx, _ := btcutil.NewBlock(&Block100000).Tx(1)
+	tx, _ := rmgutil.NewBlock(&Block100000).Tx(1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		blockchain.IsCoinBase(tx)

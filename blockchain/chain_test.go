@@ -10,7 +10,7 @@ import (
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/btcutil"
+	"github.com/bitgo/rmgd/rmgutil"
 )
 
 // TestHaveBlock tests the HaveBlock API to ensure proper functionality.
@@ -23,7 +23,7 @@ func TestHaveBlock(t *testing.T) {
 		"blk_3A.dat.bz2",
 	}
 
-	var blocks []*btcutil.Block
+	var blocks []*rmgutil.Block
 	for _, file := range testFiles {
 		blockTmp, err := loadBlocks(file)
 		if err != nil {
@@ -62,7 +62,7 @@ func TestHaveBlock(t *testing.T) {
 	}
 
 	// Insert an orphan block.
-	_, isOrphan, err := chain.ProcessBlock(btcutil.NewBlock(&Block100000),
+	_, isOrphan, err := chain.ProcessBlock(rmgutil.NewBlock(&Block100000),
 		blockchain.BFNone)
 	if err != nil {
 		t.Errorf("Unable to process block: %v", err)

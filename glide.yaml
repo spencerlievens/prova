@@ -1,7 +1,7 @@
 package: github.com/bitgo/rmgd
 import:
 - package: github.com/btcsuite/btclog
-- package: github.com/bitgo/btcutil
+- package: github.com/bitgo/rmgd/rmgutil
   subpackages:
   - .
   - bloom

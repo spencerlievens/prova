@@ -29,10 +29,10 @@ import (
 	"github.com/bitgo/rmgd/mempool"
 	"github.com/bitgo/rmgd/mining"
 	"github.com/bitgo/rmgd/peer"
+	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/rmgd/rmgutil/bloom"
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
-	"github.com/bitgo/btcutil"
-	"github.com/bitgo/btcutil/bloom"
 )
 
 const (
@@ -457,9 +457,9 @@ func (sp *serverPeer) OnTx(p *peer.Peer, msg *wire.MsgTx) {
 	}
 
 	// Add the transaction to the known inventory for the peer.
-	// Convert the raw MsgTx to a btcutil.Tx which provides some convenience
+	// Convert the raw MsgTx to a rmgutil.Tx which provides some convenience
 	// methods and things such as hash caching.
-	tx := btcutil.NewTx(msg)
+	tx := rmgutil.NewTx(msg)
 	iv := wire.NewInvVect(wire.InvTypeTx, tx.Hash())
 	p.AddKnownInventory(iv)
 
@@ -475,9 +475,9 @@ func (sp *serverPeer) OnTx(p *peer.Peer, msg *wire.MsgTx) {
 // OnBlock is invoked when a peer receives a block bitcoin message.  It
 // blocks until the bitcoin block has been fully processed.
 func (sp *serverPeer) OnBlock(p *peer.Peer, msg *wire.MsgBlock, buf []byte) {
-	// Convert the raw MsgBlock to a btcutil.Block which provides some
+	// Convert the raw MsgBlock to a rmgutil.Block which provides some
 	// convenience methods and things such as hash caching.
-	block := btcutil.NewBlockFromBlockAndBytes(msg, buf)
+	block := rmgutil.NewBlockFromBlockAndBytes(msg, buf)
 
 	// Add the block to the known inventory for the peer.
 	iv := wire.NewInvVect(wire.InvTypeBlock, block.Hash())
@@ -959,7 +959,7 @@ func (s *server) RemoveRebroadcastInventory(iv *wire.InvVect) {
 // both websocket and getblocktemplate long poll clients of the passed
 // transactions.  This function should be called whenever new transactions
 // are added to the mempool.
-func (s *server) AnnounceNewTransactions(newTxs []*btcutil.Tx) {
+func (s *server) AnnounceNewTransactions(newTxs []*rmgutil.Tx) {
 	// Generate and relay inventory vectors for all newly accepted
 	// transactions into the memory pool due to the original being
 	// accepted.
@@ -1326,7 +1326,7 @@ func (s *server) handleRelayInvMsg(state *peerState, msg relayMsg) {
 			// Don't relay the transaction if there is a bloom
 			// filter loaded and the transaction doesn't match it.
 			if sp.filter.IsLoaded() {
-				tx, ok := msg.data.(*btcutil.Tx)
+				tx, ok := msg.data.(*rmgutil.Tx)
 				if !ok {
 					peerLog.Warnf("Underlying data for tx" +
 						" inv relay is not a transaction")

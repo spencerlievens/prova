@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/bitgo/btcutil"
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/chaincfg"
 )
 
@@ -47,7 +47,7 @@ func main() {
 
 	// Create and print new payment address, specific to the active network.
 	pubKeyHash := make([]byte, 20)
-	addr, err := btcutil.NewAddressPubKeyHash(pubKeyHash, chainParams)
+	addr, err := rmgutil.NewAddressPubKeyHash(pubKeyHash, chainParams)
 	if err != nil {
 		log.Fatal(err)
 	}

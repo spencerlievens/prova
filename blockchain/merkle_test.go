@@ -9,12 +9,12 @@ import (
 
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/btcutil"
+	"github.com/bitgo/rmgd/rmgutil"
 )
 
 // TestMerkle tests the BuildMerkleTreeStore API.
 func TestMerkle(t *testing.T) {
-	block := btcutil.NewBlock(&Block100000)
+	block := rmgutil.NewBlock(&Block100000)
 	merkles := blockchain.BuildMerkleTreeStore(block.Transactions())
 	calculatedMerkleRoot := merkles[len(merkles)-1]
 	// TODO(aztec) clean this up and generate a new block with correct merkle root

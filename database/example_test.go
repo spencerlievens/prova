@@ -10,10 +10,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/database"
 	_ "github.com/bitgo/rmgd/database/ffldb"
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
 )
 
@@ -136,7 +136,7 @@ func Example_blockStorageAndRetrieval() {
 	// and example.
 	err = db.Update(func(tx database.Tx) error {
 		genesisBlock := chaincfg.RegressionNetParams.GenesisBlock
-		return tx.StoreBlock(btcutil.NewBlock(genesisBlock))
+		return tx.StoreBlock(rmgutil.NewBlock(genesisBlock))
 	})
 	if err != nil {
 		fmt.Println(err)

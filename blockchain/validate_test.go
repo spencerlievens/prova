@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bitgo/btcutil"
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
 )
 
@@ -28,7 +28,7 @@ func TestCheckConnectBlock(t *testing.T) {
 
 	// The genesis block should fail to connect since it's already inserted.
 	genesisBlock := chaincfg.MainNetParams.GenesisBlock
-	err = chain.CheckConnectBlock(btcutil.NewBlock(genesisBlock))
+	err = chain.CheckConnectBlock(rmgutil.NewBlock(genesisBlock))
 	if err == nil {
 		t.Errorf("CheckConnectBlock: Did not received expected error")
 	}
@@ -38,7 +38,7 @@ func TestCheckConnectBlock(t *testing.T) {
 // as expected.
 func TestCheckBlockSanity(t *testing.T) {
 	powLimit := chaincfg.MainNetParams.PowLimit
-	block := btcutil.NewBlock(&Block100000)
+	block := rmgutil.NewBlock(&Block100000)
 	timeSource := blockchain.NewMedianTime()
 	err := blockchain.CheckBlockSanity(block, powLimit, timeSource)
 	if err != nil {
