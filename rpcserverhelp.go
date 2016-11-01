@@ -195,6 +195,7 @@ var helpDescsEnUS = map[string]string{
 	"getblockverboseresult-difficulty":        "The proof-of-work difficulty as a multiple of the minimum difficulty",
 	"getblockverboseresult-previousblockhash": "The hash of the previous block",
 	"getblockverboseresult-nextblockhash":     "The hash of the next block (only if there is one)",
+	"getblockverboseresult-sigkeyid":          "The signature key id of the block generator",
 
 	// GetBlockCountCmd help.
 	"getblockcount--synopsis": "Returns the number of blocks in the longest block chain.",
@@ -226,6 +227,7 @@ var helpDescsEnUS = map[string]string{
 	"getblockheaderverboseresult-previousblockhash": "The hash of the previous block",
 	"getblockheaderverboseresult-nextblockhash":     "The hash of the next block (only if there is one)",
 	"getblockheaderverboseresult-signature":         "The signature of this block by the validator who created it",
+	"getblockheaderverboseresult-sigkeyid":          "The signature key id of the creator of this block",
 
 	// TemplateRequest help.
 	"templaterequest-mode":         "This is 'template', 'proposal', or omitted",

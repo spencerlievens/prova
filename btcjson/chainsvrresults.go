@@ -21,6 +21,7 @@ type GetBlockHeaderVerboseResult struct {
 	Difficulty    float64 `json:"difficulty"`
 	PreviousHash  string  `json:"previousblockhash,omitempty"`
 	NextHash      string  `json:"nextblockhash,omitempty"`
+	SigKeyID      uint32  `json:"sigkeyid"`
 	Signature     string  `json:"signature,omitempty"`
 }
 
@@ -42,6 +43,7 @@ type GetBlockVerboseResult struct {
 	Difficulty    float64       `json:"difficulty"`
 	PreviousHash  string        `json:"previousblockhash"`
 	NextHash      string        `json:"nextblockhash,omitempty"`
+	SigKeyID      uint32        `json:"sigkeyid"`
 }
 
 // CreateMultiSigResult models the data returned from the createmultisig

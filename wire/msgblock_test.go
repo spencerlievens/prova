@@ -227,7 +227,7 @@ func TestBlockWireErrors(t *testing.T) {
 		{&blockOne, blockOneBytes, pver, 84, io.ErrShortWrite, io.EOF},
 		// Force error in header nonce.
 		{&blockOne, blockOneBytes, pver, 88, io.ErrShortWrite, io.EOF},
-		// Force error in SigKeyId
+		// Force error in SigKeyID
 		{&blockOne, blockOneBytes, pver, 96, io.ErrShortWrite, io.EOF},
 		// Force error in signature
 		{&blockOne, blockOneBytes, pver, 100, io.ErrShortWrite, io.EOF},

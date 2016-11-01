@@ -1073,6 +1073,7 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		Bits:          strconv.FormatInt(int64(blockHeader.Bits), 16),
 		Difficulty:    getDifficultyRatio(blockHeader.Bits),
 		NextHash:      nextHashString,
+		SigKeyID:      blockHeader.SigKeyID,
 	}
 
 	if c.VerboseTx == nil || !*c.VerboseTx {
@@ -1191,6 +1192,7 @@ func handleGetBlockHeader(s *rpcServer, cmd interface{}, closeChan <-chan struct
 		Bits:          strconv.FormatInt(int64(blockHeader.Bits), 16),
 		Difficulty:    getDifficultyRatio(blockHeader.Bits),
 		Signature:     blockHeader.Signature.String(),
+		SigKeyID:      blockHeader.SigKeyID,
 	}
 	return blockHeaderReply, nil
 }
