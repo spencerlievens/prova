@@ -374,6 +374,133 @@ func calcSignatureHash(script []parsedOpcode, hashType SigHashType, tx *wire.Msg
 	return chainhash.DoubleHashB(wbuf.Bytes())
 }
 
+// calcHashPrevOuts calculates a single hash of all the previous outputs
+// (txid:index) referenced within the passed transaction. This calculated hash
+// can be re-used when validating all inputs with signature hash type of
+// SigHashAll. This allows validation to re-use previous hashing computation,
+// reducing the complexity of validating SigHashAll inputs from  O(N^2) to O(N).
+func calcHashPrevOuts(tx *wire.MsgTx) chainhash.Hash {
+	var b bytes.Buffer
+	for _, in := range tx.TxIn {
+		// First write out the 32-byte transaction ID one of whose
+		// outputs are being referenced by this input.
+		b.Write(in.PreviousOutPoint.Hash[:])
+
+		// Next, we'll encode the index of the referenced output as a
+		// little endian integer.
+		var buf [4]byte
+		binary.LittleEndian.PutUint32(buf[:], in.PreviousOutPoint.Index)
+		b.Write(buf[:])
+	}
+
+	return chainhash.DoubleHashH(b.Bytes())
+}
+
+// calcHashSequence computes an aggregated hash of each of the sequence numbers
+// within the inputs of the passed transaction. This single hash can be re-used
+// when validating all inputs with signature hash type of
+// SigHashAll. This allows validation to re-use previous hashing computation,
+// reducing the complexity of validating SigHashAll inputs from  O(N^2) to O(N).
+func calcHashSequence(tx *wire.MsgTx) chainhash.Hash {
+	var b bytes.Buffer
+	for _, in := range tx.TxIn {
+		var buf [4]byte
+		binary.LittleEndian.PutUint32(buf[:], in.Sequence)
+		b.Write(buf[:])
+	}
+	return chainhash.DoubleHashH(b.Bytes())
+}
+
+// calcHashOutputs computes a hash digest of all outputs created by the
+// transaction encoded using the wire format. This single hash can be re-used
+// when validating all inputs with signature hash type of
+// SigHashAll. This allows validation to re-use previous hashing computation,
+// reducing the complexity of validating SigHashAll inputs from  O(N^2) to O(N).
+func calcHashOutputs(tx *wire.MsgTx) chainhash.Hash {
+	var b bytes.Buffer
+	for _, out := range tx.TxOut {
+		wire.WriteTxOut(&b, 0, 0, out)
+	}
+	return chainhash.DoubleHashH(b.Bytes())
+}
+
+// calcSignatureHashNew computes the sighash digest of a transaction's input
+// using the new, optimized digest calculation algorithm defined in BIP0143:
+// https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki.
+// This function makes use of pre-calculated sighash fragments stored within
+// the passed HashCache to eliminate duplicate hashing computations when
+// calculating the final digest, reducing the complexity from O(N^2) to O(N).
+// Additionally, signatures now cover the input value of the referenced unspent
+// output. This allows offline, or hardware wallets to compute the exact amount
+// being spent, in addition to the final transaction fee. In the case the
+// wallet if fed an invalid input amount, the real sighash will differ causing
+// the produced signature to be invalid.
+func calcSignatureHashNew(subScript []parsedOpcode, sigHashes *TxSigHashes,
+	hashType SigHashType, tx *wire.MsgTx, idx int, amt int64) []byte {
+
+	// As a sanity check, ensure the passed input index for the transaction
+	// is valid.
+	if idx >= len(tx.TxIn) {
+		fmt.Errorf("calcSignatureHashNew error: idx %d but %d txins",
+			idx, len(tx.TxIn))
+		return nil
+	}
+
+	// For now we only accept SigHashAll transactions
+	if hashType != SigHashAll {
+		fmt.Errorf("calcSignatureHashNew error: idx %d with wrong hashType %v.",
+			idx, hashType)
+	}
+
+	// We'll utilize this buffer throughout to incrementally calculate
+	// the signature hash for this transaction.
+	var sigHash bytes.Buffer
+
+	// First write out, then encode the transaction's version number.
+	var bVersion [4]byte
+	binary.LittleEndian.PutUint32(bVersion[:], uint32(tx.Version))
+	sigHash.Write(bVersion[:])
+
+	// Next, write the cached hashPrevOuts.
+	sigHash.Write(sigHashes.HashPrevOuts[:])
+
+	// Next, write the cached hashSequence
+	sigHash.Write(sigHashes.HashSequence[:])
+
+	// Next, write the outpoint being spent.
+	sigHash.Write(tx.TxIn[idx].PreviousOutPoint.Hash[:])
+	var bIndex [4]byte
+	binary.LittleEndian.PutUint32(bIndex[:], tx.TxIn[idx].PreviousOutPoint.Index)
+	sigHash.Write(bIndex[:])
+
+	// In BIP 143, we would write the scriptCode of the input itself here.
+	// The script code can be relevant to certain hardware wallets.
+	// There is no use-case for this in the RMG chain.
+
+	// Next, add the input amount, and sequence number of the input being
+	// signed.
+	var bAmount [8]byte
+	binary.LittleEndian.PutUint64(bAmount[:], uint64(amt))
+	sigHash.Write(bAmount[:])
+	var bSequence [4]byte
+	binary.LittleEndian.PutUint32(bSequence[:], tx.TxIn[idx].Sequence)
+	sigHash.Write(bSequence[:])
+
+	// Next, add the  pre-generated hashoutputs sighash fragment.
+	sigHash.Write(sigHashes.HashOutputs[:])
+
+	// Finally, write out the transaction's locktime, and the sig hash
+	// type.
+	var bLockTime [4]byte
+	binary.LittleEndian.PutUint32(bLockTime[:], tx.LockTime)
+	sigHash.Write(bLockTime[:])
+	var bHashType [4]byte
+	binary.LittleEndian.PutUint32(bHashType[:], uint32(hashType))
+	sigHash.Write(bHashType[:])
+
+	return chainhash.DoubleHashB(sigHash.Bytes())
+}
+
 // asSmallInt returns the passed opcode, which must be true according to
 // isSmallInt(), as an integer.
 func asSmallInt(op *opcode) int {

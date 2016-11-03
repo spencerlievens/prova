@@ -11,7 +11,14 @@ interface.  The functions are only exported while the tests are being run.
 
 package txscript
 
-import "testing"
+import (
+	"bytes"
+	"encoding/hex"
+	"testing"
+
+	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/rmgd/wire"
+)
 
 // TstMaxScriptSize makes the internal maxScriptSize constant available to the
 // test package.
@@ -3749,5 +3756,76 @@ func TestUnparsingInvalidOpcodes(t *testing.T) {
 			t.Errorf("Parsed Opcode test '%s' failed", test.name)
 			t.Error(err, test.expectedErr)
 		}
+	}
+}
+
+// TestSigHashNew tests that calcWitnessSignatureHash according to the digest scheme defined for Aztec.
+func TestSigHashNew(t *testing.T) {
+	// Decode the serialized, unsigned transaction used within the BIP as an example:
+	//
+	// nVersion:  01000000
+	// txin:      02 fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f 00000000 00 eeffffff
+	//               ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a 01000000 00 ffffffff
+	// txout:     02 202cb20600000000 1976a9148280b37df378db99f66f85c95a783a76ac7a6d5988ac
+	//               9093510d00000000 1976a9143bde42dbee7e4dbe6a21b2d50ce2f0167faa815988ac
+	// nLockTime: 11000000
+
+	bip143TxEncodedUnsigned := "0100000002fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f0000000000eeffffffef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a0100000000ffffffff02202cb206000000001976a9148280b37df378db99f66f85c95a783a76ac7a6d5988ac9093510d000000001976a9143bde42dbee7e4dbe6a21b2d50ce2f0167faa815988ac11000000"
+	txRaw, err := hex.DecodeString(bip143TxEncodedUnsigned)
+	if err != nil {
+		t.Fatalf("unable to decode tx: %v", err)
+	}
+	r := bytes.NewReader(txRaw)
+
+	tx := wire.NewMsgTx()
+	if err := tx.Deserialize(r); err != nil {
+		t.Fatalf("unable to decode: %v", err)
+	}
+
+	// Create a new HashCache adding the intermediate sigHashes of this
+	// tx to it.
+	hashCache := NewHashCache(90)
+	hashCache.AddSigHashes(tx)
+	hash := tx.TxHashStripped()
+	txSigHashes, found := hashCache.GetSigHashes(&hash)
+	if !found {
+		t.Fatalf("unable to find sighashes")
+	}
+
+	// We'll be generating the sighash for the second input, using sighash
+	// all, the proper input amount, and with the corresponding pkScript.
+	idx := 1
+	shType := SigHashAll
+	amt := rmgutil.Amount(6e8)
+	pkScriptEncoded := "00141d0f172a0ecb48aee1be1f2687d2963ae33f71a1"
+	decodedScript, err := hex.DecodeString(pkScriptEncoded)
+	if err != nil {
+		t.Fatalf("unable to decode script")
+	}
+	opCodes, err := parseScript(decodedScript)
+	if err != nil {
+		t.Fatalf("unable to decode script: %v", err)
+	}
+
+	// Finally, calculate the sigHash by digest scheme defined for Aztec.
+	// nVersion:     01000000
+	// hashPrevouts: 96b827c8483d4e9b96712b6713a7b68d6e8003a781feba36c31143470b4efd37
+	// hashSequence: 52b0a642eea2fb7ae638c36f6252b6750293dbe574a806984b8e4d8548339a3b
+	// outpoint:     ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a01000000
+	// scriptCode:   !!we don't encode the script code!!
+	// amount:       0046c32300000000
+	// nSequence:    ffffffff
+	// hashOutputs:  863ef3e1a92afbfdb97f31ad0fc7683ee943e9abcf2501590ff8f6551f47e5e5
+	// nLockTime:    11000000
+	// nHashType:    01000000
+	//
+	// because we leave out the scriptCode, the preimage is now different than in the BIP 143 example:
+	// the new preimage: 0100000096b827c8483d4e9b96712b6713a7b68d6e8003a781feba36c31143470b4efd3752b0a642eea2fb7ae638c36f6252b6750293dbe574a806984b8e4d8548339a3bef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a010000000046c32300000000ffffffff863ef3e1a92afbfdb97f31ad0fc7683ee943e9abcf2501590ff8f6551f47e5e51100000001000000
+	// which should hash256(hash256(preimage)) to expectedHash below.
+	sigHash := calcSignatureHashNew(opCodes, txSigHashes, shType, tx, idx, int64(amt))
+	expectedHash := "f235bc64db1070171c021a6b8e4b557fffebad26ffe728a6815e512154ea8556"
+	if hex.EncodeToString(sigHash) != expectedHash {
+		t.Fatalf("sig hashes don't match, expected %v, got %v",
+			expectedHash, hex.EncodeToString(sigHash))
 	}
 }
