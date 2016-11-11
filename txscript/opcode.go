@@ -2153,9 +2153,14 @@ func opcodeCheckSafeMultiSig(op *parsedOpcode, vm *Engine) error {
 			return err
 		}
 
+		// Create a new HashCache adding the intermediate sigHashes of this
+		// tx to it.
+		sigHashes := vm.hashCache
+		if sigHashes == nil {
+			sigHashes = NewTxSigHashes(&vm.tx)
+		}
 		// Generate the signature hash based on the signature hash type.
-		hash := calcSignatureHash(script, hashType, &vm.tx, vm.txIdx)
-
+		hash := calcSignatureHashNew(script, sigHashes, hashType, &vm.tx, vm.txIdx, vm.inputAmount)
 		var valid bool
 		if vm.sigCache != nil {
 			var sigHash chainhash.Hash

@@ -157,12 +157,12 @@ func parseScriptFlags(flagStr string) (ScriptFlags, error) {
 
 // createSpendTx generates a basic spending transaction given the passed
 // signature and public key scripts.
-func createSpendingTx(sigScript, pkScript []byte) *wire.MsgTx {
+func createSpendingTx(sigScript, pkScript []byte, outputValue int64) *wire.MsgTx {
 	coinbaseTx := wire.NewMsgTx()
 
 	outPoint := wire.NewOutPoint(&chainhash.Hash{}, ^uint32(0))
 	txIn := wire.NewTxIn(outPoint, []byte{OP_0, OP_0})
-	txOut := wire.NewTxOut(0, pkScript)
+	txOut := wire.NewTxOut(outputValue, pkScript)
 	coinbaseTx.AddTxIn(txIn)
 	coinbaseTx.AddTxOut(txOut)
 
@@ -170,12 +170,20 @@ func createSpendingTx(sigScript, pkScript []byte) *wire.MsgTx {
 	coinbaseTxHash := coinbaseTx.TxHash()
 	outPoint = wire.NewOutPoint(&coinbaseTxHash, 0)
 	txIn = wire.NewTxIn(outPoint, sigScript)
-	txOut = wire.NewTxOut(0, nil)
+	txOut = wire.NewTxOut(outputValue, nil)
 
 	spendingTx.AddTxIn(txIn)
 	spendingTx.AddTxOut(txOut)
 
 	return spendingTx
+}
+
+// scriptWithInputVal wraps a target pkScript with the value of the output in
+// which it is contained. The inputVal is necessary in order to properly
+// validate inputs.
+type scriptWithInputVal struct {
+	inputVal int64
+	pkScript []byte
 }
 
 // TestScriptInvalidTests ensures all of the tests in script_invalid.json fail
@@ -188,6 +196,7 @@ func TestScriptInvalidTests(t *testing.T) {
 	}
 
 	var tests [][]string
+	var inputAmt rmgutil.Amount
 	err = json.Unmarshal(file, &tests)
 	if err != nil {
 		t.Errorf("TestBitcoindInvalidTests couldn't Unmarshal: %v",
@@ -209,6 +218,11 @@ func TestScriptInvalidTests(t *testing.T) {
 					i)
 				continue
 			}
+			inputAmt, err = rmgutil.NewAmount(0.0)
+			if err != nil {
+				t.Errorf("%s: can't parse input amt: %v", name, err)
+				continue
+			}
 			scriptSig, err := parseShortForm(test[0])
 			if err != nil {
 				t.Errorf("%s: can't parse scriptSig; %v", name, err)
@@ -224,13 +238,13 @@ func TestScriptInvalidTests(t *testing.T) {
 				t.Errorf("%s: %v", name, err)
 				continue
 			}
-			tx := createSpendingTx(scriptSig, scriptPubKey)
+			tx := createSpendingTx(scriptSig, scriptPubKey, int64(inputAmt))
 
 			var vm *Engine
 			if useSigCache {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, sigCache)
+				vm, err = NewEngine(scriptPubKey, tx, 0, flags, sigCache, nil, int64(inputAmt))
 			} else {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, nil)
+				vm, err = NewEngine(scriptPubKey, tx, 0, flags, nil, nil, int64(inputAmt))
 			}
 
 			if err == nil {
@@ -254,6 +268,7 @@ func TestScriptValidTests(t *testing.T) {
 	}
 
 	var tests [][]string
+	var inputAmt rmgutil.Amount
 	err = json.Unmarshal(file, &tests)
 	if err != nil {
 		t.Errorf("TestBitcoindValidTests couldn't Unmarshal: %v",
@@ -262,7 +277,6 @@ func TestScriptValidTests(t *testing.T) {
 	}
 
 	sigCache := NewSigCache(10)
-
 	sigCacheToggle := []bool{true, false}
 	for _, useSigCache := range sigCacheToggle {
 		for i, test := range tests {
@@ -274,6 +288,11 @@ func TestScriptValidTests(t *testing.T) {
 			if err != nil {
 				t.Errorf("TestBitcoindValidTests: invalid test #%d",
 					i)
+				continue
+			}
+			inputAmt, err = rmgutil.NewAmount(0.0)
+			if err != nil {
+				t.Errorf("%s: can't parse input amt: %v", name, err)
 				continue
 			}
 			scriptSig, err := parseShortForm(test[0])
@@ -291,13 +310,13 @@ func TestScriptValidTests(t *testing.T) {
 				t.Errorf("%s: %v", name, err)
 				continue
 			}
-			tx := createSpendingTx(scriptSig, scriptPubKey)
+			tx := createSpendingTx(scriptSig, scriptPubKey, int64(inputAmt))
 
 			var vm *Engine
 			if useSigCache {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, sigCache)
+				vm, err = NewEngine(scriptPubKey, tx, 0, flags, sigCache, nil, int64(inputAmt))
 			} else {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, nil)
+				vm, err = NewEngine(scriptPubKey, tx, 0, flags, nil, nil, int64(inputAmt))
 			}
 
 			if err != nil {
@@ -389,7 +408,7 @@ testloop:
 			continue
 		}
 
-		prevOuts := make(map[wire.OutPoint][]byte)
+		prevOuts := make(map[wire.OutPoint]scriptWithInputVal)
 		for j, iinput := range inputs {
 			input, ok := iinput.([]interface{})
 			if !ok {
@@ -440,11 +459,26 @@ testloop:
 				continue testloop
 			}
 
-			prevOuts[*wire.NewOutPoint(prevhash, idx)] = script
+			var inputValue float64
+			if len(input) == 4 {
+				inputValue, ok = input[3].(float64)
+				if !ok {
+					t.Errorf("bad test (%dth input value not int) "+
+						"%d: %v", j, i, test)
+					continue
+				}
+			}
+
+			v := scriptWithInputVal{
+				inputVal: int64(inputValue),
+				pkScript: script,
+			}
+
+			prevOuts[*wire.NewOutPoint(prevhash, idx)] = v
 		}
 
 		for k, txin := range tx.MsgTx().TxIn {
-			pkScript, ok := prevOuts[txin.PreviousOutPoint]
+			prevOut, ok := prevOuts[txin.PreviousOutPoint]
 			if !ok {
 				t.Errorf("bad test (missing %dth input) %d:%v",
 					k, i, test)
@@ -453,7 +487,7 @@ testloop:
 			// These are meant to fail, so as soon as the first
 			// input fails the transaction has failed. (some of the
 			// test txns have good inputs, too..
-			vm, err := NewEngine(pkScript, tx.MsgTx(), k, flags, nil)
+			vm, err := NewEngine(prevOut.pkScript, tx.MsgTx(), k, flags, nil, nil, prevOut.inputVal)
 			if err != nil {
 				continue testloop
 			}
@@ -531,7 +565,7 @@ testloop:
 			continue
 		}
 
-		prevOuts := make(map[wire.OutPoint][]byte)
+		prevOuts := make(map[wire.OutPoint]scriptWithInputVal)
 		for j, iinput := range inputs {
 			input, ok := iinput.([]interface{})
 			if !ok {
@@ -582,17 +616,31 @@ testloop:
 				continue
 			}
 
-			prevOuts[*wire.NewOutPoint(prevhash, idx)] = script
+			var inputValue float64
+			if len(input) == 4 {
+				inputValue, ok = input[3].(float64)
+				if !ok {
+					t.Errorf("bad test (%dth input value not int) "+
+						"%d: %v", j, i, test)
+					continue
+				}
+			}
+
+			v := scriptWithInputVal{
+				inputVal: int64(inputValue),
+				pkScript: script,
+			}
+			prevOuts[*wire.NewOutPoint(prevhash, idx)] = v
 		}
 
 		for k, txin := range tx.MsgTx().TxIn {
-			pkScript, ok := prevOuts[txin.PreviousOutPoint]
+			prevOut, ok := prevOuts[txin.PreviousOutPoint]
 			if !ok {
 				t.Errorf("bad test (missing %dth input) %d:%v",
 					k, i, test)
 				continue testloop
 			}
-			vm, err := NewEngine(pkScript, tx.MsgTx(), k, flags, nil)
+			vm, err := NewEngine(prevOut.pkScript, tx.MsgTx(), k, flags, nil, nil, prevOut.inputVal)
 			if err != nil {
 				t.Errorf("test (%d:%v:%d) failed to create "+
 					"script: %v", i, test, k, err)

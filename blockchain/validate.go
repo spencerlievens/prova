@@ -1052,7 +1052,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, vi
 	// expensive ECDSA signature check scripts.  Doing this last helps
 	// prevent CPU exhaustion attacks.
 	if runScripts {
-		err := checkBlockScripts(block, view, scriptFlags, b.sigCache)
+		err := checkBlockScripts(block, view, scriptFlags, b.sigCache, b.hashCache)
 		if err != nil {
 			return err
 		}

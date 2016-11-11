@@ -183,6 +183,7 @@ type server struct {
 	chainParams          *chaincfg.Params
 	addrManager          *addrmgr.AddrManager
 	sigCache             *txscript.SigCache
+	hashCache            *txscript.HashCache
 	rpcServer            *rpcServer
 	blockManager         *blockManager
 	txMemPool            *mempool.TxPool
@@ -2476,6 +2477,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 		timeSource:           blockchain.NewMedianTime(),
 		services:             services,
 		sigCache:             txscript.NewSigCache(cfg.SigCacheMaxSize),
+		hashCache:            txscript.NewHashCache(cfg.SigCacheMaxSize),
 	}
 
 	// Create the transaction and address indexes if needed.
@@ -2530,6 +2532,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 		FetchUtxoView: s.blockManager.chain.FetchUtxoView,
 		BestHeight:    func() int32 { return bm.chain.BestSnapshot().Height },
 		SigCache:      s.sigCache,
+		HashCache:     s.hashCache,
 		TimeSource:    s.timeSource,
 		AddrIndex:     s.addrIndex,
 	}

@@ -228,7 +228,13 @@ func isNullData(pops []parsedOpcode) bool {
 		len(pops[1].data) <= MaxDataCarrierSize
 }
 
-// scriptType returns the type of the script being inspected from the known
+// TypeOfScript returns the type of the script being inspected from the known
+// standard types.
+func TypeOfScript(pops []parsedOpcode) ScriptClass {
+	return typeOfScript(pops)
+}
+
+// typeOfScript returns the type of the script being inspected from the known
 // standard types.
 func typeOfScript(pops []parsedOpcode) ScriptClass {
 	if isPubkey(pops) {
@@ -253,7 +259,7 @@ func typeOfScript(pops []parsedOpcode) ScriptClass {
 //
 // NonStandardTy will be returned when the script does not parse.
 func GetScriptClass(script []byte) ScriptClass {
-	pops, err := parseScript(script)
+	pops, err := ParseScript(script)
 	if err != nil {
 		return NonStandardTy
 	}
@@ -327,12 +333,12 @@ type ScriptInfo struct {
 // be analysed, i.e. if they do not parse or the pkScript is not a push-only
 // script
 func CalcScriptInfo(sigScript, pkScript []byte, bip16 bool) (*ScriptInfo, error) {
-	sigPops, err := parseScript(sigScript)
+	sigPops, err := ParseScript(sigScript)
 	if err != nil {
 		return nil, err
 	}
 
-	pkPops, err := parseScript(pkScript)
+	pkPops, err := ParseScript(pkScript)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +362,7 @@ func CalcScriptInfo(sigScript, pkScript []byte, bip16 bool) (*ScriptInfo, error)
 		// The pay-to-hash-script is the final data push of the
 		// signature script.
 		script := sigPops[len(sigPops)-1].data
-		shPops, err := parseScript(script)
+		shPops, err := ParseScript(script)
 		if err != nil {
 			return nil, err
 		}
@@ -379,7 +385,7 @@ func CalcScriptInfo(sigScript, pkScript []byte, bip16 bool) (*ScriptInfo, error)
 // a multi-signature transaction script.  The passed script MUST already be
 // known to be a multi-signature script.
 func CalcMultiSigStats(script []byte) (int, int, error) {
-	pops, err := parseScript(script)
+	pops, err := ParseScript(script)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -493,7 +499,7 @@ func MultiSigScript(pubkeys []*rmgutil.AddressPubKey, nrequired int) ([]byte, er
 // PushedData returns an array of byte slices containing any pushed data found
 // in the passed script.  This includes OP_0, but not OP_1 - OP_16.
 func PushedData(script []byte) ([][]byte, error) {
-	pops, err := parseScript(script)
+	pops, err := ParseScript(script)
 	if err != nil {
 		return nil, err
 	}
@@ -519,7 +525,7 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 
 	// No valid addresses or required signatures if the script doesn't
 	// parse.
-	pops, err := parseScript(pkScript)
+	pops, err := ParseScript(pkScript)
 	if err != nil {
 		return NonStandardTy, nil, 0, err
 	}

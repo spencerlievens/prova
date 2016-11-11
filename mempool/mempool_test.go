@@ -286,6 +286,7 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 			FetchUtxoView: chain.FetchUtxoView,
 			BestHeight:    chain.BestHeight,
 			SigCache:      nil,
+			HashCache:     txscript.NewHashCache(200),
 			TimeSource:    blockchain.NewMedianTime(),
 			AddrIndex:     nil,
 		}),

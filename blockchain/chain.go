@@ -164,6 +164,7 @@ type BlockChain struct {
 	timeSource          MedianTimeSource
 	notifications       NotificationCallback
 	sigCache            *txscript.SigCache
+	hashCache           *txscript.HashCache
 	indexManager        IndexManager
 
 	// The following fields are calculated based upon the provided chain
@@ -1451,6 +1452,16 @@ type Config struct {
 	// signature cache.
 	SigCache *txscript.SigCache
 
+	// HashCache defines a transaction hash mid-state cache to use when
+	// validating transactions. This cache has the potential to greatly
+	// speed up transaction validation as re-using the pre-calculated
+	// mid-state eliminates the O(N^2) validation complexity due to the
+	// SigHashAll flag.
+	//
+	// This field can be nil if the caller is not interested in using a
+	// signature cache.
+	HashCache *txscript.HashCache
+
 	// IndexManager defines an index manager to use when initializing the
 	// chain and connecting and disconnecting blocks.
 	//
@@ -1489,6 +1500,7 @@ func New(config *Config) (*BlockChain, error) {
 		timeSource:          config.TimeSource,
 		notifications:       config.Notifications,
 		sigCache:            config.SigCache,
+		hashCache:           config.HashCache,
 		indexManager:        config.IndexManager,
 		blocksPerRetarget:   int32(targetTimespan / targetTimePerBlock),
 		minMemoryNodes:      int32(targetTimespan / targetTimePerBlock),

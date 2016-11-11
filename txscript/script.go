@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
 )
 
@@ -74,7 +75,7 @@ func isScriptHash(pops []parsedOpcode) bool {
 // IsPayToScriptHash returns true if the script is in the standard
 // pay-to-script-hash (P2SH) format, false otherwise.
 func IsPayToScriptHash(script []byte) bool {
-	pops, err := parseScript(script)
+	pops, err := ParseScript(script)
 	if err != nil {
 		return false
 	}
@@ -103,7 +104,7 @@ func isPushOnly(pops []parsedOpcode) bool {
 //
 // False will be returned when the script does not parse.
 func IsPushOnlyScript(script []byte) bool {
-	pops, err := parseScript(script)
+	pops, err := ParseScript(script)
 	if err != nil {
 		return false
 	}
@@ -184,15 +185,15 @@ func parseScriptTemplate(script []byte, opcodes *[256]opcode) ([]parsedOpcode, e
 	return retScript, nil
 }
 
-// parseScript preparses the script in bytes into a list of parsedOpcodes while
+// ParseScript preparses the script in bytes into a list of parsedOpcodes while
 // applying a number of sanity checks.
-func parseScript(script []byte) ([]parsedOpcode, error) {
+func ParseScript(script []byte) ([]parsedOpcode, error) {
 	return parseScriptTemplate(script, &opcodeArray)
 }
 
-// unparseScript reversed the action of parseScript and returns the
+// UnparseScript reversed the action of parseScript and returns the
 // parsedOpcodes as a list of bytes
-func unparseScript(pops []parsedOpcode) ([]byte, error) {
+func UnparseScript(pops []parsedOpcode) ([]byte, error) {
 	script := make([]byte, 0, len(pops))
 	for _, pop := range pops {
 		b, err := pop.bytes()
@@ -211,7 +212,7 @@ func unparseScript(pops []parsedOpcode) ([]byte, error) {
 // if the caller wants more information about the failure.
 func DisasmString(buf []byte) (string, error) {
 	var disbuf bytes.Buffer
-	opcodes, err := parseScript(buf)
+	opcodes, err := ParseScript(buf)
 	for _, pop := range opcodes {
 		disbuf.WriteString(pop.print(true))
 		disbuf.WriteByte(' ')
@@ -235,6 +236,40 @@ func removeOpcode(pkscript []parsedOpcode, opcode byte) []parsedOpcode {
 		}
 	}
 	return retScript
+}
+
+// ExtractKeyIDs takes an Aztec pkScript and extracts the keyIDs from it.
+// We assume a Aztec address structure like this:
+// <2 hash keyID1 keyID2 3 OP_CHECKSAFEMULTISIG>
+func ExtractKeyIDs(pkScript []parsedOpcode) ([]rmgutil.KeyID, error) {
+	// to extract keyID1 and keyID2, we want the array to be at least 4 elements
+	if len(pkScript) < 4 {
+		return nil, fmt.Errorf("unable to extract keyIDs from script, "+
+			"not enough opcodes %v", len(pkScript))
+	}
+	// TODO(aztec) do more input validation.
+	// Move validation to validate.go later, and have a function like isAztecAddress()
+	keyID01 := rmgutil.KeyIDFromAddressBuffer(pkScript[2].data)
+	keyID02 := rmgutil.KeyIDFromAddressBuffer(pkScript[3].data)
+	return []rmgutil.KeyID{keyID01, keyID02}, nil
+}
+
+// ReplaceKeyIds replaces keyIds in a pkScript with pubKeyHashes.
+// This is done before we pass the script to a validator
+func ReplaceKeyIDs(pkScript []parsedOpcode, keyIdMap map[rmgutil.KeyID][]byte) uint32 {
+	count := uint32(0)
+	for i := range pkScript {
+		pop := &pkScript[i]
+		if len(pop.data) == 4 {
+			keyIdWant := rmgutil.KeyIDFromAddressBuffer(pop.data)
+			if val, ok := keyIdMap[keyIdWant]; ok {
+				pop.data = val
+				pop.opcode = &opcodeArray[OP_DATA_20]
+				count++
+			}
+		}
+	}
+	return count
 }
 
 // canonicalPush returns true if the object is either not a push instruction
@@ -318,7 +353,7 @@ func calcSignatureHash(script []parsedOpcode, hashType SigHashType, tx *wire.Msg
 		if i == idx {
 			// UnparseScript cannot fail here because removeOpcode
 			// above only returns a valid script.
-			sigScript, _ := unparseScript(script)
+			sigScript, _ := UnparseScript(script)
 			txCopy.TxIn[idx].SignatureScript = sigScript
 		} else {
 			txCopy.TxIn[i].SignatureScript = nil
@@ -555,7 +590,7 @@ func getSigOpCount(pops []parsedOpcode, precise bool) int {
 func GetSigOpCount(script []byte) int {
 	// Don't check error since parseScript returns the parsed-up-to-error
 	// list of pops.
-	pops, _ := parseScript(script)
+	pops, _ := ParseScript(script)
 	return getSigOpCount(pops, false)
 }
 
@@ -567,7 +602,7 @@ func GetSigOpCount(script []byte) int {
 func GetPreciseSigOpCount(scriptSig, scriptPubKey []byte, bip16 bool) int {
 	// Don't check error since parseScript returns the parsed-up-to-error
 	// list of pops.
-	pops, _ := parseScript(scriptPubKey)
+	pops, _ := ParseScript(scriptPubKey)
 
 	// Treat non P2SH transactions as normal.
 	if !(bip16 && isScriptHash(pops)) {
@@ -577,7 +612,7 @@ func GetPreciseSigOpCount(scriptSig, scriptPubKey []byte, bip16 bool) int {
 	// The public key script is a pay-to-script-hash, so parse the signature
 	// script to get the final item.  Scripts that fail to fully parse count
 	// as 0 signature operations.
-	sigPops, err := parseScript(scriptSig)
+	sigPops, err := ParseScript(scriptSig)
 	if err != nil {
 		return 0
 	}
@@ -600,7 +635,7 @@ func GetPreciseSigOpCount(scriptSig, scriptPubKey []byte, bip16 bool) int {
 	// returns the parsed-up-to-error list of pops and the consensus rules
 	// dictate signature operations are counted up to the first parse
 	// failure.
-	shPops, _ := parseScript(shScript)
+	shPops, _ := ParseScript(shScript)
 	return getSigOpCount(shPops, true)
 }
 
@@ -608,7 +643,7 @@ func GetPreciseSigOpCount(scriptSig, scriptPubKey []byte, bip16 bool) int {
 // guaranteed to fail at execution.  This allows inputs to be pruned instantly
 // when entering the UTXO set.
 func IsUnspendable(pkScript []byte) bool {
-	pops, err := parseScript(pkScript)
+	pops, err := ParseScript(pkScript)
 	if err != nil {
 		return true
 	}

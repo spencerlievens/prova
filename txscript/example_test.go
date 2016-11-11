@@ -152,8 +152,8 @@ func ExampleSignTxOutput() {
 	// used.  It must be specified when pay-to-script-hash transactions are
 	// being signed.
 	sigScript, err := txscript.SignTxOutput(&chaincfg.MainNetParams,
-		redeemTx, 0, originTx.TxOut[0].PkScript, txscript.SigHashAll,
-		txscript.KeyClosure(lookupKey), nil, nil)
+		redeemTx, 0, 0, originTx.TxOut[0].PkScript, txscript.SigHashAll,
+		txscript.KeyClosure(lookupKey), nil, nil, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -166,7 +166,7 @@ func ExampleSignTxOutput() {
 		txscript.ScriptStrictMultiSig |
 		txscript.ScriptDiscourageUpgradableNops
 	vm, err := txscript.NewEngine(originTx.TxOut[0].PkScript, redeemTx, 0,
-		flags, nil)
+		flags, nil, nil, -1)
 	if err != nil {
 		fmt.Println(err)
 		return

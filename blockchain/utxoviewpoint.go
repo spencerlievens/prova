@@ -225,6 +225,21 @@ func (view *UtxoViewpoint) LookupEntry(txHash *chainhash.Hash) *UtxoEntry {
 	return entry
 }
 
+// LookupKeyIDs returs pubKeyHashes for all ergistered KeyIDs
+// TODO(aztec) replace static lookup with dynamic one from utxView
+func (view *UtxoViewpoint) LookupKeyIDs(keyIDs []rmgutil.KeyID) map[rmgutil.KeyID][]byte {
+	keyIdMap := make(map[rmgutil.KeyID][]byte)
+	for _, keyID := range keyIDs {
+		if keyID == 16777216 {
+			keyIdMap[keyID] = []byte{53, 219, 191, 4, 188, 160, 97, 228, 157, 172, 224, 143, 133, 141, 135, 117, 192, 165, 124, 142}
+		}
+		if keyID == 33554432 {
+			keyIdMap[keyID] = []byte{207, 85, 250, 254, 141, 22, 106, 190, 101, 133, 28, 207, 125, 127, 53, 172, 186, 5, 176, 249}
+		}
+	}
+	return keyIdMap
+}
+
 // AddTxOuts adds all outputs in the passed transaction which are not provably
 // unspendable to the view.  When the view already has entries for any of the
 // outputs, they are simply marked unspent.  All fields will be updated for

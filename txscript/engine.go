@@ -92,8 +92,10 @@ type Engine struct {
 	numOps          int
 	flags           ScriptFlags
 	sigCache        *SigCache
+	hashCache       *TxSigHashes
 	bip16           bool     // treat execution as pay-to-script-hash
 	savedFirstStack [][]byte // stack from first script for bip16 scripts
+	inputAmount     int64
 }
 
 // hasFlag returns whether the script engine instance has the passed flag set.
@@ -304,7 +306,7 @@ func (vm *Engine) Step() (done bool, err error) {
 			}
 
 			script := vm.savedFirstStack[len(vm.savedFirstStack)-1]
-			pops, err := parseScript(script)
+			pops, err := ParseScript(script)
 			if err != nil {
 				return false, err
 			}
@@ -580,7 +582,8 @@ func (vm *Engine) SetAltStack(data [][]byte) {
 // NewEngine returns a new script engine for the provided public key script,
 // transaction, and input index.  The flags modify the behavior of the script
 // engine according to the description provided by each flag.
-func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags, sigCache *SigCache) (*Engine, error) {
+func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags,
+	sigCache *SigCache, hashCache *TxSigHashes, inputAmount int64) (*Engine, error) {
 	// The provided transaction input index must refer to a valid input.
 	if txIdx < 0 || txIdx >= len(tx.TxIn) {
 		return nil, ErrInvalidIndex
@@ -595,7 +598,12 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 	// allowing the clean stack flag without the P2SH flag would make it
 	// possible to have a situation where P2SH would not be a soft fork when
 	// it should be.
-	vm := Engine{flags: flags, sigCache: sigCache}
+	vm := Engine{
+		flags:       flags,
+		sigCache:    sigCache,
+		hashCache:   hashCache,
+		inputAmount: inputAmount,
+	}
 	if vm.hasFlag(ScriptVerifyCleanStack) && !vm.hasFlag(ScriptBip16) {
 		return nil, ErrInvalidFlags
 	}
@@ -617,7 +625,7 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 			return nil, ErrStackLongScript
 		}
 		var err error
-		vm.scripts[i], err = parseScript(scr)
+		vm.scripts[i], err = ParseScript(scr)
 		if err != nil {
 			return nil, err
 		}

@@ -30,7 +30,7 @@ var TstHasCanonicalPushes = canonicalPush
 
 // TstParseScript makes the internal parseScript function available to the
 // test package.
-var TstParseScript = parseScript
+var TstParseScript = ParseScript
 
 // TstCalcSignatureHash makes the internal calcSignatureHash function available
 // to the test package.
@@ -68,23 +68,23 @@ func TstCheckSignatureEncoding(sig []byte, flags ScriptFlags) error {
 // TstRemoveOpcode makes the internal removeOpcode function available to the
 // test package.
 func TstRemoveOpcode(pkscript []byte, opcode byte) ([]byte, error) {
-	pops, err := parseScript(pkscript)
+	pops, err := ParseScript(pkscript)
 	if err != nil {
 		return nil, err
 	}
 	pops = removeOpcode(pops, opcode)
-	return unparseScript(pops)
+	return UnparseScript(pops)
 }
 
 // TstRemoveOpcodeByData makes the internal removeOpcodeByData function
 // available to the test package.
 func TstRemoveOpcodeByData(pkscript []byte, data []byte) ([]byte, error) {
-	pops, err := parseScript(pkscript)
+	pops, err := ParseScript(pkscript)
 	if err != nil {
 		return nil, err
 	}
 	pops = removeOpcodeByData(pops, data)
-	return unparseScript(pops)
+	return UnparseScript(pops)
 }
 
 // TestSetPC allows the test modules to set the program counter to whatever they
@@ -3802,7 +3802,7 @@ func TestSigHashNew(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to decode script")
 	}
-	opCodes, err := parseScript(decodedScript)
+	opCodes, err := ParseScript(decodedScript)
 	if err != nil {
 		t.Fatalf("unable to decode script: %v", err)
 	}

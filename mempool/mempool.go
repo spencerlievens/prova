@@ -62,6 +62,9 @@ type Config struct {
 	// SigCache defines a signature cache to use.
 	SigCache *txscript.SigCache
 
+	// HashCache defines the transaction hash mid-state cache to use.
+	HashCache *txscript.HashCache
+
 	// TimeSource defines the timesource to use.
 	TimeSource blockchain.MedianTimeSource
 
@@ -730,7 +733,7 @@ func (mp *TxPool) maybeAcceptTransaction(tx *rmgutil.Tx, isNew, rateLimit bool) 
 	// Verify crypto signatures for each input and reject the transaction if
 	// any don't verify.
 	err = blockchain.ValidateTransactionScripts(tx, utxoView,
-		txscript.StandardVerifyFlags, mp.cfg.SigCache)
+		txscript.StandardVerifyFlags, mp.cfg.SigCache, mp.cfg.HashCache)
 	if err != nil {
 		if cerr, ok := err.(blockchain.RuleError); ok {
 			return nil, chainRuleError(cerr)
