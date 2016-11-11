@@ -94,7 +94,7 @@ func TestBlockTxHashes(t *testing.T) {
 // TestBlockHash tests the ability to generate the hash of a block accurately.
 func TestBlockHash(t *testing.T) {
 	// Block 1 hash.
-	hashStr := "79313b31d640d3bca60de986fd1ae755dc05e47796fe7aa1b9d0989f926cd6e8"
+	hashStr := "1e622cf450a0d537341b7222b81abd21b078817be8c22615a8e0b71bbef9894f"
 	wantHash, err := chainhash.NewHashFromStr(hashStr)
 	if err != nil {
 		t.Errorf("NewHashFromStr: %v", err)

@@ -5,7 +5,10 @@
 
 package chainhash
 
-import "github.com/btcsuite/fastsha256"
+import (
+	"github.com/btcsuite/fastsha256"
+	"golang.org/x/crypto/sha3"
+)
 
 // HashB calculates hash(b) and returns the resulting bytes.
 func HashB(b []byte) []byte {
@@ -30,4 +33,16 @@ func DoubleHashB(b []byte) []byte {
 func DoubleHashH(b []byte) Hash {
 	first := fastsha256.Sum256(b)
 	return Hash(fastsha256.Sum256(first[:]))
+}
+
+// powHashB returns the proof-of-work hash.
+func PowHashB(b []byte) []byte {
+	first := sha3.Sum256(b)
+	return first[:]
+}
+
+// powHashH calculates the proof-of-work hash and returns the resulting bytes
+// as a Hash.
+func PowHashH(b []byte) Hash {
+	return Hash(sha3.Sum256(b))
 }

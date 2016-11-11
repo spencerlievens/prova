@@ -837,9 +837,9 @@ func TestVectors(t *testing.T) {
 		sha.Write(msg)
 		hashed := sha.Sum(nil)
 		sig := btcec.Signature{R: fromHex(test.r), S: fromHex(test.s)}
-		if fuck := sig.Verify(hashed, &pub); fuck != test.ok {
+		if isValid := sig.Verify(hashed, &pub); isValid != test.ok {
 			//t.Errorf("%d: bad result %v %v", i, pub, hashed)
-			t.Errorf("%d: bad result %v instead of %v", i, fuck,
+			t.Errorf("%d: bad result %v instead of %v", i, isValid,
 				test.ok)
 		}
 		if testing.Short() {

@@ -177,10 +177,8 @@ type BlockChain struct {
 	// causing constant dynamic reloading.  This is typically the same value
 	// as blocksPerRetarget, but it is separated here for tweakability and
 	// testability.
-	minRetargetTimespan int64 // target timespan / adjustment factor
-	maxRetargetTimespan int64 // target timespan * adjustment factor
-	blocksPerRetarget   int32 // target timespan / target time per block
-	minMemoryNodes      int32
+	blocksPerRetarget int32 // target timespan / target time per block
+	minMemoryNodes    int32
 
 	// chainLock protects concurrent access to the vast majority of the
 	// fields in this struct below this point.
@@ -1484,7 +1482,6 @@ func New(config *Config) (*BlockChain, error) {
 
 	targetTimespan := int64(params.TargetTimespan)
 	targetTimePerBlock := int64(params.TargetTimePerBlock)
-	adjustmentFactor := params.RetargetAdjustmentFactor
 	b := BlockChain{
 		checkpointsByHeight: checkpointsByHeight,
 		db:                  config.DB,
@@ -1493,8 +1490,6 @@ func New(config *Config) (*BlockChain, error) {
 		notifications:       config.Notifications,
 		sigCache:            config.SigCache,
 		indexManager:        config.IndexManager,
-		minRetargetTimespan: targetTimespan / adjustmentFactor,
-		maxRetargetTimespan: targetTimespan * adjustmentFactor,
 		blocksPerRetarget:   int32(targetTimespan / targetTimePerBlock),
 		minMemoryNodes:      int32(targetTimespan / targetTimePerBlock),
 		bestNode:            nil,

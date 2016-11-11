@@ -81,7 +81,7 @@ func (h *BlockHeader) BlockHash() chainhash.Hash {
 	var buf bytes.Buffer
 	_ = writeBlockHeader(&buf, 0, h)
 
-	return chainhash.DoubleHashH(buf.Bytes())
+	return chainhash.PowHashH(buf.Bytes())
 }
 
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
@@ -128,7 +128,7 @@ func (h *BlockHeader) hashForSigning() []byte {
 	if err != nil {
 		return nil
 	}
-	return chainhash.DoubleHashB(buf.Bytes())
+	return chainhash.PowHashB(buf.Bytes())
 }
 
 // Sign uses the supplied private key to sign the signing-hash of the block

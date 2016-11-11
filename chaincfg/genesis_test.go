@@ -39,6 +39,7 @@ func TestGenesisBlock(t *testing.T) {
 
 // TestRegTestGenesisBlock tests the genesis block of the regression test
 // network for validity by checking the encoded bytes and hashes.
+// TODO(aztec): Fix by replacing bytes of genesis block
 func TestRegTestGenesisBlock(t *testing.T) {
 	// Encode the genesis block to raw bytes.
 	var buf bytes.Buffer
@@ -120,6 +121,7 @@ func TestSimNetGenesisBlock(t *testing.T) {
 
 // genesisBlockBytes are the wire encoded bytes for the genesis block of the
 // main network as of protocol version 60002.
+// TODO(aztec): replace with real bytes
 var genesisBlockBytes = []byte{
 	0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* |........| */
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* |........| */
@@ -161,6 +163,7 @@ var genesisBlockBytes = []byte{
 
 // regTestGenesisBlockBytes are the wire encoded bytes for the genesis block of
 // the regression test network as of protocol version 60002.
+// TODO(aztec): replace with real bytes
 var regTestGenesisBlockBytes = []byte{
 	0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* |........| */
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* |........| */
@@ -202,6 +205,7 @@ var regTestGenesisBlockBytes = []byte{
 
 // testNet3GenesisBlockBytes are the wire encoded bytes for the genesis block of
 // the test network (version 3) as of protocol version 60002.
+// TODO(aztec): replace with real bytes
 var testNet3GenesisBlockBytes = []byte{
 	0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* |........| */
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* |........| */
@@ -243,6 +247,7 @@ var testNet3GenesisBlockBytes = []byte{
 
 // simNetGenesisBlockBytes are the wire encoded bytes for the genesis block of
 // the simulation test network as of protocol version 70002.
+// TODO(aztec): replace with real bytes
 var simNetGenesisBlockBytes = []byte{
 	0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* |........| */
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* |........| */

@@ -1074,6 +1074,7 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		Difficulty:    getDifficultyRatio(blockHeader.Bits),
 		NextHash:      nextHashString,
 		SigKeyID:      blockHeader.SigKeyID,
+		Signature:     blockHeader.Signature.String(),
 	}
 
 	if c.VerboseTx == nil || !*c.VerboseTx {

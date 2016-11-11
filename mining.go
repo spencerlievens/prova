@@ -713,7 +713,7 @@ mempoolLoop:
 	if err != nil {
 		return nil, err
 	}
-	reqDifficulty, err := blockManager.chain.CalcNextRequiredDifficulty(ts)
+	reqDifficulty, err := blockManager.chain.CalcNextRequiredDifficulty()
 	if err != nil {
 		return nil, err
 	}
@@ -781,8 +781,7 @@ func UpdateBlockTime(msgBlock *wire.MsgBlock, bManager *blockManager) error {
 	// If running on a network that requires recalculating the difficulty,
 	// do so now.
 	if activeNetParams.ReduceMinDifficulty {
-		difficulty, err := bManager.chain.CalcNextRequiredDifficulty(
-			newTimestamp)
+		difficulty, err := bManager.chain.CalcNextRequiredDifficulty()
 		if err != nil {
 			return err
 		}

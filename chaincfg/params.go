@@ -1,4 +1,5 @@
 // Copyright (c) 2014-2016 The btcsuite developers
+// Copyright (c) 2016 The Zcash developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -20,18 +21,17 @@ var (
 	// the overhead of creating it multiple times.
 	bigOne = big.NewInt(1)
 
-	// mainPowLimit is the highest proof of work value a Bitcoin block can
-	// have for the main network.  It is the value 2^224 - 1.
-	mainPowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOne, 224), bigOne)
+	// mainPowLimit is the highest proof of work value a block can
+	// have for the main network.  It is the value 2^243 - 1.
+	mainPowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOne, 243), bigOne)
 
-	// regressionPowLimit is the highest proof of work value a Bitcoin block
-	// can have for the regression test network.  It is the value 2^255 - 1.
-	regressionPowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOne, 255), bigOne)
+	// regressionPowLimit is the highest proof of work value a block
+	// can have for the regression test network.
+	regressionPowLimit = powLimitFromStr("0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f")
 
-	// testNet3PowLimit is the highest proof of work value a Bitcoin block
-	// can have for the test network (version 3).  It is the value
-	// 2^224 - 1.
-	testNet3PowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOne, 224), bigOne)
+	// testNet3PowLimit is the highest proof of work value a block can have
+	// for the test network (version 3).
+	testNet3PowLimit = powLimitFromStr("07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 
 	// simNetPowLimit is the highest proof of work value a Bitcoin block
 	// can have for the simulation test network.  It is the value 2^255 - 1.
@@ -104,11 +104,6 @@ type Params struct {
 	// block.
 	TargetTimePerBlock time.Duration
 
-	// RetargetAdjustmentFactor is the adjustment factor used to limit
-	// the minimum and maximum amount of adjustment that can occur between
-	// difficulty retargets.
-	RetargetAdjustmentFactor int64
-
 	// ReduceMinDifficulty defines whether the network should reduce the
 	// minimum required difficulty after a long enough period of time has
 	// passed without finding a block.  This is really only useful for test
@@ -154,6 +149,32 @@ type Params struct {
 	// BIP44 coin type used in the hierarchical deterministic path for
 	// address generation.
 	HDCoinType uint32
+
+	// Number of blocks for the moving window of difficulty adjustment.
+	PowAveragingWindow int
+
+	// Maximum downward adjustment in pow difficulty, as a percentage.
+	PowMaxAdjustDown int64
+
+	// Maximum upward adjustment in pow difficulty, as a percentage.
+	PowMaxAdjustUp int64
+}
+
+// MaxActualTimespan returns a timespan with the down-dampening factor applied.
+func (p Params) MaxActualTimespan() time.Duration {
+	dampenPercentage := time.Duration(100 + p.PowMaxAdjustDown)
+	return (p.AveragingWindowTimespan() * dampenPercentage) / 100
+}
+
+// MinActualTimespan returns a timespan with the up dampening factor applied.
+func (p Params) MinActualTimespan() time.Duration {
+	dampenPercentage := time.Duration(100 - p.PowMaxAdjustUp)
+	return (p.AveragingWindowTimespan() * dampenPercentage) / 100
+}
+
+// AveragingWindowTimespan returns the difficulty timespan to be averaged over.
+func (p Params) AveragingWindowTimespan() time.Duration {
+	return time.Duration(p.PowAveragingWindow) * p.TargetTimePerBlock
 }
 
 // MainNetParams defines the network parameters for the main Bitcoin network.
@@ -175,12 +196,11 @@ var MainNetParams = Params{
 	GenesisBlock:             &genesisBlock,
 	GenesisHash:              &genesisHash,
 	PowLimit:                 mainPowLimit,
-	PowLimitBits:             0x1d00ffff,
+	PowLimitBits:             0x1f07ffff,
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
-	TargetTimePerBlock:       time.Minute * 10,    // 10 minutes
-	RetargetAdjustmentFactor: 4,                   // 25% less, 400% more
+	TargetTimePerBlock:       time.Minute,         // 1 minute
 	ReduceMinDifficulty:      false,
 	MinDiffReductionTime:     0,
 	GenerateSupported:        false,
@@ -233,6 +253,15 @@ var MainNetParams = Params{
 	// BIP44 coin type used in the hierarchical deterministic path for
 	// address generation.
 	HDCoinType: 0,
+
+	// Number of blocks for the moving window of difficulty adjustment
+	PowAveragingWindow: 17,
+
+	// Maximum downward adjustment in pow difficulty, as a percentage
+	PowMaxAdjustDown: 32,
+
+	// Maximum upward adjustment in pow difficulty, as a percentage
+	PowMaxAdjustUp: 16,
 }
 
 // RegressionNetParams defines the network parameters for the regression test
@@ -254,12 +283,11 @@ var RegressionNetParams = Params{
 		0xc8, 0x99, 0x28, 0xa8, 0xcc, 0xff, 0x99, 0x3c, 0xd3,
 	},
 	PowLimit:                 regressionPowLimit,
-	PowLimitBits:             0x207fffff,
+	PowLimitBits:             0x200f0f0f,
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 150,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
-	TargetTimePerBlock:       time.Minute * 10,    // 10 minutes
-	RetargetAdjustmentFactor: 4,                   // 25% less, 400% more
+	TargetTimePerBlock:       time.Minute,         // 1 minute
 	ReduceMinDifficulty:      true,
 	MinDiffReductionTime:     time.Minute * 20, // TargetTimePerBlock * 2
 	GenerateSupported:        true,
@@ -293,6 +321,15 @@ var RegressionNetParams = Params{
 	// BIP44 coin type used in the hierarchical deterministic path for
 	// address generation.
 	HDCoinType: 1,
+
+	// Number of blocks for the moving window of difficulty adjustment
+	PowAveragingWindow: 17,
+
+	// Maximum downward adjustment in pow difficulty, as a percentage
+	PowMaxAdjustDown: 32,
+
+	// Maximum upward adjustment in pow difficulty, as a percentage
+	PowMaxAdjustUp: 16,
 }
 
 // TestNet3Params defines the network parameters for the test Bitcoin network
@@ -302,30 +339,29 @@ var TestNet3Params = Params{
 	Name:        "testnet3",
 	Net:         wire.TestNet3,
 	DefaultPort: "18333",
-	DNSSeeds: []string{
-		"testnet-seed.bitcoin.schildbach.de",
-		"testnet-seed.bitcoin.petertodd.org",
-		"testnet-seed.bluematt.me",
-	},
+	DNSSeeds:    []string{},
 
 	// Chain parameters
-	GenesisBlock:             &testNet3GenesisBlock,
-	GenesisHash:              &testNet3GenesisHash,
+	GenesisBlock: &testNet3GenesisBlock,
+	GenesisHash:  &testNet3GenesisHash,
+	InitialValidatorPubKey: []byte{
+		0x03, 0x5f, 0x51, 0x03, 0x85, 0x2b, 0xd7, 0xd9,
+		0xc9, 0xc2, 0x8e, 0x44, 0xca, 0xf1, 0xf7, 0x18,
+		0x89, 0x41, 0xe1, 0x62, 0x95, 0x06, 0x2c, 0xa4,
+		0xc8, 0x99, 0x28, 0xa8, 0xcc, 0xff, 0x99, 0x3c, 0xd3,
+	},
 	PowLimit:                 testNet3PowLimit,
-	PowLimitBits:             0x1d00ffff,
+	PowLimitBits:             0x2007ffff,
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
-	TargetTimePerBlock:       time.Minute * 10,    // 10 minutes
-	RetargetAdjustmentFactor: 4,                   // 25% less, 400% more
+	TargetTimePerBlock:       time.Minute,         // 1 minute
 	ReduceMinDifficulty:      true,
 	MinDiffReductionTime:     time.Minute * 20, // TargetTimePerBlock * 2
 	GenerateSupported:        false,
 
 	// Checkpoints ordered from oldest to newest.
-	Checkpoints: []Checkpoint{
-		{546, newHashFromStr("000000002a936ca763904c3c35fce2f3556c559c0214345d31b1bcebf76acb70")},
-	},
+	Checkpoints: []Checkpoint{},
 
 	// Enforce current block version once majority of the network has
 	// upgraded.
@@ -353,6 +389,15 @@ var TestNet3Params = Params{
 	// BIP44 coin type used in the hierarchical deterministic path for
 	// address generation.
 	HDCoinType: 1,
+
+	// Number of blocks for the moving window of difficulty adjustment
+	PowAveragingWindow: 17,
+
+	// Maximum downward adjustment in pow difficulty, as a percentage
+	PowMaxAdjustDown: 32,
+
+	// Maximum upward adjustment in pow difficulty, as a percentage
+	PowMaxAdjustUp: 16,
 }
 
 // SimNetParams defines the network parameters for the simulation test Bitcoin
@@ -376,8 +421,7 @@ var SimNetParams = Params{
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
-	TargetTimePerBlock:       time.Minute * 10,    // 10 minutes
-	RetargetAdjustmentFactor: 4,                   // 25% less, 400% more
+	TargetTimePerBlock:       time.Minute,         // 1 minutes
 	ReduceMinDifficulty:      true,
 	MinDiffReductionTime:     time.Minute * 20, // TargetTimePerBlock * 2
 	GenerateSupported:        true,
@@ -410,6 +454,15 @@ var SimNetParams = Params{
 	// BIP44 coin type used in the hierarchical deterministic path for
 	// address generation.
 	HDCoinType: 115, // ASCII for s
+
+	// Number of blocks for the moving window of difficulty adjustment
+	PowAveragingWindow: 17,
+
+	// Maximum downward adjustment in pow difficulty, as a percentage
+	PowMaxAdjustDown: 32,
+
+	// Maximum upward adjustment in pow difficulty, as a percentage
+	PowMaxAdjustUp: 16,
 }
 
 var (
@@ -528,6 +581,13 @@ func newHashFromStr(hexStr string) *chainhash.Hash {
 		panic(err)
 	}
 	return hash
+}
+
+// powLimitFromStr returns a pow limit based on a difficulty hex value.
+func powLimitFromStr(hexStr string) *big.Int {
+	limit := big.NewInt(0)
+	limit.SetString(hexStr, 16)
+	return limit
 }
 
 func init() {
