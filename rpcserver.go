@@ -332,7 +332,6 @@ type workState struct {
 	lastGenerated time.Time
 	prevHash      *chainhash.Hash
 	msgBlock      *wire.MsgBlock
-	extraNonce    uint64
 	blockInfo     map[chainhash.Hash]*workStateBlockInfo
 }
 
@@ -2823,10 +2822,9 @@ func handleGetWorkRequest(s *rpcServer) (interface{}, error) {
 		(state.lastTxUpdate != lastTxUpdate &&
 			time.Now().After(state.lastGenerated.Add(time.Minute))) {
 
-		// Reset the extra nonce and clear all cached template
-		// variations if the best block changed.
+		// Clear all cached template variations if the best block
+		// changed.
 		if state.prevHash != nil && !state.prevHash.IsEqual(latestHash) {
-			state.extraNonce = 0
 			state.blockInfo = make(map[chainhash.Hash]*workStateBlockInfo)
 		}
 
@@ -2851,10 +2849,9 @@ func handleGetWorkRequest(s *rpcServer) (interface{}, error) {
 		state.lastTxUpdate = lastTxUpdate
 		state.prevHash = latestHash
 
-		rpcsLog.Debugf("Generated block template (timestamp %v, extra "+
-			"nonce %d, target %064x, merkle root %s, signature "+
+		rpcsLog.Debugf("Generated block template (timestamp %v, "+
+			"target %064x, merkle root %s, signature "+
 			"script %x)", msgBlock.Header.Timestamp,
-			state.extraNonce,
 			blockchain.CompactToBig(msgBlock.Header.Bits),
 			msgBlock.Header.MerkleRoot,
 			msgBlock.Transactions[0].TxIn[0].SignatureScript)
@@ -2872,10 +2869,9 @@ func handleGetWorkRequest(s *rpcServer) (interface{}, error) {
 		// blocks per the chain consensus rules.
 		UpdateBlockTime(msgBlock, s.server.blockManager)
 
-		rpcsLog.Debugf("Updated block template (timestamp %v, extra "+
-			"nonce %d, target %064x, merkle root %s, signature "+
+		rpcsLog.Debugf("Updated block template (timestamp %v, "+
+			"target %064x, merkle root %s, signature "+
 			"script %x)", msgBlock.Header.Timestamp,
-			state.extraNonce,
 			blockchain.CompactToBig(msgBlock.Header.Bits),
 			msgBlock.Header.MerkleRoot,
 			msgBlock.Transactions[0].TxIn[0].SignatureScript)

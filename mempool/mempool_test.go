@@ -114,9 +114,8 @@ type poolHarness struct {
 // version 2 blocks.
 func (p *poolHarness) CreateCoinbaseTx(blockHeight int32, numOutputs uint32) (*rmgutil.Tx, error) {
 	// Create standard coinbase script.
-	extraNonce := int64(0)
 	coinbaseScript, err := txscript.NewScriptBuilder().
-		AddInt64(int64(blockHeight)).AddInt64(extraNonce).Script()
+		AddInt64(int64(blockHeight)).Script()
 	if err != nil {
 		return nil, err
 	}
