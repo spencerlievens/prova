@@ -39,6 +39,7 @@ import (
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
 	"github.com/btcsuite/fastsha256"
+	"github.com/btcsuite/golangcrypto/ripemd160"
 	"github.com/btcsuite/websocket"
 )
 
@@ -133,46 +134,48 @@ type commandHandler func(*rpcServer, interface{}, <-chan struct{}) (interface{},
 // a dependency loop.
 var rpcHandlers map[string]commandHandler
 var rpcHandlersBeforeInit = map[string]commandHandler{
-	"addnode":               handleAddNode,
-	"createrawtransaction":  handleCreateRawTransaction,
-	"debuglevel":            handleDebugLevel,
-	"decoderawtransaction":  handleDecodeRawTransaction,
-	"decodescript":          handleDecodeScript,
-	"generate":              handleGenerate,
-	"getaddednodeinfo":      handleGetAddedNodeInfo,
-	"getbestblock":          handleGetBestBlock,
-	"getbestblockhash":      handleGetBestBlockHash,
-	"getblock":              handleGetBlock,
-	"getblockcount":         handleGetBlockCount,
-	"getblockhash":          handleGetBlockHash,
-	"getblockheader":        handleGetBlockHeader,
-	"getblocktemplate":      handleGetBlockTemplate,
-	"getconnectioncount":    handleGetConnectionCount,
-	"getcurrentnet":         handleGetCurrentNet,
-	"getdifficulty":         handleGetDifficulty,
-	"getgenerate":           handleGetGenerate,
-	"gethashespersec":       handleGetHashesPerSec,
-	"getinfo":               handleGetInfo,
-	"getmempoolinfo":        handleGetMempoolInfo,
-	"getmininginfo":         handleGetMiningInfo,
-	"getnettotals":          handleGetNetTotals,
-	"getnetworkhashps":      handleGetNetworkHashPS,
-	"getpeerinfo":           handleGetPeerInfo,
-	"getrawmempool":         handleGetRawMempool,
-	"getrawtransaction":     handleGetRawTransaction,
-	"gettxout":              handleGetTxOut,
-	"getwork":               handleGetWork,
-	"help":                  handleHelp,
-	"node":                  handleNode,
-	"ping":                  handlePing,
-	"searchrawtransactions": handleSearchRawTransactions,
-	"sendrawtransaction":    handleSendRawTransaction,
-	"setgenerate":           handleSetGenerate,
-	"stop":                  handleStop,
-	"submitblock":           handleSubmitBlock,
-	"validateaddress":       handleValidateAddress,
-	"verifychain":           handleVerifyChain,
-	"verifymessage":         handleVerifyMessage,
+	"addnode":              handleAddNode,
+	"createrawtransaction": handleCreateRawTransaction,
+	"debuglevel":           handleDebugLevel,
+	"decoderawtransaction": handleDecodeRawTransaction,
+	"decodescript":         handleDecodeScript,
+	"generate":             handleGenerate,
+	"getaddednodeinfo":     handleGetAddedNodeInfo,
+	"getbestblock":         handleGetBestBlock,
+	"getbestblockhash":     handleGetBestBlockHash,
+	"getblock":             handleGetBlock,
+	"getblockcount":        handleGetBlockCount,
+	"getblockhash":         handleGetBlockHash,
+	"getblockheader":       handleGetBlockHeader,
+	"getblocktemplate":     handleGetBlockTemplate,
+	"getconnectioncount":   handleGetConnectionCount,
+	"getcurrentnet":        handleGetCurrentNet,
+	"getdifficulty":        handleGetDifficulty,
+	"getgenerate":          handleGetGenerate,
+	"gethashespersec":      handleGetHashesPerSec,
+	"getinfo":              handleGetInfo,
+	"getmempoolinfo":       handleGetMempoolInfo,
+	"getmininginfo":        handleGetMiningInfo,
+	"getnettotals":         handleGetNetTotals,
+	"getnetworkhashps":     handleGetNetworkHashPS,
+	"getpeerinfo":          handleGetPeerInfo,
+	"getrawmempool":        handleGetRawMempool,
+	"getrawtransaction":    handleGetRawTransaction,
+	"gettxout":             handleGetTxOut,
+	"getwork":              handleGetWork,
+	"help":                 handleHelp,
+	"node":                 handleNode,
+	"ping":                 handlePing,
+	"prepareaztectransaction": handlePrepareAztecTransaction,
+	"searchrawtransactions":   handleSearchRawTransactions,
+	"sendrawtransaction":      handleSendRawTransaction,
+	"setgenerate":             handleSetGenerate,
+	"signaztectransaction":    handleSignAztecTransaction,
+	"stop":                    handleStop,
+	"submitblock":             handleSubmitBlock,
+	"validateaddress":         handleValidateAddress,
+	"verifychain":             handleVerifyChain,
+	"verifymessage":           handleVerifyMessage,
 }
 
 // list of commands that we recognize, but for which btcd has no support because
@@ -246,27 +249,29 @@ var rpcLimited = map[string]struct{}{
 	"help": {},
 
 	// HTTP/S-only commands
-	"createrawtransaction":  {},
-	"decoderawtransaction":  {},
-	"decodescript":          {},
-	"getbestblock":          {},
-	"getbestblockhash":      {},
-	"getblock":              {},
-	"getblockcount":         {},
-	"getblockhash":          {},
-	"getcurrentnet":         {},
-	"getdifficulty":         {},
-	"getinfo":               {},
-	"getnettotals":          {},
-	"getnetworkhashps":      {},
-	"getrawmempool":         {},
-	"getrawtransaction":     {},
-	"gettxout":              {},
-	"searchrawtransactions": {},
-	"sendrawtransaction":    {},
-	"submitblock":           {},
-	"validateaddress":       {},
-	"verifymessage":         {},
+	"createrawtransaction":    {},
+	"decoderawtransaction":    {},
+	"decodescript":            {},
+	"getbestblock":            {},
+	"getbestblockhash":        {},
+	"getblock":                {},
+	"getblockcount":           {},
+	"getblockhash":            {},
+	"getcurrentnet":           {},
+	"getdifficulty":           {},
+	"getinfo":                 {},
+	"getnettotals":            {},
+	"getnetworkhashps":        {},
+	"getrawmempool":           {},
+	"getrawtransaction":       {},
+	"gettxout":                {},
+	"prepareaztectransaction": {},
+	"searchrawtransactions":   {},
+	"sendrawtransaction":      {},
+	"signaztectransaction":    {},
+	"submitblock":             {},
+	"validateaddress":         {},
+	"verifymessage":           {},
 }
 
 // builderScript is a convenience function which is used for hard-coded scripts
@@ -624,6 +629,155 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 	return mtxHex, nil
 }
 
+type addressToKey struct {
+	key        *btcec.PrivateKey
+	compressed bool
+}
+
+// mkGetKey takes a map and returns a KeyDB implemented by a closure.
+// KeyDB is an interface type provided to SignTxOutput, it encapsulates
+// any user state required to get the private keys for an address.
+func mkGetKey(keys map[string]addressToKey) txscript.KeyDB {
+	if keys == nil {
+		return txscript.KeyClosure(func(addr rmgutil.Address) (*btcec.PrivateKey,
+			bool, error) {
+			return nil, false, errors.New("nope")
+		})
+	}
+	return txscript.KeyClosure(func(addr rmgutil.Address) (*btcec.PrivateKey,
+		bool, error) {
+		a2k, ok := keys[addr.EncodeAddress()]
+		if !ok {
+			return nil, false, errors.New("nope")
+		}
+		return a2k.key, a2k.compressed, nil
+	})
+}
+
+// mkGetHash takes a map and returns a HashDB implemented by a closure.
+// HashDB is an interface type provided to SignTxOutput, it encapsulates
+// any user state required to get the private keys for a hash.
+func mkGetHash(hashes map[string][]rmgutil.Address) txscript.HashDB {
+	if hashes == nil {
+		return txscript.HashClosure(func(addr rmgutil.Address) (
+			[]rmgutil.Address, error) {
+			return nil, errors.New("nope")
+		})
+	}
+	return txscript.HashClosure(func(addr rmgutil.Address) ([]rmgutil.Address,
+		error) {
+		hash, ok := hashes[addr.EncodeAddress()]
+		if !ok {
+			return nil, errors.New("nope")
+		}
+		return hash, nil
+	})
+}
+
+// handlePrepareAztecTransaction handles prepareaztectransaction commands.
+func handlePrepareAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.PrepareAztecTransactionCmd)
+
+	// Validate the locktime, if given.
+	if c.LockTime != nil &&
+		(*c.LockTime < 0 || *c.LockTime > int64(wire.MaxTxInSequenceNum)) {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: "Locktime out of range",
+		}
+	}
+
+	// Add all transaction inputs to a new transaction after performing
+	// some validity checks.
+	mtx := wire.NewMsgTx()
+	for _, input := range c.Inputs {
+		txHash, err := chainhash.NewHashFromStr(input.Txid)
+		if err != nil {
+			return nil, rpcDecodeHexError(input.Txid)
+		}
+
+		prevOut := wire.NewOutPoint(txHash, uint32(input.Vout))
+
+		txIn := wire.NewTxIn(prevOut, []byte{})
+		if c.LockTime != nil && *c.LockTime != 0 {
+			txIn.Sequence = wire.MaxTxInSequenceNum - 1
+		}
+		mtx.AddTxIn(txIn)
+	}
+
+	// Add all transaction outputs to the transaction after performing
+	// some validity checks.
+	for encodedAddr, amount := range c.Amounts {
+		// Ensure amount is in the valid range for monetary amounts.
+		if amount <= 0 || amount > rmgutil.MaxSatoshi {
+			return nil, &btcjson.RPCError{
+				Code:    btcjson.ErrRPCType,
+				Message: "Invalid amount",
+			}
+		}
+
+		// Decode the provided address.
+		addr, err := rmgutil.DecodeAddress(encodedAddr, activeNetParams.Params)
+		if err != nil {
+			return nil, &btcjson.RPCError{
+				Code:    btcjson.ErrRPCInvalidAddressOrKey,
+				Message: "Invalid address or key: " + err.Error(),
+			}
+		}
+
+		// Ensure the address is one of the supported types and that
+		// the network encoded with the address matches the network the
+		// server is currently on.
+		switch addr.(type) {
+		case *rmgutil.AddressAztec:
+		default:
+			return nil, &btcjson.RPCError{
+				Code:    btcjson.ErrRPCInvalidAddressOrKey,
+				Message: "Invalid address or key",
+			}
+		}
+		if !addr.IsForNet(s.server.chainParams) {
+			return nil, &btcjson.RPCError{
+				Code: btcjson.ErrRPCInvalidAddressOrKey,
+				Message: "Invalid address: " + encodedAddr +
+					" is for the wrong network",
+			}
+		}
+
+		// Create a new script which pays to the provided address.
+		pkScript, err := txscript.PayToAddrScript(addr)
+		if err != nil {
+			context := "Failed to generate pay-to-address script"
+			return nil, internalRPCError(err.Error(), context)
+		}
+
+		// Convert the amount to satoshi.
+		satoshi, err := rmgutil.NewAmount(amount)
+		if err != nil {
+			context := "Failed to convert amount"
+			return nil, internalRPCError(err.Error(), context)
+		}
+
+		txOut := wire.NewTxOut(int64(satoshi), pkScript)
+		mtx.AddTxOut(txOut)
+	}
+
+	// Set the Locktime, if given.
+	if c.LockTime != nil {
+		mtx.LockTime = uint32(*c.LockTime)
+	}
+
+	// Return the serialized and hex-encoded transaction.  Note that this
+	// is intentionally not directly returning because the first return
+	// value is a string and it would result in returning an empty string to
+	// the client instead of nothing (nil) in the case of an error.
+	mtxHex, err := messageToHex(mtx)
+	if err != nil {
+		return nil, err
+	}
+	return mtxHex, nil
+}
+
 // handleDebugLevel handles debuglevel commands.
 func handleDebugLevel(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.DebugLevelCmd)
@@ -757,6 +911,131 @@ func createTxRawResult(chainParams *chaincfg.Params, mtx *wire.MsgTx,
 	}
 
 	return txReply, nil
+}
+
+// handleSignAztecTransaction handles signaztectransaction commands.
+func handleSignAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.SignAztecTransactionCmd)
+
+	// Deserialize the transaction.
+	hexStr := c.HexTx
+	if len(hexStr)%2 != 0 {
+		hexStr = "0" + hexStr
+	}
+	serializedTx, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return nil, rpcDecodeHexError(hexStr)
+	}
+	var mtx wire.MsgTx
+	err = mtx.Deserialize(bytes.NewReader(serializedTx))
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCDeserialization,
+			Message: "TX decode failed: " + err.Error(),
+		}
+	}
+
+	keyMap := make(map[string]addressToKey)
+	hashes := make([]rmgutil.Address, len(*c.PrivKeys))
+	for i, strPrivKey := range *c.PrivKeys {
+		privKey, err := hex.DecodeString(strPrivKey)
+		if err != nil {
+			return nil, rpcDecodeHexError(strPrivKey)
+		}
+		key, pk := btcec.PrivKeyFromBytes(btcec.S256(), privKey)
+		addr, _ := rmgutil.NewAddressPubKey(pk.SerializeCompressed(),
+			s.server.chainParams)
+		hashes[i] = addr
+		keyMap[addr.EncodeAddress()] = addressToKey{key, true}
+	}
+
+	hashType := txscript.SigHashAll
+	for i, txIn := range mtx.TxIn {
+		// Try to fetch the transaction from the memory pool and if that fails,
+		// try the block database.
+		var prevMsgTx *wire.MsgTx
+		prevTxHash := txIn.PreviousOutPoint.Hash
+		tx, err := s.server.txMemPool.FetchTransaction(&prevTxHash)
+		if err != nil {
+			txIndex := s.server.txIndex
+			if txIndex == nil {
+				return nil, &btcjson.RPCError{
+					Code: btcjson.ErrRPCNoTxInfo,
+					Message: "The transaction index must be " +
+						"enabled to query the blockchain " +
+						"(specify --txindex)",
+				}
+			}
+
+			// Look up the location of the transaction.
+			blockRegion, err := txIndex.TxBlockRegion(&prevTxHash)
+			if err != nil {
+				context := "Failed to retrieve transaction location"
+				return nil, internalRPCError(err.Error(), context)
+			}
+			if blockRegion == nil {
+				return nil, rpcNoTxInfoError(&prevTxHash)
+			}
+
+			// Load the raw transaction bytes from the database.
+			var txBytes []byte
+			err = s.server.db.View(func(dbTx database.Tx) error {
+				var err error
+				txBytes, err = dbTx.FetchBlockRegion(blockRegion)
+				return err
+			})
+			if err != nil {
+				return nil, rpcNoTxInfoError(&prevTxHash)
+			}
+
+			// Deserialize the transaction
+			var msgTx wire.MsgTx
+			err = msgTx.Deserialize(bytes.NewReader(txBytes))
+			if err != nil {
+				context := "Failed to deserialize transaction"
+				return nil, internalRPCError(err.Error(), context)
+			}
+			prevMsgTx = &msgTx
+		} else {
+			prevMsgTx = tx.MsgTx()
+		}
+
+		txOut := prevMsgTx.TxOut[txIn.PreviousOutPoint.Index]
+
+		// recreate address from pkScript, to be able to map priv keys for signing
+		// TODO(aztec) move to rmgutil.address
+		offset := ripemd160.Size
+		data := txOut.PkScript
+		keyIDs := []rmgutil.KeyID{
+			rmgutil.KeyIDFromAddressBuffer(data[offset+3:]),
+			rmgutil.KeyIDFromAddressBuffer(data[offset+4+rmgutil.KeyIDSize:]),
+		}
+		addr, err := rmgutil.NewAddressAztec(data[2:offset+2], keyIDs, s.server.chainParams)
+		if err != nil {
+			context := "Failed to create output address"
+			return nil, internalRPCError(err.Error(), context)
+		}
+		// Create signature for this input.
+		// We ignore the error here, as there no aspiration to sign all inputs,
+		// only the ones we hardcoded the keys for.
+		sigScript, _ := txscript.SignTxOutput(s.server.chainParams, &mtx,
+			i, txOut.Value, txOut.PkScript, hashType, mkGetKey(keyMap), nil,
+			mkGetHash(map[string][]rmgutil.Address{
+				addr.EncodeAddress(): hashes,
+			}), nil)
+
+		mtx.TxIn[i].SignatureScript = sigScript
+	}
+
+	// Return the serialized and hex-encoded transaction.  Note that this
+	// is intentionally not directly returning because the first return
+	// value is a string and it would result in returning an empty string to
+	// the client instead of nothing (nil) in the case of an error.
+	mtxHex, err := messageToHex(&mtx)
+	if err != nil {
+		return nil, err
+	}
+	return mtxHex, nil
 }
 
 // handleDecodeRawTransaction handles decoderawtransaction commands.
