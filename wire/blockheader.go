@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"io"
+	"math/rand"
 	"time"
 	// "log"
 
@@ -154,8 +155,24 @@ func (h *BlockHeader) Sign(key *btcec.PrivateKey) error {
 // for signing the block.
 // TODO(aztec): this is temporary for testing. Need to have a configurable
 // mining key which is stored in memory.
+// TODO(aztec): the selection of a keyId should be sensitive to rate limiting
 func (h *BlockHeader) TempTempAutoSign() error {
-	keyBytes, _ := hex.DecodeString("c345ff4a207ed945ac3040a933f386676e9c034f261ad4306f8b34d828eecde6")
+	privateKeys := []string{
+		"4015289a228658047520f0d0abe7ad49abc77f6be0be63b36b94b83c2d1fd977",
+		"9ade85268e57b7c97af9f84e0d5d96138eae2b1d7ae96c5ab849f58551ab9147",
+		"a959753ab5aeb59d7184ba37f6b219492bcb137bb992418590a40fd4ef9facdd",
+		"c345ff4a207ed945ac3040a933f386676e9c034f261ad4306f8b34d828eecde6",
+	}
+
+	// Choose a signing key at random.
+	rand.Seed(time.Now().UnixNano())
+	sigKeyID := rand.Intn(len(privateKeys))
+	keyStr := privateKeys[sigKeyID]
+
+	h.SigKeyID = uint32(sigKeyID)
+
+	// Sign with signing key
+	keyBytes, _ := hex.DecodeString(keyStr)
 	key, _ := btcec.PrivKeyFromBytes(btcec.S256(), keyBytes)
 	return h.Sign(key)
 }

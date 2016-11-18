@@ -186,6 +186,14 @@ const (
 	// such signature verification failures and execution past the end of
 	// the stack.
 	ErrScriptValidation
+
+	// ErrExcessiveChainShare indicates that a block cannot be added to the
+	// block chain because it would exceed the allowed share of blocks.
+	ErrExcessiveChainShare
+
+	// ErrExcessiveTrailing indicates that a block cannot be added to the
+	// block chain because it would constitute a too-long run of blocks.
+	ErrExcessiveTrailing
 )
 
 // Map of ErrorCode values back to their constant names for pretty printing.
@@ -228,6 +236,8 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrBadCoinbaseValue:     "ErrBadCoinbaseValue",
 	ErrScriptMalformed:      "ErrScriptMalformed",
 	ErrScriptValidation:     "ErrScriptValidation",
+	ErrExcessiveChainShare:  "ErrExcessiveChainShare",
+	ErrExcessiveTrailing:    "ErrExcessiveTrailing",
 }
 
 // String returns the ErrorCode as a human-readable name.
