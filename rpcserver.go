@@ -39,7 +39,6 @@ import (
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
 	"github.com/btcsuite/fastsha256"
-	"github.com/btcsuite/golangcrypto/ripemd160"
 	"github.com/btcsuite/websocket"
 )
 
@@ -633,46 +632,6 @@ type addressToKey struct {
 	compressed bool
 }
 
-// mkGetKey takes a map and returns a KeyDB implemented by a closure.
-// KeyDB is an interface type provided to SignTxOutput, it encapsulates
-// any user state required to get the private keys for an address.
-func mkGetKey(keys map[string]addressToKey) txscript.KeyDB {
-	if keys == nil {
-		return txscript.KeyClosure(func(addr rmgutil.Address) (*btcec.PrivateKey,
-			bool, error) {
-			return nil, false, errors.New("nope")
-		})
-	}
-	return txscript.KeyClosure(func(addr rmgutil.Address) (*btcec.PrivateKey,
-		bool, error) {
-		a2k, ok := keys[addr.EncodeAddress()]
-		if !ok {
-			return nil, false, errors.New("nope")
-		}
-		return a2k.key, a2k.compressed, nil
-	})
-}
-
-// mkGetHash takes a map and returns a HashDB implemented by a closure.
-// HashDB is an interface type provided to SignTxOutput, it encapsulates
-// any user state required to get the private keys for a hash.
-func mkGetHash(hashes map[string][]rmgutil.Address) txscript.HashDB {
-	if hashes == nil {
-		return txscript.HashClosure(func(addr rmgutil.Address) (
-			[]rmgutil.Address, error) {
-			return nil, errors.New("nope")
-		})
-	}
-	return txscript.HashClosure(func(addr rmgutil.Address) ([]rmgutil.Address,
-		error) {
-		hash, ok := hashes[addr.EncodeAddress()]
-		if !ok {
-			return nil, errors.New("nope")
-		}
-		return hash, nil
-	})
-}
-
 // handlePrepareAztecTransaction handles prepareaztectransaction commands.
 func handlePrepareAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.PrepareAztecTransactionCmd)
@@ -934,18 +893,24 @@ func handleSignAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		}
 	}
 
-	keyMap := make(map[string]addressToKey)
-	hashes := make([]rmgutil.Address, len(*c.PrivKeys))
-	for i, strPrivKey := range *c.PrivKeys {
-		privKey, err := hex.DecodeString(strPrivKey)
-		if err != nil {
-			return nil, rpcDecodeHexError(strPrivKey)
+	if nil == c.PrivKeys || 0 == len(*c.PrivKeys) {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCDeserialization,
+			Message: "no private keys provided",
 		}
-		key, pk := btcec.PrivKeyFromBytes(btcec.S256(), privKey)
-		addr, _ := rmgutil.NewAddressPubKey(pk.SerializeCompressed(),
-			s.server.chainParams)
-		hashes[i] = addr
-		keyMap[addr.EncodeAddress()] = addressToKey{key, true}
+	}
+
+	lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+		keys := make([]txscript.PrivateKey, len(*c.PrivKeys))
+		for i, strPrivKey := range *c.PrivKeys {
+			privKey, err := hex.DecodeString(strPrivKey)
+			if err != nil {
+				return nil, rpcDecodeHexError(strPrivKey)
+			}
+			key, _ := btcec.PrivKeyFromBytes(btcec.S256(), privKey)
+			keys[i] = txscript.PrivateKey{key, true}
+		}
+		return keys, nil
 	}
 
 	hashType := txscript.SigHashAll
@@ -1001,27 +966,12 @@ func handleSignAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 
 		txOut := prevMsgTx.TxOut[txIn.PreviousOutPoint.Index]
 
-		// recreate address from pkScript, to be able to map priv keys for signing
-		// TODO(aztec) move to rmgutil.address
-		offset := ripemd160.Size
-		data := txOut.PkScript
-		keyIDs := []rmgutil.KeyID{
-			rmgutil.KeyIDFromAddressBuffer(data[offset+3:]),
-			rmgutil.KeyIDFromAddressBuffer(data[offset+4+rmgutil.KeyIDSize:]),
-		}
-		addr, err := rmgutil.NewAddressAztec(data[2:offset+2], keyIDs, s.server.chainParams)
-		if err != nil {
-			context := "Failed to create output address"
-			return nil, internalRPCError(err.Error(), context)
-		}
 		// Create signature for this input.
 		// We ignore the error here, as there no aspiration to sign all inputs,
 		// only the ones we hardcoded the keys for.
 		sigScript, _ := txscript.SignTxOutput(s.server.chainParams, &mtx,
-			i, txOut.Value, txOut.PkScript, hashType, mkGetKey(keyMap), nil,
-			mkGetHash(map[string][]rmgutil.Address{
-				addr.EncodeAddress(): hashes,
-			}), nil)
+			i, txOut.Value, txOut.PkScript, hashType, txscript.KeyClosure(lookupKey),
+			nil, nil)
 
 		mtx.TxIn[i].SignatureScript = sigScript
 	}

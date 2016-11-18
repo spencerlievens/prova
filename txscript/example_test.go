@@ -130,7 +130,7 @@ func ExampleSignTxOutput() {
 	redeemTx.AddTxOut(txOut)
 
 	// Sign the redeeming transaction.
-	lookupKey := func(a rmgutil.Address) (*btcec.PrivateKey, bool, error) {
+	lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
 		// Ordinarily this function would involve looking up the private
 		// key for the provided address, but since the only thing being
 		// signed in this example uses the address associated with the
@@ -146,14 +146,14 @@ func ExampleSignTxOutput() {
 		//
 		// privKey.D.SetInt64(12345)
 		//
-		return privKey, true, nil
+		return []txscript.PrivateKey{txscript.PrivateKey{privKey, true}}, nil
 	}
 	// Notice that the script database parameter is nil here since it isn't
 	// used.  It must be specified when pay-to-script-hash transactions are
 	// being signed.
 	sigScript, err := txscript.SignTxOutput(&chaincfg.MainNetParams,
 		redeemTx, 0, 0, originTx.TxOut[0].PkScript, txscript.SigHashAll,
-		txscript.KeyClosure(lookupKey), nil, nil, nil)
+		txscript.KeyClosure(lookupKey), nil, nil)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -91,22 +91,18 @@ func p2pkSignatureScript(tx *wire.MsgTx, idx int, subScript []byte, hashType Sig
 // the contract (i.e. nrequired signatures are provided).  Since it is arguably
 // legal to not be able to sign any of the outputs, no error is returned.
 func signSafeMultiSig(tx *wire.MsgTx, idx int, txSigHashes *TxSigHashes, amt int64, subScript []byte, hashType SigHashType,
-	addresses []rmgutil.Address, nRequired int, kdb KeyDB) ([]byte, bool) {
+	keys []PrivateKey, nRequired int, kdb KeyDB) ([]byte, bool) {
 	builder := NewScriptBuilder()
 	signed := 0
 
-	for _, addr := range addresses {
-		key, _, err := kdb.GetKey(addr)
-		if err != nil {
-			continue
-		}
+	for _, key := range keys {
 
 		// add pubKey
-		pk := (*btcec.PublicKey)(&key.PublicKey)
+		pk := (*btcec.PublicKey)(&key.Key.PublicKey)
 		builder.AddData(pk.SerializeCompressed())
 
 		// add signature
-		sig, err := RawTxInSignatureNew(tx, idx, txSigHashes, amt, subScript, hashType, key)
+		sig, err := RawTxInSignatureNew(tx, idx, txSigHashes, amt, subScript, hashType, key.Key)
 		if err != nil {
 			// we silently ignore errors, because not all keys need to sign for a valid tx.
 			continue
@@ -135,11 +131,11 @@ func signMultiSig(tx *wire.MsgTx, idx int, subScript []byte, hashType SigHashTyp
 	builder := NewScriptBuilder().AddOp(OP_FALSE)
 	signed := 0
 	for _, addr := range addresses {
-		key, _, err := kdb.GetKey(addr)
+		keys, err := kdb.GetKey(addr)
 		if err != nil {
 			continue
 		}
-		sig, err := RawTxInSignature(tx, idx, subScript, hashType, key)
+		sig, err := RawTxInSignature(tx, idx, subScript, hashType, keys[0].Key)
 		if err != nil {
 			continue
 		}
@@ -157,7 +153,7 @@ func signMultiSig(tx *wire.MsgTx, idx int, subScript []byte, hashType SigHashTyp
 }
 
 func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
-	subScript []byte, hashType SigHashType, kdb KeyDB, sdb ScriptDB, hdb HashDB) (
+	subScript []byte, hashType SigHashType, kdb KeyDB, sdb ScriptDB) (
 	[]byte, ScriptClass, []rmgutil.Address, int, error) {
 
 	class, addresses, nrequired, err := ExtractPkScriptAddrs(subScript,
@@ -169,13 +165,13 @@ func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
 	switch class {
 	case PubKeyTy:
 		// look up key for address
-		key, _, err := kdb.GetKey(addresses[0])
+		keys, err := kdb.GetKey(addresses[0])
 		if err != nil {
 			return nil, class, nil, 0, err
 		}
 
 		script, err := p2pkSignatureScript(tx, idx, subScript, hashType,
-			key)
+			keys[0].Key)
 		if err != nil {
 			return nil, class, nil, 0, err
 		}
@@ -183,13 +179,13 @@ func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
 		return script, class, addresses, nrequired, nil
 	case PubKeyHashTy:
 		// look up key for address
-		key, compressed, err := kdb.GetKey(addresses[0])
+		keys, err := kdb.GetKey(addresses[0])
 		if err != nil {
 			return nil, class, nil, 0, err
 		}
 
 		script, err := SignatureScript(tx, idx, subScript, hashType,
-			key, compressed)
+			keys[0].Key, keys[0].Compressed)
 		if err != nil {
 			return nil, class, nil, 0, err
 		}
@@ -207,10 +203,9 @@ func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
 			addresses, nrequired, kdb)
 		return script, class, addresses, nrequired, nil
 	case AztecTy:
-		// We use the scriptDb lookup to get a list of addresses, each
-		// mapping to a privKey that is needed for signing.
-		// TODO(aztec) remove indirection through extra addresses.
-		addrs, err := hdb.GetHash(addresses[0])
+		// We use the keysDb lookup to get a list of privKeys
+		// that are needed for signing.
+		keys, err := kdb.GetKey(addresses[0])
 		if err != nil {
 			return nil, class, nil, 0, err
 		}
@@ -226,7 +221,7 @@ func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
 		}
 		// do the signing
 		script, _ := signSafeMultiSig(tx, idx, txSigHashes, inputAmt, subScript, hashType,
-			addrs, nrequired, kdb)
+			keys, nrequired, kdb)
 		return script, class, addresses, nrequired, nil
 	case NullDataTy:
 		return nil, class, nil, 0,
@@ -419,18 +414,22 @@ sigLoop:
 	return script
 }
 
+type PrivateKey struct {
+	Key        *btcec.PrivateKey
+	Compressed bool
+}
+
 // KeyDB is an interface type provided to SignTxOutput, it encapsulates
 // any user state required to get the private keys for an address.
 type KeyDB interface {
-	GetKey(rmgutil.Address) (*btcec.PrivateKey, bool, error)
+	GetKey(rmgutil.Address) ([]PrivateKey, error)
 }
 
 // KeyClosure implements KeyDB with a closure.
-type KeyClosure func(rmgutil.Address) (*btcec.PrivateKey, bool, error)
+type KeyClosure func(rmgutil.Address) ([]PrivateKey, error)
 
 // GetKey implements KeyDB by returning the result of calling the closure.
-func (kc KeyClosure) GetKey(address rmgutil.Address) (*btcec.PrivateKey,
-	bool, error) {
+func (kc KeyClosure) GetKey(address rmgutil.Address) ([]PrivateKey, error) {
 	return kc(address)
 }
 
@@ -448,20 +447,6 @@ func (sc ScriptClosure) GetScript(address rmgutil.Address) ([]byte, error) {
 	return sc(address)
 }
 
-// HashDB is an interface type provided to SignTxOutput, it encapsulates any
-// user state required to get the pubKeyHashes for Aztec address.
-type HashDB interface {
-	GetHash(rmgutil.Address) ([]rmgutil.Address, error)
-}
-
-// HashClosure implements HashDB with a closure.
-type HashClosure func(rmgutil.Address) ([]rmgutil.Address, error)
-
-// GetHash implements HashDB by returning the result of calling the closure.
-func (hc HashClosure) GetHash(address rmgutil.Address) ([]rmgutil.Address, error) {
-	return hc(address)
-}
-
 // SignTxOutput signs output idx of the given tx to resolve the script given in
 // pkScript with a signature type of hashType. Any keys required will be
 // looked up by calling getKey() with the string of the given address.
@@ -470,11 +455,11 @@ func (hc HashClosure) GetHash(address rmgutil.Address) ([]rmgutil.Address, error
 // will be merged in a type-dependent manner with the newly generated.
 // signature script.
 func SignTxOutput(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
-	pkScript []byte, hashType SigHashType, kdb KeyDB, sdb ScriptDB, hdb HashDB,
+	pkScript []byte, hashType SigHashType, kdb KeyDB, sdb ScriptDB,
 	previousScript []byte) ([]byte, error) {
 
 	sigScript, class, addresses, nrequired, err := sign(chainParams, tx,
-		idx, inputAmt, pkScript, hashType, kdb, sdb, hdb)
+		idx, inputAmt, pkScript, hashType, kdb, sdb)
 	if err != nil {
 		return nil, err
 	}
@@ -482,7 +467,7 @@ func SignTxOutput(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAm
 	if class == ScriptHashTy {
 		// TODO keep the sub addressed and pass down to merge.
 		realSigScript, _, _, _, err := sign(chainParams, tx, idx, inputAmt,
-			sigScript, hashType, kdb, sdb, hdb)
+			sigScript, hashType, kdb, sdb)
 		if err != nil {
 			return nil, err
 		}
