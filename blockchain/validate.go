@@ -573,20 +573,12 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 		}
 
 		// Verify the block's signature by an active validator key
-		// TODO(aztec): Fully implement, using non-hardcoded validator key.
-		hasValidSignature := false
-		for _, pubKeyBytes := range b.chainParams.InitialValidatorPubKeys {
-			pubKey, err := btcec.ParsePubKey(pubKeyBytes, btcec.S256())
-			if err != nil {
-				return err
-			}
-			if header.Verify(pubKey) {
-				hasValidSignature = true
-
-				break
-			}
+		// TODO(aztec): confirm that the validating pubkey is valid
+		pubKey, err := btcec.ParsePubKey(header.ValidatingPubKey[:], btcec.S256())
+		if err != nil {
+			return err
 		}
-		if !hasValidSignature {
+		if !header.Verify(pubKey) {
 			return ruleError(ErrBadBlockSignature, "unable to validate block signature")
 		}
 	}
@@ -1055,7 +1047,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, vi
 
 	// Get the previous block generators to check rate limiting rules.
 	iterNode := node
-	prevKeyIds := make([]uint32, 0)
+	prevPubKeys := make([]wire.BlockValidatingPubKey, 0)
 	for i := 0; iterNode != nil && i < b.chainParams.PowAveragingWindow; i++ {
 		var err error
 		iterNode, err = b.getPrevNodeFromNode(iterNode)
@@ -1064,19 +1056,19 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, vi
 			return err
 		}
 		if iterNode != nil {
-			prevKeyIds = append(prevKeyIds, iterNode.sigKeyID)
+			prevPubKeys = append(prevPubKeys, iterNode.validatingPubKey)
 		}
 	}
 
 	// Check if there is a run of too many blocks from a generator.
-	if IsGenerationTrailingRateLimited(blockHeader.SigKeyID, prevKeyIds, b.chainParams.ChainTrailingSigKeyIdLimit) {
-		str := fmt.Sprintf("sigKeyID has too many trailing blocks")
+	if IsGenerationTrailingRateLimited(blockHeader.ValidatingPubKey, prevPubKeys, b.chainParams.ChainTrailingSigKeyIdLimit) {
+		str := fmt.Sprintf("validatingPubKey has too many trailing blocks")
 		return ruleError(ErrExcessiveTrailing, str)
 	}
 
 	// Check if there is are too many blocks in a window from a generator.
-	if IsGenerationShareRateLimited(blockHeader.SigKeyID, prevKeyIds, b.chainParams.ChainWindowShareLimit) {
-		str := fmt.Sprintf("sigKeyID has too many cumulative blocks")
+	if IsGenerationShareRateLimited(blockHeader.ValidatingPubKey, prevPubKeys, b.chainParams.ChainWindowShareLimit) {
+		str := fmt.Sprintf("validatingPubKey has too many cumulative blocks")
 		return ruleError(ErrExcessiveChainShare, str)
 	}
 

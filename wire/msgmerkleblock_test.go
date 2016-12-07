@@ -249,39 +249,39 @@ func TestMerkleBlockWireErrors(t *testing.T) {
 			&merkleBlockOne, merkleBlockOneBytes, pver, 88,
 			io.ErrShortWrite, io.EOF,
 		},
-		// Force error in SigKeyID
+		// Force error in ValidatingPubKey
 		{
 			&merkleBlockOne, merkleBlockOneBytes, pver, 96,
 			io.ErrShortWrite, io.EOF,
 		},
 		// Force error in signature
 		{
-			&merkleBlockOne, merkleBlockOneBytes, pver, 100,
+			&merkleBlockOne, merkleBlockOneBytes, pver, 129,
 			io.ErrShortWrite, io.EOF,
 		},
 		// Force error in transaction count.
 		{
-			&merkleBlockOne, merkleBlockOneBytes, pver, 180,
+			&merkleBlockOne, merkleBlockOneBytes, pver, 209,
 			io.ErrShortWrite, io.EOF,
 		},
 		// Force error in num hashes.
 		{
-			&merkleBlockOne, merkleBlockOneBytes, pver, 184,
+			&merkleBlockOne, merkleBlockOneBytes, pver, 213,
 			io.ErrShortWrite, io.EOF,
 		},
 		// Force error in hashes.
 		{
-			&merkleBlockOne, merkleBlockOneBytes, pver, 185,
+			&merkleBlockOne, merkleBlockOneBytes, pver, 214,
 			io.ErrShortWrite, io.EOF,
 		},
 		// Force error in num flag bytes.
 		{
-			&merkleBlockOne, merkleBlockOneBytes, pver, 217,
+			&merkleBlockOne, merkleBlockOneBytes, pver, 246,
 			io.ErrShortWrite, io.EOF,
 		},
 		// Force error in flag bytes.
 		{
-			&merkleBlockOne, merkleBlockOneBytes, pver, 218,
+			&merkleBlockOne, merkleBlockOneBytes, pver, 247,
 			io.ErrShortWrite, io.EOF,
 		},
 		// Force error due to unsupported protocol version.
@@ -348,7 +348,7 @@ func TestMerkleBlockOverflowErrors(t *testing.T) {
 	// allowed tx hashes.
 	var buf bytes.Buffer
 	WriteVarInt(&buf, pver, maxTxPerBlock+1)
-	numHashesOffset := 184
+	numHashesOffset := 213
 	exceedMaxHashes := make([]byte, numHashesOffset)
 	copy(exceedMaxHashes, merkleBlockOneBytes[:numHashesOffset])
 	exceedMaxHashes = append(exceedMaxHashes, buf.Bytes()...)
@@ -357,7 +357,7 @@ func TestMerkleBlockOverflowErrors(t *testing.T) {
 	// allowed flag bytes.
 	buf.Reset()
 	WriteVarInt(&buf, pver, maxFlagsPerMerkleBlock+1)
-	numFlagBytesOffset := 217
+	numFlagBytesOffset := 246
 	exceedMaxFlagBytes := make([]byte, numFlagBytesOffset)
 	copy(exceedMaxFlagBytes, merkleBlockOneBytes[:numFlagBytesOffset])
 	exceedMaxFlagBytes = append(exceedMaxFlagBytes, buf.Bytes()...)
@@ -437,7 +437,11 @@ var merkleBlockOneBytes = []byte{
 	0x00, 0x00, 0x00, 0x00, // Height
 	0x00, 0x00, 0x00, 0x00, // Size
 	0x01, 0xe3, 0x62, 0x99, 0x00, 0x00, 0x00, 0x00, // Nonce
-	0x00, 0x00, 0x00, 0x00, // SigKeyID
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, // ValidatingPubKey
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

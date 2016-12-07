@@ -94,7 +94,7 @@ func TestBlockTxHashes(t *testing.T) {
 // TestBlockHash tests the ability to generate the hash of a block accurately.
 func TestBlockHash(t *testing.T) {
 	// Block 1 hash.
-	hashStr := "1e622cf450a0d537341b7222b81abd21b078817be8c22615a8e0b71bbef9894f"
+	hashStr := "f89a3a47054fcacf09a9e95d1c8808f236b0a6ee64a6fb959fd32b66c0d439fe"
 	wantHash, err := chainhash.NewHashFromStr(hashStr)
 	if err != nil {
 		t.Errorf("NewHashFromStr: %v", err)
@@ -227,14 +227,14 @@ func TestBlockWireErrors(t *testing.T) {
 		{&blockOne, blockOneBytes, pver, 84, io.ErrShortWrite, io.EOF},
 		// Force error in header nonce.
 		{&blockOne, blockOneBytes, pver, 88, io.ErrShortWrite, io.EOF},
-		// Force error in SigKeyID
+		// Force error in ValidatingPubKey
 		{&blockOne, blockOneBytes, pver, 96, io.ErrShortWrite, io.EOF},
 		// Force error in signature
-		{&blockOne, blockOneBytes, pver, 100, io.ErrShortWrite, io.EOF},
+		{&blockOne, blockOneBytes, pver, 129, io.ErrShortWrite, io.EOF},
 		// Force error in transaction count.
-		{&blockOne, blockOneBytes, pver, 180, io.ErrShortWrite, io.EOF},
+		{&blockOne, blockOneBytes, pver, 209, io.ErrShortWrite, io.EOF},
 		// Force error in transactions.
-		{&blockOne, blockOneBytes, pver, 181, io.ErrShortWrite, io.EOF},
+		{&blockOne, blockOneBytes, pver, 210, io.ErrShortWrite, io.EOF},
 	}
 
 	t.Logf("Running %d tests", len(tests))
@@ -353,14 +353,14 @@ func TestBlockSerializeErrors(t *testing.T) {
 		{&blockOne, blockOneBytes, 84, io.ErrShortWrite, io.EOF},
 		// Force error in header nonce.
 		{&blockOne, blockOneBytes, 88, io.ErrShortWrite, io.EOF},
-		// Force error in SigKeyID
+		// Force error in ValidatingPubKey
 		{&blockOne, blockOneBytes, 96, io.ErrShortWrite, io.EOF},
 		// Force error in signature
-		{&blockOne, blockOneBytes, 100, io.ErrShortWrite, io.EOF},
+		{&blockOne, blockOneBytes, 129, io.ErrShortWrite, io.EOF},
 		// Force error in transaction count.
-		{&blockOne, blockOneBytes, 180, io.ErrShortWrite, io.EOF},
+		{&blockOne, blockOneBytes, 209, io.ErrShortWrite, io.EOF},
 		// Force error in transactions.
-		{&blockOne, blockOneBytes, 181, io.ErrShortWrite, io.EOF},
+		{&blockOne, blockOneBytes, 210, io.ErrShortWrite, io.EOF},
 	}
 
 	t.Logf("Running %d tests", len(tests))
@@ -427,7 +427,11 @@ func TestBlockOverflowErrors(t *testing.T) {
 				0x00, 0x00, 0x00, 0x00, // Height
 				0x00, 0x00, 0x00, 0x00, // Size
 				0xf3, 0xe0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, // Nonce
-				0x00, 0x00, 0x00, 0x00, // SigKeyID
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, // ValidatingPubKey
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -500,7 +504,7 @@ func TestBlockSerializeSize(t *testing.T) {
 		size int       // Expected serialized size
 	}{
 		// Block with no transactions.
-		{noTxBlock, 181},
+		{noTxBlock, 210},
 
 		// First block in the mainnet block chain.
 		{&blockOne, len(blockOneBytes)},
@@ -518,6 +522,7 @@ func TestBlockSerializeSize(t *testing.T) {
 }
 
 // blockOne is the first block in the mainnet block chain.
+// TODO(aztec): add in test data for validating pubKey and signature
 var blockOne = MsgBlock{
 	Header: BlockHeader{
 		Version: 1,
@@ -592,7 +597,11 @@ var blockOneBytes = []byte{
 	0x00, 0x00, 0x00, 0x00, // Height
 	0x00, 0x00, 0x00, 0x00, // Size
 	0x01, 0xe3, 0x62, 0x99, 0x00, 0x00, 0x00, 0x00, // Nonce
-	0x00, 0x00, 0x00, 0x00, // SigKeyID
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, // ValidatingPubKey
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -633,5 +642,5 @@ var blockOneBytes = []byte{
 
 // Transaction location information for block one transactions.
 var blockOneTxLocs = []TxLoc{
-	{TxStart: 181, TxLen: 134},
+	{TxStart: 210, TxLen: 134},
 }

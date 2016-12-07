@@ -1289,20 +1289,20 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 
 	blockHeader := &blk.MsgBlock().Header
 	blockReply := btcjson.GetBlockVerboseResult{
-		Hash:          c.Hash,
-		Version:       blockHeader.Version,
-		MerkleRoot:    blockHeader.MerkleRoot.String(),
-		PreviousHash:  blockHeader.PrevBlock.String(),
-		Nonce:         blockHeader.Nonce,
-		Time:          blockHeader.Timestamp.Unix(),
-		Confirmations: uint64(1 + best.Height - blockHeight),
-		Height:        int64(blockHeight),
-		Size:          int32(len(blkBytes)),
-		Bits:          strconv.FormatInt(int64(blockHeader.Bits), 16),
-		Difficulty:    getDifficultyRatio(blockHeader.Bits),
-		NextHash:      nextHashString,
-		SigKeyID:      blockHeader.SigKeyID,
-		Signature:     blockHeader.Signature.String(),
+		Hash:             c.Hash,
+		Version:          blockHeader.Version,
+		MerkleRoot:       blockHeader.MerkleRoot.String(),
+		PreviousHash:     blockHeader.PrevBlock.String(),
+		Nonce:            blockHeader.Nonce,
+		Time:             blockHeader.Timestamp.Unix(),
+		Confirmations:    uint64(1 + best.Height - blockHeight),
+		Height:           int64(blockHeight),
+		Size:             int32(len(blkBytes)),
+		Bits:             strconv.FormatInt(int64(blockHeader.Bits), 16),
+		Difficulty:       getDifficultyRatio(blockHeader.Bits),
+		NextHash:         nextHashString,
+		ValidatingPubKey: blockHeader.ValidatingPubKey.String(),
+		Signature:        blockHeader.Signature.String(),
 	}
 
 	if c.VerboseTx == nil || !*c.VerboseTx {
@@ -1409,19 +1409,19 @@ func handleGetBlockHeader(s *rpcServer, cmd interface{}, closeChan <-chan struct
 	}
 
 	blockHeaderReply := btcjson.GetBlockHeaderVerboseResult{
-		Hash:          c.Hash,
-		Confirmations: uint64(1 + best.Height - blockHeight),
-		Height:        int32(blockHeight),
-		Version:       blockHeader.Version,
-		MerkleRoot:    blockHeader.MerkleRoot.String(),
-		NextHash:      nextHashString,
-		PreviousHash:  blockHeader.PrevBlock.String(),
-		Nonce:         uint64(blockHeader.Nonce),
-		Time:          blockHeader.Timestamp.Unix(),
-		Bits:          strconv.FormatInt(int64(blockHeader.Bits), 16),
-		Difficulty:    getDifficultyRatio(blockHeader.Bits),
-		Signature:     blockHeader.Signature.String(),
-		SigKeyID:      blockHeader.SigKeyID,
+		Hash:             c.Hash,
+		Confirmations:    uint64(1 + best.Height - blockHeight),
+		Height:           int32(blockHeight),
+		Version:          blockHeader.Version,
+		MerkleRoot:       blockHeader.MerkleRoot.String(),
+		NextHash:         nextHashString,
+		PreviousHash:     blockHeader.PrevBlock.String(),
+		Nonce:            uint64(blockHeader.Nonce),
+		Time:             blockHeader.Timestamp.Unix(),
+		Bits:             strconv.FormatInt(int64(blockHeader.Bits), 16),
+		Difficulty:       getDifficultyRatio(blockHeader.Bits),
+		Signature:        blockHeader.Signature.String(),
+		ValidatingPubKey: blockHeader.ValidatingPubKey.String(),
 	}
 	return blockHeaderReply, nil
 }

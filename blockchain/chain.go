@@ -65,7 +65,7 @@ type blockNode struct {
 	timestamp time.Time
 
 	// Generator identity to check rate limiting against.
-	sigKeyID uint32
+	validatingPubKey wire.BlockValidatingPubKey
 }
 
 // newBlockNode returns a new block node for the given block header.  It is
@@ -78,14 +78,14 @@ func newBlockNode(blockHeader *wire.BlockHeader, blockHash *chainhash.Hash, heig
 	// collected.
 	prevHash := blockHeader.PrevBlock
 	node := blockNode{
-		hash:       blockHash,
-		parentHash: &prevHash,
-		workSum:    CalcWork(blockHeader.Bits),
-		height:     height,
-		version:    blockHeader.Version,
-		bits:       blockHeader.Bits,
-		timestamp:  blockHeader.Timestamp,
-		sigKeyID:   blockHeader.SigKeyID,
+		hash:             blockHash,
+		parentHash:       &prevHash,
+		workSum:          CalcWork(blockHeader.Bits),
+		height:           height,
+		version:          blockHeader.Version,
+		bits:             blockHeader.Bits,
+		timestamp:        blockHeader.Timestamp,
+		validatingPubKey: blockHeader.ValidatingPubKey,
 	}
 	return &node
 }

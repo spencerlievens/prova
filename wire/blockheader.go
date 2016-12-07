@@ -16,13 +16,28 @@ import (
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 )
 
+// BlockValidatingPubKeySize is the number of bytes for a compressed pubkey.
+const BlockValidatingPubKeySize = 33
+
+// BlockValidatingPubKey defines the block validating public key.
+// TODO(aztec): replace this with a struct
+type BlockValidatingPubKey [BlockValidatingPubKeySize]byte
+
+// String returns a hexadecimal string of the public key
+func (p BlockValidatingPubKey) String() string {
+	return hex.EncodeToString(p[:])
+}
+
+// BlockSignatureSize is the number of bytes for a signature
 const BlockSignatureSize = 80
 
+// BlockSignature defines the block validating signature.
+// TODO(aztec): replace this with a struct
 type BlockSignature [BlockSignatureSize]byte
 
-// String returns the Hash as the hexadecimal string of the signature
-func (sig BlockSignature) String() string {
-	return hex.EncodeToString(sig[:])
+// String returns a hexadecimal string of the signature
+func (s BlockSignature) String() string {
+	return hex.EncodeToString(s[:])
 }
 
 // BlockVersion is the current latest supported block version.
@@ -30,7 +45,7 @@ func (sig BlockSignature) String() string {
 const BlockVersion = 4
 
 // MaxBlockHeaderPayload is the maximum number of bytes a block header can be.
-const MaxBlockHeaderPayload = 36 + (chainhash.HashSize * 2) + BlockSignatureSize
+const MaxBlockHeaderPayload = 32 + (chainhash.HashSize * 2) + BlockValidatingPubKeySize + BlockSignatureSize
 
 // BlockHeader defines information about a block and is used in the bitcoin
 // block (MsgBlock) and headers (MsgHeaders) messages.
@@ -61,11 +76,10 @@ type BlockHeader struct {
 	// Nonce used to generate the block (64 bits, to avoid extraNonce)
 	Nonce uint64
 
-	// Key ID of the key used for signing
-	// TODO(aztec): implement
-	SigKeyID uint32
+	// Public key of the validating key used to sign the block
+	ValidatingPubKey BlockValidatingPubKey
 
-	// Signature of (PrevBlock|Merkle root) by validation key
+	// Signature of (PrevBlock|Merkle root) by block validating key
 	Signature BlockSignature
 }
 
@@ -166,14 +180,17 @@ func (h *BlockHeader) TempTempAutoSign() error {
 
 	// Choose a signing key at random.
 	rand.Seed(time.Now().UnixNano())
-	sigKeyID := rand.Intn(len(privateKeys))
-	keyStr := privateKeys[sigKeyID]
+	keyStr := privateKeys[rand.Intn(len(privateKeys))]
 
-	h.SigKeyID = uint32(sigKeyID)
-
-	// Sign with signing key
+	// Sign with signing key.
 	keyBytes, _ := hex.DecodeString(keyStr)
 	key, _ := btcec.PrivKeyFromBytes(btcec.S256(), keyBytes)
+
+	pubKey := key.PubKey().SerializeCompressed()[:BlockValidatingPubKeySize]
+
+	// Mark the public key used to sign the block.
+	copy(h.ValidatingPubKey[:BlockValidatingPubKeySize], pubKey[:BlockValidatingPubKeySize])
+
 	return h.Sign(key)
 }
 
@@ -218,7 +235,7 @@ func NewBlockHeader(prevHash *chainhash.Hash, merkleRootHash *chainhash.Hash,
 // decoding from the wire.
 func readBlockHeader(r io.Reader, pver uint32, bh *BlockHeader) error {
 	err := readElements(r, &bh.Version, &bh.PrevBlock, &bh.MerkleRoot,
-		(*int64Time)(&bh.Timestamp), &bh.Bits, &bh.Height, &bh.Size, &bh.Nonce, &bh.SigKeyID, &bh.Signature)
+		(*int64Time)(&bh.Timestamp), &bh.Bits, &bh.Height, &bh.Size, &bh.Nonce, &bh.ValidatingPubKey, &bh.Signature)
 	if err != nil {
 		return err
 	}
@@ -231,7 +248,7 @@ func readBlockHeader(r io.Reader, pver uint32, bh *BlockHeader) error {
 // opposed to encoding for the wire.
 func writeBlockHeader(w io.Writer, pver uint32, bh *BlockHeader) error {
 	err := writeElements(w, bh.Version, &bh.PrevBlock, &bh.MerkleRoot,
-		bh.Timestamp.Unix(), bh.Bits, bh.Height, bh.Size, bh.Nonce, bh.SigKeyID, bh.Signature)
+		bh.Timestamp.Unix(), bh.Bits, bh.Height, bh.Size, bh.Nonce, bh.ValidatingPubKey, bh.Signature)
 	if err != nil {
 		return err
 	}
