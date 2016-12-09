@@ -252,6 +252,14 @@ type TemplateRequest struct {
 	WorkID string `json:"workid,omitempty"`
 }
 
+// AddressTxRequest is a request object as defined by bitcore.
+// (https://bitcore.io/guides/bitcoin/)
+type AddressTxRequest struct {
+	Addresses []string `json:"addresses,omitempty"`
+	Start     uint32   `json:"start,omitempty"`
+	End       uint32   `json:"end,omitempty"`
+}
+
 // convertTemplateRequestField potentially converts the provided value as
 // needed.
 func convertTemplateRequestField(fieldName string, iface interface{}) (interface{}, error) {
@@ -583,6 +591,11 @@ func NewReconsiderBlockCmd(blockHash string) *ReconsiderBlockCmd {
 	}
 }
 
+// GetAddressTxIdsCmd defines the getaddresstxids JSON-RPC command.
+type GetAddressTxIdsCmd struct {
+	Request *AddressTxRequest
+}
+
 // SearchRawTransactionsCmd defines the searchrawtransactions JSON-RPC command.
 type SearchRawTransactionsCmd struct {
 	Address     string
@@ -750,6 +763,7 @@ func init() {
 	MustRegisterCmd("createrawtransaction", (*CreateRawTransactionCmd)(nil), flags)
 	MustRegisterCmd("decoderawtransaction", (*DecodeRawTransactionCmd)(nil), flags)
 	MustRegisterCmd("decodescript", (*DecodeScriptCmd)(nil), flags)
+	MustRegisterCmd("getaddresstxids", (*GetAddressTxIdsCmd)(nil), flags)
 	MustRegisterCmd("getaddednodeinfo", (*GetAddedNodeInfoCmd)(nil), flags)
 	MustRegisterCmd("getbestblockhash", (*GetBestBlockHashCmd)(nil), flags)
 	MustRegisterCmd("getblock", (*GetBlockCmd)(nil), flags)

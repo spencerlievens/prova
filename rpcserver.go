@@ -140,6 +140,7 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"decodescript":         handleDecodeScript,
 	"generate":             handleGenerate,
 	"getaddednodeinfo":     handleGetAddedNodeInfo,
+	"getaddresstxids":      handleGetAddressTxIds,
 	"getbestblock":         handleGetBestBlock,
 	"getbestblockhash":     handleGetBestBlockHash,
 	"getblock":             handleGetBlock,
@@ -251,6 +252,7 @@ var rpcLimited = map[string]struct{}{
 	"createrawtransaction":    {},
 	"decoderawtransaction":    {},
 	"decodescript":            {},
+	"getaddresstxids":         {},
 	"getbestblock":            {},
 	"getbestblockhash":        {},
 	"getblock":                {},
@@ -1189,6 +1191,106 @@ func handleGetAddedNodeInfo(s *rpcServer, cmd interface{}, closeChan <-chan stru
 		results = append(results, &result)
 	}
 	return results, nil
+}
+
+// handleGetAddressTxIds implements the getaddresstxids command.
+func handleGetAddressTxIds(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	// Respond with an error if the address index is not enabled.
+	addrIndex := s.server.addrIndex
+	if addrIndex == nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCMisc,
+			Message: "Address index must be enabled (--addrindex)",
+		}
+	}
+
+	c := cmd.(*btcjson.GetAddressTxIdsCmd)
+
+	start := uint32(0)
+	if c.Request.Start > 0 {
+		start = c.Request.Start + 1
+	}
+
+	end := uint32(1<<32 - 1)
+	if c.Request.End > 0 {
+		end = c.Request.End + 1
+	}
+
+	if start > end {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCMisc,
+			Message: "End height must not be less than the start height.",
+		}
+	}
+
+	// Attempt to decode the supplied addresses.
+	addressTxns := make([]retrievedTx, 0)
+	for _, address := range c.Request.Addresses {
+		addr, err := rmgutil.DecodeAddress(address, s.server.chainParams)
+		if err != nil {
+			return nil, &btcjson.RPCError{
+				Code:    btcjson.ErrRPCInvalidAddressOrKey,
+				Message: "Invalid address or key: " + err.Error(),
+			}
+		}
+
+		err = s.server.db.View(func(dbTx database.Tx) error {
+			regions, err := addrIndex.BoundedTxRegionsForAddress(
+				dbTx, addr, start, end)
+			if err != nil {
+				return err
+			}
+
+			// Load the raw transaction bytes from the database.
+			serializedTxns, err := dbTx.FetchBlockRegions(regions)
+			if err != nil {
+				return err
+			}
+
+			// Add the transaction and the hash of the block it is
+			// contained in to the list.
+			for i, serializedTx := range serializedTxns {
+				addressTxns = append(addressTxns, retrievedTx{
+					txBytes: serializedTx,
+					blkHash: regions[i].Hash,
+				})
+			}
+
+			return nil
+		})
+		if err != nil {
+			context := "Failed to load address index entries"
+			return nil, internalRPCError(err.Error(), context)
+		}
+
+	}
+
+	// Create a reply
+	reply := make([]string, len(addressTxns))
+
+	for i := range addressTxns {
+		// The deserialized transaction is needed, so deserialize the
+		// retrieved transaction if it's in serialized form (which will
+		// be the case when it was lookup up from the database).
+		// Otherwise, use the existing deserialized transaction.
+		rtx := &addressTxns[i]
+		var mtx *wire.MsgTx
+		if rtx.tx == nil {
+			// Deserialize the transaction.
+			mtx = new(wire.MsgTx)
+			err := mtx.Deserialize(bytes.NewReader(rtx.txBytes))
+			if err != nil {
+				context := "Failed to deserialize transaction"
+				return nil, internalRPCError(err.Error(),
+					context)
+			}
+		} else {
+			mtx = rtx.tx.MsgTx()
+		}
+		reply[i] = mtx.TxHash().String()
+	}
+
+	return reply, nil
 }
 
 // handleGetBestBlock implements the getbestblock command.

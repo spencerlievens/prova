@@ -237,6 +237,56 @@ func dbPutAddrIndexEntry(bucket internalBucket, addrKey [addrKeySize]byte, block
 	return bucket.Put(level0Key[:], newData)
 }
 
+// dbFetchAddrIndexEntriesByBlock returns all block regions for transactions
+// referenced by the given address key.
+func dbFetchAddrIndexEntriesByBlock(bucket internalBucket, addrKey [addrKeySize]byte, start uint32, end uint32, fetchBlockHash fetchBlockHashFunc) ([]database.BlockRegion, error) {
+	// fetch all levels
+	var level uint8
+	var serialized []byte
+	for true {
+		curLevelKey := keyForLevel(addrKey, level)
+		levelData := bucket.Get(curLevelKey[:])
+		if levelData == nil {
+			// Stop when there are no more levels.
+			break
+		}
+
+		// Higher levels contain older transactions, so prepend them.
+		prepended := make([]byte, len(serialized)+len(levelData))
+		copy(prepended, levelData)
+		copy(prepended[len(levelData):], serialized)
+		serialized = prepended
+		level++
+	}
+
+	numEntries := uint32(len(serialized) / txEntrySize)
+	results := make([]database.BlockRegion, 0, numEntries)
+	for i := uint32(0); i < numEntries; i++ {
+		var snippet []byte
+		snippet = serialized[i*txEntrySize:]
+
+		// Ensure there are enough bytes to decode.
+		if len(snippet) < txEntrySize {
+			return nil, errDeserialize("unexpected end of data")
+		}
+		blockId := byteOrder.Uint32(snippet[0:4])
+
+		if blockId >= start && blockId <= end {
+			hash, err := fetchBlockHash(snippet[0:4])
+			if err != nil {
+				return nil, err
+			}
+			region := database.BlockRegion{
+				Hash:   hash,
+				Offset: byteOrder.Uint32(snippet[4:8]),
+				Len:    byteOrder.Uint32(snippet[8:12]),
+			}
+			results = append(results, region)
+		}
+	}
+	return results, nil
+}
+
 // dbFetchAddrIndexEntries returns block regions for transactions referenced by
 // the given address key and the number of entries skipped since it could have
 // been less in the case where there are less total entries than the requested
@@ -523,6 +573,12 @@ func addrToKey(addr rmgutil.Address) ([addrKeySize]byte, error) {
 		copy(result[1:], addr.Hash160()[:])
 		return result, nil
 
+	case *rmgutil.AddressAztec:
+		var result [addrKeySize]byte
+		result[0] = addrKeyTypePubKeyHash
+		copy(result[1:], addr.ScriptAddress()[:])
+		return result, nil
+
 	case *rmgutil.AddressScriptHash:
 		var result [addrKeySize]byte
 		result[0] = addrKeyTypeScriptHash
@@ -748,6 +804,40 @@ func (idx *AddrIndex) DisconnectBlock(dbTx database.Tx, block *rmgutil.Block, vi
 	}
 
 	return nil
+}
+
+// BoundedTxRegionsForAddress returns a slice of block regions which identify
+// each transaction that involves the passed address.
+// Start and End blocks can be passed, to limit the result set.
+//
+// NOTE: These results only include transactions confirmed in blocks.  See the
+// UnconfirmedTxnsForAddress method for obtaining unconfirmed transactions
+// that involve a given address.
+//
+// This function is safe for concurrent access.
+func (idx *AddrIndex) BoundedTxRegionsForAddress(dbTx database.Tx, addr rmgutil.Address, start uint32, end uint32) ([]database.BlockRegion, error) {
+	addrKey, err := addrToKey(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	var regions []database.BlockRegion
+	err = idx.db.View(func(dbTx database.Tx) error {
+		// Create closure to lookup the block hash given the ID using
+		// the database transaction.
+		fetchBlockHash := func(id []byte) (*chainhash.Hash, error) {
+			// Deserialize and populate the result.
+			return dbFetchBlockHashBySerializedID(dbTx, id)
+		}
+
+		var err error
+		addrIdxBucket := dbTx.Metadata().Bucket(addrIndexKey)
+		regions, err = dbFetchAddrIndexEntriesByBlock(addrIdxBucket,
+			addrKey, start, end, fetchBlockHash)
+		return err
+	})
+
+	return regions, err
 }
 
 // TxRegionsForAddress returns a slice of block regions which identify each

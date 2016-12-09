@@ -151,6 +151,18 @@ var helpDescsEnUS = map[string]string{
 	"getaddednodeinfo--condition1": "dns=true",
 	"getaddednodeinfo--result0":    "List of added peers",
 
+	// GetAddressTxIds help.
+	"getaddresstxids--synopsis": "Returns transaction-ids involving the passed address.\n" +
+		"Usage of this RPC requires the optional --addrindex flag to be activated, otherwise all responses will simply return with an error stating the address index has not yet been built.\n" +
+		"Similarly, until the address index has caught up with the current best height, all requests will return an error response in order to avoid serving stale data.",
+	"getaddresstxids-request":  "AddressTxRequest object containing addresses, start block and end block",
+	"getaddresstxids--result0": "Transaction IDs",
+
+	// AddressTxRequest help.
+	"addresstxrequest-addresses": "The addresses to search for",
+	"addresstxrequest-start":     "The block to start at",
+	"addresstxrequest-end":       "The block to end at",
+
 	// GetBestBlockResult help.
 	"getbestblockresult-hash":   "Hex-encoded bytes of the best block hash",
 	"getbestblockresult-height": "Height of the best block",
@@ -608,6 +620,7 @@ var rpcResultTypes = map[string][]interface{}{
 	"decodescript":         {(*btcjson.DecodeScriptResult)(nil)},
 	"generate":             {(*[]string)(nil)},
 	"getaddednodeinfo":     {(*[]string)(nil), (*[]btcjson.GetAddedNodeInfoResult)(nil)},
+	"getaddresstxids":      {(*[]string)(nil)},
 	"getbestblock":         {(*btcjson.GetBestBlockResult)(nil)},
 	"getbestblockhash":     {(*string)(nil)},
 	"getblock":             {(*string)(nil), (*btcjson.GetBlockVerboseResult)(nil)},
