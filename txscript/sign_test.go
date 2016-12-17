@@ -1194,7 +1194,7 @@ func TestSignTxOutput(t *testing.T) {
 
 	//Aztec Multisig
 	//KeyID #1
-	keyId1 := rmgutil.KeyIDFromAddressBuffer([]byte{0, 0, 0, 1})
+	keyId1 := rmgutil.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
 	key1, _ := btcec.PrivKeyFromBytes(btcec.S256(), []byte{
 		0xea, 0xf0, 0x2c, 0xa3, 0x48, 0xc5, 0x24, 0xe6,
 		0x39, 0x26, 0x55, 0xba, 0x4d, 0x29, 0x60, 0x3c,
@@ -1203,7 +1203,7 @@ func TestSignTxOutput(t *testing.T) {
 	})
 
 	//KeyID #2
-	keyId2 := rmgutil.KeyIDFromAddressBuffer([]byte{0, 0, 0, 2})
+	keyId2 := rmgutil.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 	key2, _ := btcec.PrivKeyFromBytes(btcec.S256(), []byte{
 		0x2b, 0x8c, 0x52, 0xb7, 0x7b, 0x32, 0x7c, 0x75,
 		0x5b, 0x9b, 0x37, 0x55, 0x00, 0xd3, 0xf4, 0xb2,

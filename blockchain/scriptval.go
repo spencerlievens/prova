@@ -100,10 +100,9 @@ out:
 					break out
 				}
 				keyIdMap := v.utxoView.LookupKeyIDs(keyIDs)
-				const numMinKeyIDs uint32 = 2
-				numReplaced := txscript.ReplaceKeyIDs(pops, keyIdMap)
-				if numReplaced < numMinKeyIDs {
-					str := fmt.Sprintf("number of keyIDs %v below lower bound of %v", originTxHash, numMinKeyIDs)
+				err = txscript.ReplaceKeyIDs(pops, keyIdMap)
+				if err != nil {
+					str := fmt.Sprintf("failed to replace keyIDs %s", originTxHash)
 					err := ruleError(ErrScriptMalformed, str)
 					v.sendResult(err)
 					break out

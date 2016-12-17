@@ -36,7 +36,7 @@ func TestBlock(t *testing.T) {
 	}
 
 	// Hash for block 100,000.
-	wantHashStr := "edc8c730e8b14e0c18e53cc1b1f9dc22dd22ebf1a36fe8f287a62c925b5c6cee"
+	wantHashStr := "730785803d7a7dee39c7909b08cb35207de8cf70c762ffa62bfa97907b2c0573"
 	wantHash, err := chainhash.NewHashFromStr(wantHashStr)
 	if err != nil {
 		t.Errorf("NewHashFromStr: %v", err)

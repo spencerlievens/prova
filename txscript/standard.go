@@ -141,18 +141,18 @@ func isGeneralAztec(pops []parsedOpcode) bool {
 				return false
 			}
 			nKeyHashes++
-		} else if dataLen <= 4 {
+		} else if isUint32(pop.opcode) {
 			// Otherwise, it should look like a KeyID
-			scriptNum, err := makeScriptNum(pop.data, true, 4)
+			keyID, err := asInt32(pop)
 			if err != nil {
 				return false
 			}
-			_, seen := seenKeyIDs[int32(scriptNum)]
+			_, seen := seenKeyIDs[keyID]
 			if seen {
 				// Duplicate key ids not allowed
 				return false
 			}
-			seenKeyIDs[int32(scriptNum)] = true
+			seenKeyIDs[keyID] = true
 			nKeyIDs++
 		}
 	}

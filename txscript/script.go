@@ -238,38 +238,74 @@ func removeOpcode(pkscript []parsedOpcode, opcode byte) []parsedOpcode {
 	return retScript
 }
 
+// asInt32 will convert an opcode to a int32. make sure to use isUint32
+// before, to check that opcode can be converted.
+func asInt32(pop parsedOpcode) (int32, error) {
+	if isSmallInt(pop.opcode) {
+		return int32(asSmallInt(pop.opcode)), nil
+	}
+	result, err := makeScriptNum(pop.data, true, 4)
+	return result.Int32(), err
+}
+
 // ExtractKeyIDs takes an Aztec pkScript and extracts the keyIDs from it.
 // We assume a Aztec address structure like this:
-// <2 hash keyID1 keyID2 3 OP_CHECKSAFEMULTISIG>
+// basic: <2 hash keyID1 keyID2 3 OP_CHECKSAFEMULTISIG>
+// general: <x hash/keyID hash/keyID y OP_CHECKSAFEMULTISIG>
 func ExtractKeyIDs(pkScript []parsedOpcode) ([]rmgutil.KeyID, error) {
-	// to extract keyID1 and keyID2, we want the array to be at least 4 elements
-	if len(pkScript) < 4 {
+	// the basic structure has 6 elements, as described above
+	if len(pkScript) < 6 || !isSmallInt(pkScript[len(pkScript)-2].opcode) {
 		return nil, fmt.Errorf("unable to extract keyIDs from script, "+
-			"not enough opcodes %v", len(pkScript))
+			"unexpected script structure %v", pkScript)
 	}
-	// TODO(aztec) do more input validation.
-	// Move validation to validate.go later, and have a function like isAztecAddress()
-	keyID01 := rmgutil.KeyIDFromAddressBuffer(pkScript[2].data)
-	keyID02 := rmgutil.KeyIDFromAddressBuffer(pkScript[3].data)
-	return []rmgutil.KeyID{keyID01, keyID02}, nil
+	pkHashCount := asSmallInt(pkScript[len(pkScript)-2].opcode)
+	keyIDs := make([]rmgutil.KeyID, 0, pkHashCount)
+	for i := 2; i <= pkHashCount; i++ {
+		if !isUint32(pkScript[i].opcode) {
+			return nil, fmt.Errorf("unable to extract keyIDs from script, "+
+				"unexpected script structure at opcode %v", pkScript[i])
+		}
+		keyID, err := asInt32(pkScript[i])
+		if err != nil {
+			return nil, err
+		}
+		keyIDs = append(keyIDs, rmgutil.KeyID(keyID))
+	}
+	return keyIDs, nil
 }
 
 // ReplaceKeyIds replaces keyIds in a pkScript with pubKeyHashes.
-// This is done before we pass the script to a validator
-func ReplaceKeyIDs(pkScript []parsedOpcode, keyIdMap map[rmgutil.KeyID][]byte) uint32 {
-	count := uint32(0)
-	for i := range pkScript {
+// We assume a Aztec address structure like this:
+// basic: <2 hash keyID1 keyID2 3 OP_CHECKSAFEMULTISIG>
+// general: <x hash/keyID hash/keyID y OP_CHECKSAFEMULTISIG>
+func ReplaceKeyIDs(pkScript []parsedOpcode, keyIdMap map[rmgutil.KeyID][]byte) error {
+	// the basic structure has 6 elements, as described above
+	if len(pkScript) < 6 || !isSmallInt(pkScript[len(pkScript)-2].opcode) {
+		return fmt.Errorf("unable to extract keyIDs from script, "+
+			"unexpected script structure %v", pkScript)
+	}
+	// no work to be done
+	if len(keyIdMap) == 0 {
+		return fmt.Errorf("no keyHashes provided to replace keyIDs")
+	}
+	pkHashCount := asSmallInt(pkScript[len(pkScript)-2].opcode)
+	for i := 2; i <= pkHashCount; i++ {
 		pop := &pkScript[i]
-		if len(pop.data) == 4 {
-			keyIdWant := rmgutil.KeyIDFromAddressBuffer(pop.data)
-			if val, ok := keyIdMap[keyIdWant]; ok {
-				pop.data = val
-				pop.opcode = &opcodeArray[OP_DATA_20]
-				count++
-			}
+		if !isUint32(pop.opcode) {
+			return fmt.Errorf("unable to replace keyIDs in script, "+
+				"unexpected script structure at opcode %v", pop)
+		}
+		keyID, err := asInt32(*pop)
+		if err != nil {
+			return fmt.Errorf("unable to parse keyIDs from opcode %v",
+				pkScript[i])
+		}
+		if val, ok := keyIdMap[rmgutil.KeyID(keyID)]; ok {
+			pop.data = val
+			pop.opcode = &opcodeArray[OP_DATA_20]
 		}
 	}
-	return count
+	return nil
 }
 
 // canonicalPush returns true if the object is either not a push instruction
