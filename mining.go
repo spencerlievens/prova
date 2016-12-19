@@ -243,6 +243,24 @@ func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight int32, addr rmgutil
 			activeNetParams.Params),
 		PkScript: pkScript,
 	})
+
+	// Add block height as an OP_RETURN output to make a unique txid.
+	// Since BIP30 transactions are required to have unique txids. This is
+	// normally covered with the block height in the coinbase scriptSig.
+	// Since scriptSigs have been eliminated from the txid, a dummy output
+	// with the block height is created to add back uniqueness to the hash.
+	// There is no consensus rule that this output must exist, it is just
+	// included as a convenient way to provide uniqueness.
+	scriptBuilder := txscript.NewScriptBuilder()
+	uniquenessScript, err := scriptBuilder.AddOp(txscript.OP_RETURN).AddInt64(int64(nextBlockHeight)).Script()
+	if err != nil {
+		return nil, err
+	}
+	tx.AddTxOut(&wire.TxOut{
+		Value:    0,
+		PkScript: uniquenessScript,
+	})
+
 	return rmgutil.NewTx(tx), nil
 }
 

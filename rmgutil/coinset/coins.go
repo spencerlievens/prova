@@ -17,6 +17,7 @@ import (
 // Coin represents a spendable transaction outpoint
 type Coin interface {
 	Hash() *chainhash.Hash
+	HashWithSig() *chainhash.Hash
 	Index() uint32
 	Value() rmgutil.Amount
 	PkScript() []byte
@@ -359,8 +360,8 @@ type SimpleCoin struct {
 var _ Coin = &SimpleCoin{}
 
 // Hash returns the hash value of the transaction on which the Coin is an output
-func (c *SimpleCoin) Hash() *chainhash.Hash {
-	return c.Tx.Hash()
+func (c *SimpleCoin) HashWithSig() *chainhash.Hash {
+	return c.Tx.HashWithSig()
 }
 
 // Index returns the index of the output on the transaction which the Coin represents

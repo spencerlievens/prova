@@ -167,7 +167,7 @@ func createSpendingTx(sigScript, pkScript []byte, outputValue int64) *wire.MsgTx
 	coinbaseTx.AddTxOut(txOut)
 
 	spendingTx := wire.NewMsgTx()
-	coinbaseTxHash := coinbaseTx.TxHash()
+	coinbaseTxHash := coinbaseTx.TxHashWithSig()
 	outPoint = wire.NewOutPoint(&coinbaseTxHash, 0)
 	txIn = wire.NewTxIn(outPoint, sigScript)
 	txOut = wire.NewTxOut(outputValue, nil)

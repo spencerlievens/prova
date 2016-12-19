@@ -146,6 +146,26 @@ func (b *Block) Transactions() []*Tx {
 	return b.transactions
 }
 
+// TxHashWithSig returns the hash that includes the scriptSig for the
+// requested transaction number in the Block.
+// The supplied index is 0 based.  That is to say, the first transaction in the
+// block is txNum 0.  This is equivalent to calling TxHashWithSig on the
+// underlying wire.MsgTx, however it caches the result so subsequent calls are
+// more efficient.
+func (b *Block) TxHashWithSig(txNum int) (*chainhash.Hash, error) {
+	// Attempt to get a wrapped transaction for the specified index.  It
+	// will be created lazily if needed or simply return the cached version
+	// if it has already been generated.
+	tx, err := b.Tx(txNum)
+	if err != nil {
+		return nil, err
+	}
+
+	// Defer to the wrapped transaction which will return the cached hash if
+	// it has already been generated.
+	return tx.HashWithSig(), nil
+}
+
 // TxHash returns the hash for the requested transaction number in the Block.
 // The supplied index is 0 based.  That is to say, the first transaction in the
 // block is txNum 0.  This is equivalent to calling TxHash on the underlying

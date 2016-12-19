@@ -214,7 +214,7 @@ func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
 		// TODO(aztec) find a better way to set size of HashCache
 		hashCache := NewHashCache(90)
 		hashCache.AddSigHashes(tx)
-		txHash := tx.TxHashStripped()
+		txHash := tx.TxHash()
 		txSigHashes, found := hashCache.GetSigHashes(&txHash)
 		if !found {
 			return nil, class, nil, 0, errors.New("unable to find sighashes")

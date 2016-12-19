@@ -35,8 +35,8 @@ const (
 	defaultTxInOutAlloc = 15
 
 	// minTxInPayload is the minimum payload size for a transaction input.
-	// PreviousOutPoint.Hash + PreviousOutPoint.Index 4 bytes + Varint for
-	// SignatureScript length 1 byte + Sequence 4 bytes.
+	// PreviousOutPoint.Hash + PreviousOutPoint.Index 4 bytes +
+	// Varint for SignatureScript length 1 byte + Sequence 4 bytes.
 	minTxInPayload = 9 + chainhash.HashSize
 
 	// maxTxInPerMessage is the maximum number of transactions inputs that
@@ -243,20 +243,20 @@ func (msg *MsgTx) AddTxOut(to *TxOut) {
 	msg.TxOut = append(msg.TxOut, to)
 }
 
-// TxHashStripped generates the hash for a transaction not including
+// TxHash generates the hash for a transaction not including
 // its scriptSigs.
-func (msg *MsgTx) TxHashStripped() chainhash.Hash {
+func (msg *MsgTx) TxHash() chainhash.Hash {
 	// Encode the transaction and calculate double sha256 on the result.
 	// Ignore the error returns since the only way the encode could fail
 	// is being out of memory or due to nil pointers, both of which would
 	// cause a run-time panic.
-	buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSizeStripped()))
+	buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSize()))
 	_ = msg.SerializeStripped(buf)
 	return chainhash.DoubleHashH(buf.Bytes())
 }
 
 // TxHash generates the Hash for the transaction.
-func (msg *MsgTx) TxHash() chainhash.Hash {
+func (msg *MsgTx) TxHashWithSig() chainhash.Hash {
 	// Encode the transaction and calculate double sha256 on the result.
 	// Ignore the error returns since the only way the encode could fail
 	// is being out of memory or due to nil pointers, both of which would
@@ -567,7 +567,7 @@ func (msg *MsgTx) Serialize(w io.Writer) error {
 
 }
 
-// serializeStripped is same like Serialize, except inputs have no scriptSigs.
+// SerializeStripped is like Serialize, except inputs have no scriptSigs.
 func (msg *MsgTx) SerializeStripped(w io.Writer) error {
 	return msg.btcEncode(w, 0, true)
 

@@ -128,10 +128,9 @@ func TestTx(t *testing.T) {
 	return
 }
 
-// TestTxHashStripped generates the hash of a stripped transaction, excluding
-// all scriptSigs, correctly.
-func TestTxHashStripped(t *testing.T) {
-
+// TestTxHash generates the hash of a transaction, excluding all scriptSigs,
+// correctly.
+func TestTxHash(t *testing.T) {
 	hashStr := "12d9670a57d494ef1c68731357868862b4ed5871b71942e5b607d8e62e2412eb"
 	wantHash, err := chainhash.NewHashFromStr(hashStr)
 	if err != nil {
@@ -149,7 +148,7 @@ func TestTxHashStripped(t *testing.T) {
 		Sequence:        0xffffffff,
 	}
 	txOut := TxOut{
-		Value: 5000000000,
+		Value:    5000000000,
 		PkScript: []byte{},
 	}
 	msgTx.AddTxIn(&txIn)
@@ -157,7 +156,7 @@ func TestTxHashStripped(t *testing.T) {
 	msgTx.LockTime = 0
 
 	// Ensure the hash produced is expected.
-	txHash := msgTx.TxHashStripped()
+	txHash := msgTx.TxHash()
 	if !txHash.IsEqual(wantHash) {
 		t.Errorf("TxHash: wrong hash - got %v, want %v",
 			spew.Sprint(txHash), spew.Sprint(wantHash))
@@ -166,7 +165,7 @@ func TestTxHashStripped(t *testing.T) {
 }
 
 // TestTxHash tests the ability to generate the hash of a transaction accurately.
-func TestTxHash(t *testing.T) {
+func TestTxHashWithSig(t *testing.T) {
 	// Hash of first transaction from block 113875.
 	hashStr := "f051e59b5e2503ac626d03aaeac8ab7be2d72ba4b7e97119c5852d70d52dcb86"
 	wantHash, err := chainhash.NewHashFromStr(hashStr)
@@ -206,10 +205,10 @@ func TestTxHash(t *testing.T) {
 	msgTx.LockTime = 0
 
 	// Ensure the hash produced is expected.
-	txHash := msgTx.TxHash()
-	if !txHash.IsEqual(wantHash) {
+	TxHashWithSig := msgTx.TxHashWithSig()
+	if !TxHashWithSig.IsEqual(wantHash) {
 		t.Errorf("TxHash: wrong hash - got %v, want %v",
-			spew.Sprint(txHash), spew.Sprint(wantHash))
+			TxHashWithSig.String(), wantHash.String())
 	}
 }
 
@@ -409,7 +408,7 @@ func TestTxWireErrors(t *testing.T) {
 	}
 }
 
-// TestTxSerializeStripped tests MsgTx serialize without scriptSigs.
+// TestTx tests MsgTx serialize without scriptSigs.
 func TestTxSerializeStripped(t *testing.T) {
 	noTx := NewMsgTx()
 	noTx.Version = 1
@@ -733,7 +732,7 @@ func TestTxSerializeSize(t *testing.T) {
 	}
 }
 
-// TestTxSerializeSizeStripped performs tests to ensure the serialize size for 
+// TestTxSerializeSizeStripped performs tests to ensure the serialize size for
 //various transactions is accurate.
 func TestTxSerializeSizeStripped(t *testing.T) {
 	// Empty tx message.
@@ -782,7 +781,7 @@ var stripTx = &MsgTx{
 	},
 	TxOut: []*TxOut{
 		{
-			Value: 0x12a05f200,
+			Value:    0x12a05f200,
 			PkScript: []byte{},
 		},
 	},
@@ -798,11 +797,11 @@ var stripTxEncoded = []byte{
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Previous output hash
 	0xff, 0xff, 0xff, 0xff, // Prevous output index
-	0x00,                                     // scryptSig length set to 0
+	0x00,                   // scryptSig length set to 0
 	0xff, 0xff, 0xff, 0xff, // Sequence
 	0x01,                                           // Varint for number of output transactions
 	0x00, 0xf2, 0x05, 0x2a, 0x01, 0x00, 0x00, 0x00, // Transaction amount
-	0x00, // Varint for length of pk script
+	0x00,                   // Varint for length of pk script
 	0x00, 0x00, 0x00, 0x00, // Lock time
 }
 

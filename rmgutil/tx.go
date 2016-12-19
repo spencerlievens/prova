@@ -22,10 +22,10 @@ const TxIndexUnknown = -1
 // transaction on its first access so subsequent accesses don't have to repeat
 // the relatively expensive hashing operations.
 type Tx struct {
-	msgTx       *wire.MsgTx     // Underlying MsgTx
-	txHash      *chainhash.Hash // Cached transaction hash
-	txStripHash *chainhash.Hash // Cached transaction hash
-	txIndex     int             // Position within a block or TxIndexUnknown
+	msgTx         *wire.MsgTx     // Underlying MsgTx
+	txHash        *chainhash.Hash // Cached transaction hash
+	TxHashWithSig *chainhash.Hash // Cached tx-over-sig hash
+	txIndex       int             // Position within a block or TxIndexUnknown
 }
 
 // MsgTx returns the underlying wire.MsgTx for the transaction.
@@ -37,6 +37,19 @@ func (t *Tx) MsgTx() *wire.MsgTx {
 // Hash returns the hash of the transaction.  This is equivalent to
 // calling TxHash on the underlying wire.MsgTx, however it caches the
 // result so subsequent calls are more efficient.
+func (t *Tx) HashWithSig() *chainhash.Hash {
+	// Return the cached hash if it has already been generated.
+	if t.TxHashWithSig != nil {
+		return t.TxHashWithSig
+	}
+
+	// Cache the hash and return it.
+	hash := t.msgTx.TxHashWithSig()
+	t.TxHashWithSig = &hash
+	return &hash
+}
+
+// Hash returns the hash of a transaction without scriptSigs.
 func (t *Tx) Hash() *chainhash.Hash {
 	// Return the cached hash if it has already been generated.
 	if t.txHash != nil {
@@ -46,19 +59,6 @@ func (t *Tx) Hash() *chainhash.Hash {
 	// Cache the hash and return it.
 	hash := t.msgTx.TxHash()
 	t.txHash = &hash
-	return &hash
-}
-
-// HashStriped returns the hash of a transaction without scriptSigs.
-func (t *Tx) HashStripped() *chainhash.Hash {
-	// Return the cached hash if it has already been generated.
-	if t.txStripHash != nil {
-		return t.txStripHash
-	}
-
-	// Cache the hash and return it.
-	hash := t.msgTx.TxHashStripped()
-	t.txStripHash = &hash
 	return &hash
 }
 

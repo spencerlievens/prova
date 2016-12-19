@@ -3786,7 +3786,7 @@ func TestSigHashNew(t *testing.T) {
 	// tx to it.
 	hashCache := NewHashCache(90)
 	hashCache.AddSigHashes(tx)
-	hash := tx.TxHashStripped()
+	hash := tx.TxHash()
 	txSigHashes, found := hashCache.GetSigHashes(&hash)
 	if !found {
 		t.Fatalf("unable to find sighashes")

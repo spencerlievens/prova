@@ -17,18 +17,20 @@ import (
 )
 
 type TestCoin struct {
-	TxHash     *chainhash.Hash
-	TxIndex    uint32
-	TxValue    rmgutil.Amount
-	TxNumConfs int64
+	TxHashWithSig *chainhash.Hash
+	TxHash        *chainhash.Hash
+	TxIndex       uint32
+	TxValue       rmgutil.Amount
+	TxNumConfs    int64
 }
 
-func (c *TestCoin) Hash() *chainhash.Hash { return c.TxHash }
-func (c *TestCoin) Index() uint32         { return c.TxIndex }
-func (c *TestCoin) Value() rmgutil.Amount { return c.TxValue }
-func (c *TestCoin) PkScript() []byte      { return nil }
-func (c *TestCoin) NumConfs() int64       { return c.TxNumConfs }
-func (c *TestCoin) ValueAge() int64       { return int64(c.TxValue) * c.TxNumConfs }
+func (c *TestCoin) HashWithSig() *chainhash.Hash { return c.TxHashWithSig }
+func (c *TestCoin) Hash() *chainhash.Hash        { return c.TxHash }
+func (c *TestCoin) Index() uint32                { return c.TxIndex }
+func (c *TestCoin) Value() rmgutil.Amount        { return c.TxValue }
+func (c *TestCoin) PkScript() []byte             { return nil }
+func (c *TestCoin) NumConfs() int64              { return c.TxNumConfs }
+func (c *TestCoin) ValueAge() int64              { return int64(c.TxValue) * c.TxNumConfs }
 
 func NewCoin(index int64, value rmgutil.Amount, numConfs int64) coinset.Coin {
 	h := fastsha256.New()
@@ -114,7 +116,7 @@ func TestCoinSet(t *testing.T) {
 		t.Errorf("Expected only 1 TxIn, got %d", len(mtx.TxIn))
 	}
 	op := mtx.TxIn[0].PreviousOutPoint
-	if !op.Hash.IsEqual(coins[1].Hash()) || op.Index != coins[1].Index() {
+	if !op.Hash.IsEqual(coins[1].HashWithSig()) || op.Index != coins[1].Index() {
 		t.Errorf("Expected the second coin to be added as input to mtx")
 	}
 }
@@ -238,7 +240,7 @@ var (
 )
 
 func TestSimpleCoin(t *testing.T) {
-	if testSimpleCoin.Hash().String() != testSimpleCoinTxHash {
+	if testSimpleCoin.HashWithSig().String() != testSimpleCoinTxHash {
 		t.Error("Different value for tx hash than expected")
 	}
 	if testSimpleCoin.Index() != 0 {

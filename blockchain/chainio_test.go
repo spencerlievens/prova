@@ -520,7 +520,7 @@ func TestUtxoSerialization(t *testing.T) {
 		serialized []byte
 	}{
 		// From tx in main blockchain:
-		// 0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098
+		// c8116af9fc0be25f6c720b88e675bf1de423286ab5e949f7d9fa735f26364cc0
 		{
 			name: "Only output 0, coinbase",
 			entry: &UtxoEntry{
@@ -666,7 +666,7 @@ func TestUtxoSerialization(t *testing.T) {
 			serialized: hexToBytes("0185f90b0a011200e2ccd6ec7c6e2e581349c77e067385fa8236bf8a800900b8025be1b3efc63b0ad48e7f9f10e87544528d58"),
 		},
 		// From tx in main blockchain:
-		// 0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098
+		// c8116af9fc0be25f6c720b88e675bf1de423286ab5e949f7d9fa735f26364cc0
 		{
 			name: "Only output 0, coinbase, fully spent",
 			entry: &UtxoEntry{

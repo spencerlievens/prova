@@ -56,7 +56,7 @@ func (h *HashCache) AddSigHashes(tx *wire.MsgTx) {
 	h.Lock()
 	defer h.Unlock()
 	sigHashes := NewTxSigHashes(tx)
-	txid := tx.TxHashStripped()
+	txid := tx.TxHash()
 	h.sigHashes[txid] = sigHashes
 }
 

@@ -72,15 +72,15 @@ func BuildMerkleTreeStore(transactions []*rmgutil.Tx) []*chainhash.Hash {
 	nextPoT := nextPowerOfTwo(len(transactions))
 	// A merkle tree with some N == Power-of-Two-number of leaves has N - 1 nodes.
 	// This would require an array length of nextPoT * 2 - 1.
-	// We want every txHash being represented twice, stripped and unstripped,
+	// We want both types of txHash represented, stripped and unstripped,
 	// hence, the size is calculated as nextPot * 4 - 1
 	arraySize := nextPoT*2*2 - 1
 	merkles := make([]*chainhash.Hash, arraySize)
 
 	// Create the base transaction hashes and populate the array with them.
 	for i, tx := range transactions {
-		merkles[i] = tx.HashStripped()
-		merkles[i+nextPoT] = tx.Hash()
+		merkles[i] = tx.Hash()
+		merkles[i+nextPoT] = tx.HashWithSig()
 	}
 
 	// Start the array offset after the last transaction and adjusted to the

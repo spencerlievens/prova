@@ -53,10 +53,10 @@ func TestBlock(t *testing.T) {
 
 	// Hashes for the transactions in Block100000.
 	wantTxHashes := []string{
-		"8c14f0db3df150123e6f3dbbf30f8b955a8249b62ac1d1ff16284aefa3d06d87",
-		"fff2525b8931402dd09222c50775608f75787bd2b87e56995a7bdd30f79702c4",
-		"6359f0868171b1d194cbee1af2f16ea598ae8fad666d9b012c8ed2b79a236ec4",
-		"e9a66845e05d5abc0ad04ec80f774a7e585c6e8db975962d069a522137b80c1d",
+		"c9b7bfca2c592c8527f8c6a880972680f3e0c5961a986cef975b04b311190ab6",
+		"477ecfd31ee298dac19f0893ef8f45a476b5f52e1d6d3ca2d91e6388d24c2d26",
+		"a4b53e4253b8875124073208163304a2d18ca9e6b0148c2f24ae72bcdd80507c",
+		"a6c0b06d9f1751b1666a37a6e96cf17db431d9478a4689a3ceb03493f85e226c",
 	}
 
 	// Create a new block to nuke all cached data.
@@ -262,6 +262,18 @@ func TestBlockErrors(t *testing.T) {
 	if err != io.EOF {
 		t.Errorf("NewBlockFromBytes: did not get expected error - "+
 			"got %v, want %v", err, io.EOF)
+	}
+
+	// Ensure TxHash returns expected error on invalid indices.
+	_, err = b.TxHashWithSig(-1)
+	if _, ok := err.(rmgutil.OutOfRangeError); !ok {
+		t.Errorf("TxHashWithSig: wrong error - got: %v <%T>, "+
+			"want: <%T>", err, err, rmgutil.OutOfRangeError(""))
+	}
+	_, err = b.TxHashWithSig(len(Block100000.Transactions) + 1)
+	if _, ok := err.(rmgutil.OutOfRangeError); !ok {
+		t.Errorf("TxHashWithSig: wrong error - got: %v <%T>, "+
+			"want: <%T>", err, err, rmgutil.OutOfRangeError(""))
 	}
 
 	// Ensure TxHash returns expected error on invalid indices.

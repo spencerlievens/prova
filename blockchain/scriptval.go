@@ -62,7 +62,7 @@ out:
 				str := fmt.Sprintf("unable to find input "+
 					"transaction %v referenced from "+
 					"transaction %v", originTxHash,
-					txVI.tx.HashStripped())
+					txVI.tx.Hash())
 				err := ruleError(ErrMissingTx, str)
 				v.sendResult(err)
 				break out
@@ -75,7 +75,7 @@ out:
 				str := fmt.Sprintf("unable to find unspent "+
 					"output %v script referenced from "+
 					"transaction %s:%d",
-					txIn.PreviousOutPoint, txVI.tx.HashStripped(),
+					txIn.PreviousOutPoint, txVI.tx.Hash(),
 					txVI.txInIndex)
 				err := ruleError(ErrBadTxInput, str)
 				v.sendResult(err)
@@ -125,7 +125,7 @@ out:
 				str := fmt.Sprintf("failed to parse input "+
 					"%s:%d which references output %s:%d - "+
 					"%v (input script bytes %x, prev output "+
-					"script bytes %x)", txVI.tx.HashStripped(),
+					"script bytes %x)", txVI.tx.Hash(),
 					txVI.txInIndex, originTxHash,
 					originTxIndex, err, sigScript, pkScript)
 				err := ruleError(ErrScriptMalformed, str)
@@ -138,7 +138,7 @@ out:
 				str := fmt.Sprintf("failed to validate input "+
 					"%s:%d which references output %s:%d - "+
 					"%v (input script bytes %x, prev output "+
-					"script bytes %x)", txVI.tx.HashStripped(),
+					"script bytes %x)", txVI.tx.Hash(),
 					txVI.txInIndex, originTxHash,
 					originTxIndex, err, sigScript, pkScript)
 				err := ruleError(ErrScriptValidation, str)
@@ -234,7 +234,7 @@ func ValidateTransactionScripts(tx *rmgutil.Tx, utxoView *UtxoViewpoint, flags t
 	// If the hashcache doesn't yet has the sighash midstate for this
 	// transaction, then we'll compute them now so we can re-use them
 	// amongst all worker validation goroutines.
-	if !hashCache.ContainsHashes(tx.HashStripped()) {
+	if !hashCache.ContainsHashes(tx.Hash()) {
 		hashCache.AddSigHashes(tx.MsgTx())
 	}
 
@@ -242,7 +242,7 @@ func ValidateTransactionScripts(tx *rmgutil.Tx, utxoView *UtxoViewpoint, flags t
 	// re-used amongst all validation goroutines. By pre-computing the
 	// sighash here instead of during validation, we ensure the sighashes
 	// are only computed once.
-	cachedHashes, _ := hashCache.GetSigHashes(tx.HashStripped())
+	cachedHashes, _ := hashCache.GetSigHashes(tx.Hash())
 
 	// Collect all of the transaction inputs and required information for
 	// validation.
@@ -283,7 +283,7 @@ func checkBlockScripts(block *rmgutil.Block, utxoView *UtxoViewpoint, scriptFlag
 	}
 	txValItems := make([]*txValidateItem, 0, numInputs)
 	for _, tx := range block.Transactions() {
-		sha := tx.HashStripped()
+		sha := tx.Hash()
 
 		// If the HashCache is present, and it doesn't yet contain the
 		// partial sighashes for this transaction, then we add the
