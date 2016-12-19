@@ -64,19 +64,22 @@ func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript
 	}
 	// If script is Aztec script, we replace all keyIDs with pubKeyHashes.
 	if txscript.TypeOfScript(pops) == txscript.AztecTy {
-		//
-		// Uncomment this to print out raw transaction.
-		// Edit data in TestSignTxOutput to construct the tx you want.
-		//
-		// var testTxBuf bytes.Buffer
-		// tx.Serialize(&testTxBuf)
-		// fmt.Printf("tx %v: %x \n", idx, testTxBuf.Bytes())
-		// fmt.Printf("pk %v: %x \n", idx, pkScript)
 		keyIDs, err := txscript.ExtractKeyIDs(pops)
 		view := blockchain.NewUtxoViewpoint()
 		keyIdMap := view.LookupKeyIDs(keyIDs)
 		txscript.ReplaceKeyIDs(pops, keyIdMap)
 		pkScript, err = txscript.UnparseScript(pops)
+		if err != nil {
+			return err
+		}
+	}
+
+	// If script is Aztec admin script, we replace the threadID with pubKeyHashes.
+	if txscript.TypeOfScript(pops) == txscript.AztecAdminTy {
+		threadID, err := txscript.ExtractThreadID(pops)
+		view := blockchain.NewUtxoViewpoint()
+		keyHashes, err := view.GetAdminKeyHashes(threadID)
+		pkScript, err = txscript.ThreadPkScript(keyHashes)
 		if err != nil {
 			return err
 		}
@@ -1252,6 +1255,88 @@ func TestSignTxOutput(t *testing.T) {
 		if err := signAndCheck(msg, tx, i, inputAmounts[i], scriptPkScript,
 			hashType, txscript.KeyClosure(lookupKey), nil, nil); err != nil {
 			t.Error(err)
+			break
+		}
+	}
+
+	// Basic Check Thread
+	for i := range tx.TxIn {
+		threadID := rmgutil.ThreadID(i)
+		msg := fmt.Sprintf("%d:%d", hashType, i)
+
+		scriptPkScript, err := txscript.AztecThreadScript(threadID)
+		if err != nil {
+			t.Errorf("failed to make pkscript "+
+				"for %s: %v", msg, err)
+		}
+
+		lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+			return []txscript.PrivateKey{
+				txscript.PrivateKey{key2, true},
+				txscript.PrivateKey{key1, true},
+			}, nil
+		}
+
+		if err := signAndCheck(msg, tx, i, inputAmounts[i], scriptPkScript,
+			hashType, txscript.KeyClosure(lookupKey), nil, nil); err != nil {
+			t.Error(err)
+			break
+		}
+	}
+
+	// Two part Check Thread, sign with one key then the other.
+	for i := range tx.TxIn {
+		threadID := rmgutil.ThreadID(i)
+		msg := fmt.Sprintf("%d:%d", hashType, i)
+
+		scriptPkScript, err := txscript.AztecThreadScript(threadID)
+		if err != nil {
+			t.Errorf("failed to make pkscript "+
+				"for %s: %v", msg, err)
+		}
+
+		lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+			return []txscript.PrivateKey{
+				txscript.PrivateKey{key1, true},
+			}, nil
+		}
+
+		sigScript, err := txscript.SignTxOutput(
+			&chaincfg.TestNet3Params, tx, i, inputAmounts[i], scriptPkScript,
+			hashType, txscript.KeyClosure(lookupKey), nil, nil)
+		if err != nil {
+			t.Errorf("failed to sign output %s: %v", msg,
+				err)
+			break
+		}
+
+		// Only 1 out of 2 signed, this *should* fail.
+		if checkScripts(msg, tx, i, inputAmounts[i], sigScript,
+			scriptPkScript) == nil {
+			t.Errorf("part signed script valid for %s", msg)
+			break
+		}
+
+		lookupKey = func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+			return []txscript.PrivateKey{
+				txscript.PrivateKey{key2, true},
+			}, nil
+		}
+
+		// Sign with the other key and merge
+		sigScript, err = txscript.SignTxOutput(
+			&chaincfg.TestNet3Params, tx, i, inputAmounts[i], scriptPkScript,
+			hashType, txscript.KeyClosure(lookupKey), nil, sigScript)
+		if err != nil {
+			t.Errorf("failed to sign output %s: %v", msg, err)
+			break
+		}
+
+		err = checkScripts(msg, tx, i, inputAmounts[i], sigScript,
+			scriptPkScript)
+		if err != nil {
+			t.Errorf("fully signed script invalid for "+
+				"%s: %v", msg, err)
 			break
 		}
 	}

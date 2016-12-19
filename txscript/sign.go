@@ -7,11 +7,11 @@ package txscript
 import (
 	"errors"
 	"fmt"
-
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
+	"sort"
 )
 
 // RawTxInSignature returns the serialized ECDSA signature for the input idx of
@@ -162,6 +162,17 @@ func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
 		return nil, NonStandardTy, nil, 0, err
 	}
 
+	// Create a new HashCache adding the intermediate sigHashes of this tx to it.
+	// The size of the HashCache is chosen big enough for any transaction.
+	// TODO(aztec) find a better way to set size of HashCache
+	hashCache := NewHashCache(90)
+	hashCache.AddSigHashes(tx)
+	txHash := tx.TxHash()
+	txSigHashes, found := hashCache.GetSigHashes(&txHash)
+	if !found {
+		return nil, class, nil, 0, errors.New("unable to find sighashes")
+	}
+
 	switch class {
 	case PubKeyTy:
 		// look up key for address
@@ -209,16 +220,18 @@ func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
 		if err != nil {
 			return nil, class, nil, 0, err
 		}
-		// Create a new HashCache adding the intermediate sigHashes of this tx to it.
-		// The size of the HashCache is chosen big enough for any transaction.
-		// TODO(aztec) find a better way to set size of HashCache
-		hashCache := NewHashCache(90)
-		hashCache.AddSigHashes(tx)
-		txHash := tx.TxHash()
-		txSigHashes, found := hashCache.GetSigHashes(&txHash)
-		if !found {
-			return nil, class, nil, 0, errors.New("unable to find sighashes")
+		// do the signing
+		script, _ := signSafeMultiSig(tx, idx, txSigHashes, inputAmt, subScript, hashType,
+			keys, nrequired, kdb)
+		return script, class, addresses, nrequired, nil
+	case AztecAdminTy:
+		// We use the keysDb lookup to get a list of privKeys that are needed
+		// for signing. Passing nil will give us all keys.
+		keys, err := kdb.GetKey(nil)
+		if err != nil {
+			return nil, class, nil, 0, err
 		}
+		sort.Sort(ByPubKey{keys})
 		// do the signing
 		script, _ := signSafeMultiSig(tx, idx, txSigHashes, inputAmt, subScript, hashType,
 			keys, nrequired, kdb)
@@ -283,6 +296,9 @@ func mergeScripts(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int,
 		return finalScript
 	case MultiSigTy:
 		return mergeMultiSig(tx, idx, addresses, nRequired, pkScript,
+			sigScript, prevScript)
+	case AztecAdminTy:
+		return mergeAztecAdminSig(tx, idx, addresses, nRequired, pkScript,
 			sigScript, prevScript)
 
 	// It doesn't actually make sense to merge anything other than multiig
@@ -412,6 +428,85 @@ sigLoop:
 
 	script, _ := builder.Script()
 	return script
+}
+
+// mergeAztecAdminSig combines the two signature scripts sigScript and prevScript
+// that both provide signatures for pkScript in output idx of tx.
+func mergeAztecAdminSig(tx *wire.MsgTx, idx int, addresses []rmgutil.Address,
+	nRequired int, pkScript, sigScript, prevScript []byte) []byte {
+
+	sigPops, err := ParseScript(sigScript)
+	if err != nil || len(sigPops) == 0 {
+		return prevScript
+	}
+
+	prevPops, err := ParseScript(prevScript)
+	if err != nil || len(prevPops) == 0 {
+		return sigScript
+	}
+
+	// create a map of pub to sig
+	pubToOps := make(map[string][2]parsedOpcode)
+	for i := 0; i < len(sigPops); i = i + 2 {
+		pubKey, _ := btcec.ParsePubKey(sigPops[i].data, btcec.S256())
+		pubKeyStr := fmt.Sprintf("%x", pubKey.SerializeCompressed())
+		pubToOps[pubKeyStr] = [2]parsedOpcode{sigPops[i], sigPops[i+1]}
+	}
+	for i := 0; i < len(prevPops); i = i + 2 {
+		pubKey, _ := btcec.ParsePubKey(prevPops[i].data, btcec.S256())
+		pubKeyStr := fmt.Sprintf("%x", pubKey.SerializeCompressed())
+		pubToOps[pubKeyStr] = [2]parsedOpcode{prevPops[i], prevPops[i+1]}
+	}
+	// sort pubs alphanumerically
+	pubs := make([]string, 0, len(pubToOps))
+	for pub := range pubToOps {
+		pubs = append(pubs, pub)
+	}
+	sort.Strings(pubs)
+
+	// create new script with right ordering
+	builder := NewScriptBuilder()
+	doneSigs := 0
+	for _, pub := range pubs {
+		builder.AddData(pubToOps[pub][0].data)
+		builder.AddData(pubToOps[pub][1].data)
+		doneSigs++
+		if doneSigs == nRequired {
+			break
+		}
+	}
+	script, _ := builder.Script()
+	return script
+}
+
+// PrivateKeys is a wrapper for the PrivateKey array to allow sorting.
+type PrivateKeys []PrivateKey
+
+// Len to implement the sort interface.
+func (privs PrivateKeys) Len() int {
+	return len(privs)
+}
+
+// Swap to implement the sort interface.
+func (privs PrivateKeys) Swap(i, j int) {
+	privs[i], privs[j] = privs[j], privs[i]
+}
+
+// ByPubKey implements sort.Interface by providing Less and using the Len and
+// Swap methods of the embedded PrivateKeys value.
+type ByPubKey struct {
+	PrivateKeys
+}
+
+// Less compares two private keys to determine order. The key are compared by
+// deriving the public keys, and comparing lexicographically.
+func (s ByPubKey) Less(i, j int) bool {
+	pubKeyI := (*btcec.PublicKey)(&s.PrivateKeys[i].Key.PublicKey)
+	pubKeyStrI := fmt.Sprintf("%x", pubKeyI.SerializeCompressed())
+
+	pubKeyJ := (*btcec.PublicKey)(&s.PrivateKeys[j].Key.PublicKey)
+	pubKeyStrJ := fmt.Sprintf("%x", pubKeyJ.SerializeCompressed())
+	return pubKeyStrI < pubKeyStrJ
 }
 
 type PrivateKey struct {

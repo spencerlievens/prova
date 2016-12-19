@@ -308,6 +308,33 @@ func ReplaceKeyIDs(pkScript []parsedOpcode, keyIdMap map[rmgutil.KeyID][]byte) e
 	return nil
 }
 
+// ExtractThreadID takes an Aztec admin pkScript and extracts the threadID from it.
+// We assume an Aztec admin pkScript structure like this:
+// <threadID> OP_CHECKTHREAD
+func ExtractThreadID(pkScript []parsedOpcode) (rmgutil.ThreadID, error) {
+	if len(pkScript) != 2 || !isSmallInt(pkScript[0].opcode) {
+		return rmgutil.ThreadID(0),
+			fmt.Errorf("unable to extract threadID from script, "+
+				"unknown script structure %v", pkScript)
+	}
+	return rmgutil.ThreadID(asSmallInt(pkScript[0].opcode)), nil
+}
+
+// ThreadPkScript creates a new pkScript with all keyHashes.
+// 2 <pkHash> ... <pkHash> X OP_CHECKTHREAD
+func ThreadPkScript(keyHashes [][]byte) ([]byte, error) {
+	if len(keyHashes) < 2 {
+		return nil, fmt.Errorf("invalid chain state, at least 2 keys required" +
+			" for thread.")
+	}
+	// build the new pkScript with 2 of x multi-sig
+	pkScript := NewScriptBuilder().AddOp(OP_2)
+	for i := range keyHashes {
+		pkScript.AddData(keyHashes[i])
+	}
+	return pkScript.AddInt64(int64(len(keyHashes))).AddOp(OP_CHECKTHREAD).Script()
+}
+
 // canonicalPush returns true if the object is either not a push instruction
 // or the push instruction contained wherein is matches the canonical form
 // or using the smallest instruction to do the job. False otherwise.

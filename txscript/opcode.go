@@ -224,7 +224,7 @@ const (
 	OP_NOP9                = 0xb8 // 184
 	OP_NOP10               = 0xb9 // 185
 	OP_CHECKSAFEMULTISIG   = 0xba // 186
-	OP_UNKNOWN187          = 0xbb // 187
+	OP_CHECKTHREAD         = 0xbb // 187
 	OP_UNKNOWN188          = 0xbc // 188
 	OP_UNKNOWN189          = 0xbd // 189
 	OP_UNKNOWN190          = 0xbe // 190
@@ -510,9 +510,9 @@ var opcodeArray = [256]opcode{
 
 	// Aztec opcodes
 	OP_CHECKSAFEMULTISIG: {OP_CHECKSAFEMULTISIG, "OP_CHECKSAFEMULTISIG", 1, opcodeCheckSafeMultiSig},
+	OP_CHECKTHREAD:       {OP_CHECKTHREAD, "OP_CHECKTHREAD", 1, opcodeCheckSafeMultiSig},
 
 	// Undefined opcodes.
-	OP_UNKNOWN187: {OP_UNKNOWN187, "OP_UNKNOWN187", 1, opcodeInvalid},
 	OP_UNKNOWN188: {OP_UNKNOWN188, "OP_UNKNOWN188", 1, opcodeInvalid},
 	OP_UNKNOWN189: {OP_UNKNOWN189, "OP_UNKNOWN189", 1, opcodeInvalid},
 	OP_UNKNOWN190: {OP_UNKNOWN190, "OP_UNKNOWN190", 1, opcodeInvalid},

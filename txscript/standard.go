@@ -48,6 +48,7 @@ const (
 	NullDataTy                        // Empty data-only (provably prunable).
 	AztecTy                           // Aztec standard 2-of-3 type (subset of GeneralAztecTy)
 	GeneralAztecTy                    // Aztec (generalized m-of-n) script
+	AztecAdminTy                      // Aztec Admin Operations
 )
 
 // scriptClassToName houses the human-readable strings which describe each
@@ -61,6 +62,7 @@ var scriptClassToName = []string{
 	NullDataTy:     "nulldata",
 	AztecTy:        "aztec",
 	GeneralAztecTy: "aztec",
+	AztecAdminTy:   "aztecadmin",
 }
 
 // String implements the Stringer interface by returning the name of
@@ -177,6 +179,21 @@ func isAztec(pops []parsedOpcode) bool {
 		isGeneralAztec(pops)
 }
 
+func isAztecAdmin(pops []parsedOpcode) bool {
+	sLen := len(pops)
+	if sLen != 2 {
+		return false
+	}
+	if pops[sLen-1].opcode.value != OP_CHECKTHREAD {
+		return false
+	}
+	threadID := rmgutil.ThreadID(asSmallInt(pops[0].opcode))
+	if threadID < rmgutil.RootThread || threadID > rmgutil.IssueThread {
+		return false
+	}
+	return true
+}
+
 // isMultiSig returns true if the passed script is a multisig transaction, false
 // otherwise.
 func isMultiSig(pops []parsedOpcode) bool {
@@ -251,6 +268,8 @@ func typeOfScript(pops []parsedOpcode) ScriptClass {
 		return AztecTy
 	} else if isGeneralAztec(pops) {
 		return GeneralAztecTy
+	} else if isAztecAdmin(pops) {
+		return AztecAdminTy
 	}
 	return NonStandardTy
 }
@@ -301,6 +320,10 @@ func expectedInputs(pops []parsedOpcode, class ScriptClass) int {
 		// scripts use key hashes rather than keys, thus the keys must be
 		// included on redemption.
 		return asSmallInt(pops[0].opcode) * 2
+
+	case AztecAdminTy:
+		//2 pubkeys + 2 sigs
+		return 4
 
 	case NullDataTy:
 		fallthrough
@@ -477,6 +500,14 @@ func PayToAddrScript(addr rmgutil.Address) ([]byte, error) {
 	return nil, ErrUnsupportedAddress
 }
 
+// AztecThreadScript creates a new script to pay a transaction output to an
+// Aztec Admin Thread.
+func AztecThreadScript(threadID rmgutil.ThreadID) ([]byte, error) {
+	return NewScriptBuilder().
+		AddInt64(int64(threadID)).
+		AddOp(OP_CHECKTHREAD).Script()
+}
+
 // MultiSigScript returns a valid script for a multisignature redemption where
 // nrequired of the keys in pubkeys are required to have signed the transaction
 // for success.  An ErrBadNumRequired will be returned if nrequired is larger
@@ -581,6 +612,9 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 
 	case GeneralAztecTy:
 		// TODO(aztec): define what to do for generalized aztec scripts
+
+	case AztecAdminTy:
+		requiredSigs = 2
 
 	case MultiSigTy:
 		// A multi-signature script is of the form:

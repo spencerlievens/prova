@@ -116,6 +116,31 @@ out:
 				}
 			}
 
+			// If script is Aztec admin script, we replace the threadID with pubKeyHashes.
+			if txscript.TypeOfScript(pops) == txscript.AztecAdminTy {
+				threadID, err := txscript.ExtractThreadID(pops)
+				if err != nil {
+					str := fmt.Sprintf("failed to extract threadID %s: %v", originTxHash, err)
+					err := ruleError(ErrScriptMalformed, str)
+					v.sendResult(err)
+					break out
+				}
+				keyHashes, err := v.utxoView.GetAdminKeyHashes(threadID)
+				if err != nil {
+					str := fmt.Sprintf("failed to get keys for threadID %v: %v", threadID, err)
+					err := ruleError(ErrScriptMalformed, str)
+					v.sendResult(err)
+					break out
+				}
+				pkScript, err = txscript.ThreadPkScript(keyHashes)
+				if err != nil {
+					str := fmt.Sprintf("failed to replace threadID %s: %v", originTxHash, err)
+					err := ruleError(ErrScriptMalformed, str)
+					v.sendResult(err)
+					break out
+				}
+			}
+
 			// Create a new script engine for the script pair.
 			sigScript := txIn.SignatureScript
 			inputAmount := txEntry.AmountByIndex(originTxIndex)

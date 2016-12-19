@@ -5,12 +5,14 @@
 package blockchain
 
 import (
+	"encoding/hex"
 	"fmt"
-
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/database"
 	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/txscript"
+	"sort"
 )
 
 // utxoOutput houses details about an individual unspent transaction output such
@@ -225,7 +227,7 @@ func (view *UtxoViewpoint) LookupEntry(txHash *chainhash.Hash) *UtxoEntry {
 	return entry
 }
 
-// LookupKeyIDs returs pubKeyHashes for all ergistered KeyIDs
+// LookupKeyIDs returs pubKeyHashes for all registered KeyIDs
 // TODO(aztec) replace static lookup with dynamic one from utxView
 func (view *UtxoViewpoint) LookupKeyIDs(keyIDs []rmgutil.KeyID) map[rmgutil.KeyID][]byte {
 	keyIdMap := make(map[rmgutil.KeyID][]byte)
@@ -236,6 +238,53 @@ func (view *UtxoViewpoint) LookupKeyIDs(keyIDs []rmgutil.KeyID) map[rmgutil.KeyI
 		}
 	}
 	return keyIdMap
+}
+
+// GetAdminKeyHashes returns pubKeyHashes according to the provided threadID.
+// TODO(aztec) replace static with dynamic list
+func (view *UtxoViewpoint) GetAdminKeyHashes(threadID rmgutil.ThreadID) ([][]byte, error) {
+	rootKeyPubs := []string{
+		// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
+		"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1",
+		// priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+		"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"}
+	provisionKeyPubs := []string{
+		// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
+		"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1",
+		// priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+		"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202",
+		// priv 6e6b5b6ff0fc11cea9c0949595cfb01b8c268325b564d0d74cd77e4348b06177
+		"02cf712ca1d7784bc0c381c250f2a7c7f2729da771abaaca5772201c6103575bb8",
+		// priv 7bb53c8506695b19f9d6d863748d91efccd948b768984761d4de5d69ca2d3847
+		"03ecf4f686b7528197f6e58183e7c76f6dad16c38d6e5ce2ac73e469fda56f5f0e",
+		// priv 07cf1bf3bd286649f837df98c1737af40ec62d7da9581b34c529c7f894f7e3e3
+		"038e8031f881cdbf553abf7c59d22183e8333bea265eabe4e9d8aa762fe9fe619c"}
+	issueKeyPubs := []string{
+		// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
+		"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1",
+		// priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+		"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"}
+	adminKeyPubs := [3][]string{rootKeyPubs, provisionKeyPubs, issueKeyPubs}
+
+	if int(threadID) >= len(adminKeyPubs) {
+		return nil, fmt.Errorf("unknown threadID %v", threadID)
+	}
+
+	pubs := adminKeyPubs[threadID]
+	sort.Strings(pubs)
+	hashes := make([][]byte, len(pubs))
+	for i, pubKeyStr := range pubs {
+		pubKeyBytes, err := hex.DecodeString(pubKeyStr)
+		if err != nil {
+			return nil, err
+		}
+		pubKey, err := btcec.ParsePubKey(pubKeyBytes, btcec.S256())
+		if err != nil {
+			return nil, err
+		}
+		hashes[i] = rmgutil.Hash160(pubKey.SerializeCompressed())
+	}
+	return hashes, nil
 }
 
 // AddTxOuts adds all outputs in the passed transaction which are not provably

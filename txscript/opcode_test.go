@@ -120,9 +120,11 @@ func TestOpcodeDisasm(t *testing.T) {
 		// Aztec opcodes
 		case opcodeVal == 0xba:
 			expectedStr = "OP_CHECKSAFEMULTISIG"
+		case opcodeVal == 0xbb:
+			expectedStr = "OP_CHECKTHREAD"
 
 		// OP_UNKNOWN#.
-		case opcodeVal >= 0xbb && opcodeVal <= 0xf8 || opcodeVal == 0xfc:
+		case opcodeVal >= 0xbc && opcodeVal <= 0xf8 || opcodeVal == 0xfc:
 			expectedStr = "OP_UNKNOWN" + strconv.Itoa(int(opcodeVal))
 		}
 
@@ -186,9 +188,11 @@ func TestOpcodeDisasm(t *testing.T) {
 		// Aztec opcodes
 		case opcodeVal == 0xba:
 			expectedStr = "OP_CHECKSAFEMULTISIG"
+		case opcodeVal == 0xbb:
+			expectedStr = "OP_CHECKTHREAD"
 
 		// OP_UNKNOWN#.
-		case opcodeVal >= 0xbb && opcodeVal <= 0xf8 || opcodeVal == 0xfc:
+		case opcodeVal >= 0xbc && opcodeVal <= 0xf8 || opcodeVal == 0xfc:
 			expectedStr = "OP_UNKNOWN" + strconv.Itoa(int(opcodeVal))
 		}
 
