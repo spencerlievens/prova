@@ -1259,6 +1259,83 @@ func TestSignTxOutput(t *testing.T) {
 		}
 	}
 
+	// Two part Aztec Multisig, sign with one key then the other.
+	for i := range tx.TxIn {
+		msg := fmt.Sprintf("%d:%d", hashType, i)
+
+		//dynamic key definition as usual
+		key3, err := btcec.NewPrivateKey(btcec.S256())
+		if err != nil {
+			t.Errorf("failed to make privKey for %s: %v",
+				msg, err)
+			break
+		}
+		pk3 := (*btcec.PublicKey)(&key3.PublicKey)
+		pkHash := rmgutil.Hash160(pk3.SerializeCompressed())
+
+		//Creation of Aztec address
+		addr, err := rmgutil.NewAddressAztec(pkHash,
+			[]rmgutil.KeyID{keyId1, keyId2}, &chaincfg.TestNet3Params)
+		if err != nil {
+			t.Errorf("failed to make Aztec address for %s: %v",
+				msg, err)
+			break
+		}
+
+		scriptPkScript, err := txscript.PayToAddrScript(
+			addr)
+		if err != nil {
+			t.Errorf("failed to make script pkscript for "+
+				"%s: %v", msg, err)
+			break
+		}
+
+		lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+			return []txscript.PrivateKey{
+				txscript.PrivateKey{key1, true},
+			}, nil
+		}
+
+		sigScript, err := txscript.SignTxOutput(
+			&chaincfg.TestNet3Params, tx, i, inputAmounts[i], scriptPkScript,
+			hashType, txscript.KeyClosure(lookupKey), nil, nil)
+		if err != nil {
+			t.Errorf("failed to sign output %s: %v", msg,
+				err)
+			break
+		}
+
+		// Only 1 out of 2 signed, this *should* fail.
+		if checkScripts(msg, tx, i, inputAmounts[i], sigScript,
+			scriptPkScript) == nil {
+			t.Errorf("part signed script valid for %s", msg)
+			break
+		}
+
+		lookupKey = func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+			return []txscript.PrivateKey{
+				txscript.PrivateKey{key2, true},
+			}, nil
+		}
+
+		// Sign with the other key and merge
+		sigScript, err = txscript.SignTxOutput(
+			&chaincfg.TestNet3Params, tx, i, inputAmounts[i], scriptPkScript,
+			hashType, txscript.KeyClosure(lookupKey), nil, sigScript)
+		if err != nil {
+			t.Errorf("failed to sign output %s: %v", msg, err)
+			break
+		}
+
+		err = checkScripts(msg, tx, i, inputAmounts[i], sigScript,
+			scriptPkScript)
+		if err != nil {
+			t.Errorf("fully signed script invalid for "+
+				"%s: %v", msg, err)
+			break
+		}
+	}
+
 	// Basic Check Thread
 	for i := range tx.TxIn {
 		threadID := rmgutil.ThreadID(i)

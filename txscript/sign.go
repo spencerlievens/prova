@@ -297,6 +297,9 @@ func mergeScripts(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int,
 	case MultiSigTy:
 		return mergeMultiSig(tx, idx, addresses, nRequired, pkScript,
 			sigScript, prevScript)
+	case AztecTy:
+		return mergeAztecSig(tx, idx, addresses, nRequired, pkScript,
+			sigScript, prevScript)
 	case AztecAdminTy:
 		return mergeAztecAdminSig(tx, idx, addresses, nRequired, pkScript,
 			sigScript, prevScript)
@@ -428,6 +431,13 @@ sigLoop:
 
 	script, _ := builder.Script()
 	return script
+}
+
+// mergeAztecSig combines the two signature scripts sigScript and prevScript
+// that both provide signatures for pkScript in output idx of tx.
+func mergeAztecSig(tx *wire.MsgTx, idx int, addresses []rmgutil.Address,
+	nRequired int, pkScript, sigScript, prevScript []byte) []byte {
+	return append(prevScript[:], sigScript[:]...)
 }
 
 // mergeAztecAdminSig combines the two signature scripts sigScript and prevScript
