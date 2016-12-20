@@ -5,6 +5,10 @@ import "github.com/bitgo/rmgd/wire"
 // IsGenerationTrailingRateLimited determines if block generation is rate
 // limited due to hitting a trailing rate limit.
 func IsGenerationTrailingRateLimited(pubKey wire.BlockValidatingPubKey, prevPubKeys []wire.BlockValidatingPubKey, maxTrailing int) bool {
+	// Exit early when the trailing limit is not meaningful
+	if maxTrailing == 0 {
+		return false
+	}
 	var trailingCount int
 	for _, prevPubKey := range prevPubKeys {
 		if prevPubKey != pubKey {

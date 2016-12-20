@@ -13,7 +13,8 @@ import (
 func TestIsGenerationTrailingRateLimited(t *testing.T) {
 	keyBytes, _ := hex.DecodeString("4015289a228658047520f0d0abe7ad49abc77f6be0be63b36b94b83c2d1fd977")
 	key, _ := btcec.PrivKeyFromBytes(btcec.S256(), keyBytes)
-	pubKey := BlockValidatingPubKey{key.PubKey().SerializeCompressed()[:BlockValidatingPubKeySize]}
+	var pubKey wire.BlockValidatingPubKey
+	copy(pubKey[:wire.BlockValidatingPubKeySize], key.PubKey().SerializeCompressed()[:wire.BlockValidatingPubKeySize])
 	chain := make([]wire.BlockValidatingPubKey, 0)
 	limit := 2
 	whenGenerationStarts := IsGenerationTrailingRateLimited(pubKey, chain, limit)
@@ -21,22 +22,24 @@ func TestIsGenerationTrailingRateLimited(t *testing.T) {
 	whenUnderLimit := IsGenerationTrailingRateLimited(pubKey, chain, limit)
 	chain = append([]wire.BlockValidatingPubKey{pubKey}, chain...)
 	whenAtLimit := IsGenerationTrailingRateLimited(pubKey, chain, limit)
-	whenNoLimit := IsGenerationShareRateLimited(pubKey, chain, 0)
-	rateLimited := true
+	chain = append([]wire.BlockValidatingPubKey{pubKey}, chain...)
+	chain = append([]wire.BlockValidatingPubKey{pubKey}, chain...)
+	whenNoLimit := IsGenerationTrailingRateLimited(pubKey, chain, 0)
+	isRateLimited := true
 
-	if whenGenerationStarts == rateLimited {
+	if whenGenerationStarts == isRateLimited {
 		t.Fatalf("Expected no rate limit for chain start")
 	}
 
-	if whenUnderLimit == rateLimited {
+	if whenUnderLimit == isRateLimited {
 		t.Fatalf("Expected no rate limit for minimal trailing")
 	}
 
-	if whenAtLimit == !rateLimited {
+	if whenAtLimit == !isRateLimited {
 		t.Fatalf("Expected rate limiting for excessive trailing")
 	}
 
-	if whenNoLimit == rateLimited {
+	if whenNoLimit == isRateLimited {
 		t.Fatalf("Expected no limiting when no limit is specified")
 	}
 }
@@ -50,8 +53,8 @@ func TestIsGenerationShareRateLimited(t *testing.T) {
 	key1, _ := btcec.PrivKeyFromBytes(btcec.S256(), keyBytes1)
 	var pubKey0 wire.BlockValidatingPubKey
 	var pubKey1 wire.BlockValidatingPubKey
-	pubKey0 = key0.PubKey().SerializeCompressed()
-	pubKey1 = key1.PubKey().SerializeCompressed()
+	copy(pubKey0[:wire.BlockValidatingPubKeySize], key0.PubKey().SerializeCompressed()[:wire.BlockValidatingPubKeySize])
+	copy(pubKey1[:wire.BlockValidatingPubKeySize], key1.PubKey().SerializeCompressed()[:wire.BlockValidatingPubKeySize])
 
 	chain := make([]wire.BlockValidatingPubKey, 0)
 	share := 50
