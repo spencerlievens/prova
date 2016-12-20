@@ -750,8 +750,8 @@ func loadConfig() (*config, []string, error) {
 	pkHash := []byte{53, 219, 191, 4, 188, 160, 97, 228, 157, 172, 224, 143, 133, 141, 135, 117, 192, 165, 124, 142}
 	// KeyIDs hardcoded in utxoviewpoint.go line 230
 	// the keys for these keyIDs are defined in sign_test.go line 1200
-	keyID01 := rmgutil.KeyIDFromAddressBuffer([]byte{0, 0, 0, 2})
-	keyID02 := rmgutil.KeyIDFromAddressBuffer([]byte{0, 0, 0, 1})
+	keyID01 := rmgutil.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	keyID02 := rmgutil.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 	// Add an aztec address for testing
 	aztecAddr, err := rmgutil.NewAddressAztec(pkHash, []rmgutil.KeyID{keyID01, keyID02}, activeNetParams.Params)
 	if err != nil {
