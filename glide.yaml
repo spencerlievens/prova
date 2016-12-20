@@ -1,12 +1,6 @@
 package: github.com/bitgo/rmgd
 import:
 - package: github.com/btcsuite/btclog
-- package: github.com/bitgo/rmgd/rmgutil
-  subpackages:
-  - .
-  - bloom
-  - base58
-  - hdkeychain
 - package: github.com/btcsuite/btcrpcclient
 - package: github.com/btcsuite/fastsha256
 - package: github.com/btcsuite/go-flags
