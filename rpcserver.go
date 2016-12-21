@@ -874,6 +874,7 @@ func createTxRawResult(chainParams *chaincfg.Params, mtx *wire.MsgTx,
 }
 
 // handleSignAztecTransaction handles signaztectransaction commands.
+// Note: this signing method requires in-order signing.
 func handleSignAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.SignAztecTransactionCmd)
 
@@ -973,7 +974,7 @@ func handleSignAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		// only the ones we hardcoded the keys for.
 		sigScript, _ := txscript.SignTxOutput(s.server.chainParams, &mtx,
 			i, txOut.Value, txOut.PkScript, hashType, txscript.KeyClosure(lookupKey),
-			nil, nil)
+			nil, mtx.TxIn[i].SignatureScript)
 
 		mtx.TxIn[i].SignatureScript = sigScript
 	}
