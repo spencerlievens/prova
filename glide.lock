@@ -4,14 +4,7 @@ imports:
 - name: github.com/btcsuite/btclog
   version: 73889fb79bd687870312b6e40effcecffbd57d30
 - name: github.com/btcsuite/btcrpcclient
-  version: 2b780d16b042054d07aa322146194118fd7f7b81
-- name: github.com/bitgo/rmgd/rmgutil
-  version: 68e5965458062d031a6e333b35c778ce464fb73f
-  subpackages:
-  - .
-  - base58
-  - bloom
-  - hdkeychain
+  version: 7903290fd9956021ed7b65463f8667df345b365e
 - name: github.com/btcsuite/fastsha256
   version: 637e656429416087660c84436a2a035d69d54e2e
 - name: github.com/btcsuite/go-flags
@@ -54,7 +47,7 @@ imports:
   - svc
   - winapi
 - name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  version: 346938d642f2ec3594ed81d874461961cd0faa76
   subpackages:
   - spew
 testImports: []
