@@ -23,7 +23,7 @@ import (
 const (
 	// maxOrphanBlocks is the maximum number of orphan blocks that can be
 	// queued.
-	maxOrphanBlocks = 100
+	maxOrphanBlocks = 1000
 )
 
 // blockNode represents a block within the block chain and is primarily used to
