@@ -82,6 +82,10 @@ const (
 
 	// maxProtocolVersion is the max protocol version the server supports.
 	maxProtocolVersion = 70002
+
+	// validateKeysEnvironmentKey specifies the environment var name to
+	// look up when populating the validate keys of the CPU miner.
+	validateKeysEnvironmentKey = "RMGD_VALIDATE_KEYS"
 )
 
 var (
@@ -170,6 +174,7 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"searchrawtransactions":   handleSearchRawTransactions,
 	"sendrawtransaction":      handleSendRawTransaction,
 	"setgenerate":             handleSetGenerate,
+	"setvalidatekeys":         handleSetValidateKeys,
 	"signaztectransaction":    handleSignAztecTransaction,
 	"stop":                    handleStop,
 	"submitblock":             handleSubmitBlock,
@@ -1083,6 +1088,23 @@ func handleGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 
 	c := cmd.(*btcjson.GenerateCmd)
 
+	// Update the keys that should be used to sign the generated block.
+	if c.ValidateKeys == nil || len(c.ValidateKeys) < 1 {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInternal.Code,
+			Message: "No validate keys provided via --generate",
+		}
+	}
+	validateKeys := make([]*btcec.PrivateKey, len(c.ValidateKeys))
+	for i, privKeyStr := range c.ValidateKeys {
+		privKey, err := hex.DecodeString(privKeyStr)
+		if err != nil {
+			return nil, rpcDecodeHexError(privKeyStr)
+		}
+		key, _ := btcec.PrivKeyFromBytes(btcec.S256(), privKey)
+		validateKeys[i] = key
+	}
+
 	// Respond with an error if the client is requesting 0 blocks to be generated.
 	if c.NumBlocks == 0 {
 		return nil, &btcjson.RPCError{
@@ -1094,7 +1116,7 @@ func handleGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 	// Create a reply
 	reply := make([]string, c.NumBlocks)
 
-	blockHashes, err := s.server.cpuMiner.GenerateNBlocks(c.NumBlocks)
+	blockHashes, err := s.server.cpuMiner.GenerateNBlocks(c.NumBlocks, validateKeys)
 	if err != nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInternal.Code,
@@ -1719,7 +1741,7 @@ func (state *gbtWorkState) updateBlockTemplate(s *rpcServer, useCoinbaseValue bo
 		// block template doesn't include the coinbase, so the caller
 		// will ultimately create their own coinbase which pays to the
 		// appropriate address(es).
-		blkTemplate, err := NewBlockTemplate(s.policy, s.server, payAddr)
+		blkTemplate, err := NewBlockTemplate(s.policy, s.server, payAddr, nil)
 		if err != nil {
 			return internalRPCError("Failed to create new block "+
 				"template: "+err.Error(), "")
@@ -1796,7 +1818,7 @@ func (state *gbtWorkState) updateBlockTemplate(s *rpcServer, useCoinbaseValue bo
 		// Update the time of the block template to the current time
 		// while accounting for the median time of the past several
 		// blocks per the chain consensus rules.
-		UpdateBlockTime(msgBlock, s.server.blockManager)
+		UpdateBlockTime(msgBlock, s.server.blockManager, nil)
 		msgBlock.Header.Nonce = 0
 
 		rpcsLog.Debugf("Updated block template (timestamp %v, "+
@@ -2888,7 +2910,7 @@ func handleGetWorkRequest(s *rpcServer) (interface{}, error) {
 
 		// Choose a payment address at random.
 		payToAddr := cfg.miningAddrs[rand.Intn(len(cfg.miningAddrs))]
-		template, err := NewBlockTemplate(s.policy, s.server, payToAddr)
+		template, err := NewBlockTemplate(s.policy, s.server, payToAddr, nil)
 		if err != nil {
 			context := "Failed to create new block template"
 			return nil, internalRPCError(err.Error(), context)
@@ -2920,7 +2942,7 @@ func handleGetWorkRequest(s *rpcServer) (interface{}, error) {
 		// Update the time of the block template to the current time
 		// while accounting for the median time of the past several
 		// blocks per the chain consensus rules.
-		UpdateBlockTime(msgBlock, s.server.blockManager)
+		UpdateBlockTime(msgBlock, s.server.blockManager, nil)
 
 		rpcsLog.Debugf("Updated block template (timestamp %v, "+
 			"target %064x, merkle root %s, signature "+
@@ -3776,21 +3798,75 @@ func handleSetGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 
 	if !generate {
 		s.server.cpuMiner.Stop()
-	} else {
-		// Respond with an error if there are no addresses to pay the
-		// created blocks to.
-		if len(cfg.miningAddrs) == 0 {
-			return nil, &btcjson.RPCError{
-				Code: btcjson.ErrRPCInternal.Code,
-				Message: "No payment addresses specified " +
-					"via --miningaddr",
-			}
-		}
 
-		// It's safe to call start even if it's already started.
-		s.server.cpuMiner.SetNumWorkers(int32(genProcLimit))
-		s.server.cpuMiner.Start()
+		return nil, nil
 	}
+
+	// Attempt to establish validate keys from the environment var if there
+	// are none already registered.
+	validateKeyValue := os.Getenv(validateKeysEnvironmentKey)
+	if len(s.server.cpuMiner.ValidateKeys()) == 0 && validateKeyValue != "" {
+		validateKeys := strings.Split(validateKeyValue, ",")
+		validatePrivKeys := make([]*btcec.PrivateKey, len(validateKeys))
+		for i, privKeyStr := range validateKeys {
+			privKeyBytes, err := hex.DecodeString(privKeyStr)
+			if err != nil {
+				return nil, rpcDecodeHexError(privKeyStr)
+			}
+			privKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), privKeyBytes)
+			validatePrivKeys[i] = privKey
+		}
+		s.server.cpuMiner.SetValidateKeys(validatePrivKeys)
+	}
+
+	// Respond with an error if there are no addresses to pay the
+	// created blocks to.
+	if len(cfg.miningAddrs) == 0 {
+		return nil, &btcjson.RPCError{
+			Code: btcjson.ErrRPCInternal.Code,
+			Message: "No payment addresses specified " +
+				"via --miningaddr",
+		}
+	}
+
+	// Respond with an error if there are no validate keys available to
+	// sign the created blocks.
+	if len(s.server.cpuMiner.ValidateKeys()) == 0 {
+		return nil, &btcjson.RPCError{
+			Code: btcjson.ErrRPCInternal.Code,
+			Message: "No validating priv keys specified " +
+				"via setvalidatekeys",
+		}
+	}
+
+	// It's safe to call start even if it's already started.
+	s.server.cpuMiner.SetNumWorkers(int32(genProcLimit))
+	s.server.cpuMiner.Start()
+
+	return nil, nil
+}
+
+// handleSetValidateKeys implements the setvalidatekeys command.
+func handleSetValidateKeys(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.SetValidateKeysCmd)
+
+	if c.PrivKeys == nil || len(c.PrivKeys) == 0 {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInternal.Code,
+			Message: "No validate keys provided",
+		}
+	}
+	validateKeys := make([]*btcec.PrivateKey, len(c.PrivKeys))
+	for i, privKeyStr := range c.PrivKeys {
+		privKeyBytes, err := hex.DecodeString(privKeyStr)
+		if err != nil {
+			return nil, rpcDecodeHexError(privKeyStr)
+		}
+		privKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), privKeyBytes)
+		validateKeys[i] = privKey
+	}
+	s.server.cpuMiner.SetValidateKeys(validateKeys)
+
 	return nil, nil
 }
 

@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"io"
-	"math/rand"
 	"time"
 	// "log"
 
@@ -155,43 +154,20 @@ func (h *BlockHeader) Sign(key *btcec.PrivateKey) error {
 		return err
 	}
 	serialized := signature.Serialize()
+	// TODO(aztec): Remove commented code.
 	// log.Printf("SIGNED hash=%v sig=%v prevblock=%v merkle=%v ",
 	// 	hex.EncodeToString(hash),
 	// 	hex.EncodeToString(serialized),
 	// 	hex.EncodeToString(h.PrevBlock[:]),
 	// 	hex.EncodeToString(h.MerkleRoot[:]),
 	// )
-	copy(h.Signature[:], serialized)
-	return nil
-}
-
-// TempTempAutoSign is a temporary function that uses a hard-coded key
-// for signing the block.
-// TODO(aztec): this is temporary for testing. Need to have a configurable
-// mining key which is stored in memory.
-// TODO(aztec): the selection of a keyId should be sensitive to rate limiting
-func (h *BlockHeader) TempTempAutoSign() error {
-	privateKeys := []string{
-		"4015289a228658047520f0d0abe7ad49abc77f6be0be63b36b94b83c2d1fd977",
-		"9ade85268e57b7c97af9f84e0d5d96138eae2b1d7ae96c5ab849f58551ab9147",
-		"a959753ab5aeb59d7184ba37f6b219492bcb137bb992418590a40fd4ef9facdd",
-		"c345ff4a207ed945ac3040a933f386676e9c034f261ad4306f8b34d828eecde6",
-	}
-
-	// Choose a signing key at random.
-	rand.Seed(time.Now().UnixNano())
-	keyStr := privateKeys[rand.Intn(len(privateKeys))]
-
-	// Sign with signing key.
-	keyBytes, _ := hex.DecodeString(keyStr)
-	key, _ := btcec.PrivKeyFromBytes(btcec.S256(), keyBytes)
-
-	pubKey := key.PubKey().SerializeCompressed()[:BlockValidatingPubKeySize]
 
 	// Mark the public key used to sign the block.
+	pubKey := key.PubKey().SerializeCompressed()[:BlockValidatingPubKeySize]
 	copy(h.ValidatingPubKey[:BlockValidatingPubKeySize], pubKey[:BlockValidatingPubKeySize])
 
-	return h.Sign(key)
+	copy(h.Signature[:], serialized)
+	return nil
 }
 
 // Verify checks the signature on the block using the supplied public key.

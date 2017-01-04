@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bitgo/rmgd/blockchain"
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/mempool"
 	"github.com/bitgo/rmgd/mining"
@@ -396,7 +397,7 @@ func medianAdjustedTime(chainState *chainState, timeSource blockchain.MedianTime
 //  |  transactions (while block size   |   |
 //  |  <= policy.BlockMinSize)          |   |
 //   -----------------------------------  --
-func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress rmgutil.Address) (*BlockTemplate, error) {
+func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress rmgutil.Address, validateKey *btcec.PrivateKey) (*BlockTemplate, error) {
 	var txSource mining.TxSource = server.txMemPool
 	blockManager := server.blockManager
 	timeSource := server.timeSource
@@ -748,7 +749,7 @@ mempoolLoop:
 	}
 
 	// Sign the block
-	msgBlock.Header.TempTempAutoSign()
+	msgBlock.Header.Sign(validateKey)
 
 	for _, tx := range blockTxns {
 		if err := msgBlock.AddTransaction(tx.MsgTx()); err != nil {
@@ -785,7 +786,9 @@ mempoolLoop:
 // consensus rules.  Finally, it will update the target difficulty if needed
 // based on the new time for the test networks since their target difficulty can
 // change based upon time.
-func UpdateBlockTime(msgBlock *wire.MsgBlock, bManager *blockManager) error {
+func UpdateBlockTime(msgBlock *wire.MsgBlock, bManager *blockManager,
+	validateKey *btcec.PrivateKey) error {
+
 	// The new timestamp is potentially adjusted to ensure it comes after
 	// the median time of the last several blocks per the chain consensus
 	// rules.
@@ -807,7 +810,7 @@ func UpdateBlockTime(msgBlock *wire.MsgBlock, bManager *blockManager) error {
 	}
 
 	// Re-sign the block, since we updated the block time
-	msgBlock.Header.TempTempAutoSign()
+	msgBlock.Header.Sign(validateKey)
 
 	return nil
 }

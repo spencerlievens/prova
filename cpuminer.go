@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bitgo/rmgd/blockchain"
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/mining"
 	"github.com/bitgo/rmgd/rmgutil"
@@ -54,6 +55,7 @@ type CPUMiner struct {
 	txSource          mining.TxSource
 	server            *server
 	numWorkers        uint32
+	validateKeys      []*btcec.PrivateKey
 	started           bool
 	discreteMining    bool
 	submitBlockLock   sync.Mutex
@@ -156,8 +158,8 @@ func (m *CPUMiner) submitBlock(block *rmgutil.Block) bool {
 	return true
 }
 
-// solveBlock attempts to find some combination of a nonce, extra nonce, and
-// current timestamp which makes the passed block hash to a value less than the
+// solveBlock attempts to find some combination of a nonce and current
+// timestamp which makes the passed block hash to a value less than the
 // target difficulty.  The timestamp is updated periodically and the passed
 // block is modified with all tweaks during this process.  This means that
 // when the function returns true, the block is ready for submission.
@@ -166,7 +168,8 @@ func (m *CPUMiner) submitBlock(block *rmgutil.Block) bool {
 // stale block such as a new block showing up or periodically when there are
 // new transactions and enough time has elapsed without finding a solution.
 func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
-	ticker *time.Ticker, quit chan struct{}) bool {
+	ticker *time.Ticker, validateKey *btcec.PrivateKey,
+	quit chan struct{}) bool {
 
 	// Create a couple of convenience variables.
 	header := &msgBlock.Header
@@ -206,7 +209,7 @@ func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
 				return false
 			}
 
-			UpdateBlockTime(msgBlock, m.server.blockManager)
+			UpdateBlockTime(msgBlock, m.server.blockManager, validateKey)
 
 		default:
 			// Non-blocking select to fall through
@@ -216,6 +219,7 @@ func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
 		// hash is actually a double sha256 (two hashes), so
 		// increment the number of hashes completed for each
 		// attempt accordingly.
+		// TODO(aztec) update this to reflect new hash function
 		header.Nonce = i
 		hash := header.BlockHash()
 		hashesCompleted += 2
@@ -283,10 +287,14 @@ out:
 		rand.Seed(time.Now().UnixNano())
 		payToAddr := cfg.miningAddrs[rand.Intn(len(cfg.miningAddrs))]
 
+		// Choose a signing key at random.
+		// TODO(aztec) omit rate limited keys
+		validateKey := m.validateKeys[rand.Intn(len(m.validateKeys))]
+
 		// Create a new block template using the available transactions
 		// in the memory pool as a source of transactions to potentially
 		// include in the block.
-		template, err := NewBlockTemplate(m.policy, m.server, payToAddr)
+		template, err := NewBlockTemplate(m.policy, m.server, payToAddr, validateKey)
 		m.submitBlockLock.Unlock()
 		if err != nil {
 			errStr := fmt.Sprintf("Failed to create new block "+
@@ -299,7 +307,7 @@ out:
 		// with false when conditions that trigger a stale block, so
 		// a new block template can be generated.  When the return is
 		// true a solution was found, so submit the solved block.
-		if m.solveBlock(template.Block, curHeight+1, ticker, quit) {
+		if m.solveBlock(template.Block, curHeight+1, ticker, validateKey, quit) {
 			block := rmgutil.NewBlock(template.Block)
 			m.submitBlock(block)
 		}
@@ -484,12 +492,31 @@ func (m *CPUMiner) NumWorkers() int32 {
 	return int32(m.numWorkers)
 }
 
+// SetValidateKeys updates the private keys used for signing.
+//
+// This function is safe for concurrent access.
+func (m *CPUMiner) SetValidateKeys(validateKeys []*btcec.PrivateKey) {
+	m.Lock()
+	defer m.Unlock()
+	m.validateKeys = validateKeys
+}
+
+// ValidateKeys returns the validate keys set to sign blocks.
+//
+// This function is safe for concurrent access.
+func (m *CPUMiner) ValidateKeys() []*btcec.PrivateKey {
+	m.Lock()
+	defer m.Unlock()
+	return m.validateKeys
+}
+
 // GenerateNBlocks generates the requested number of blocks. It is self
 // contained in that it creates block templates and attempts to solve them while
 // detecting when it is performing stale work and reacting accordingly by
 // generating a new block template.  When a block is solved, it is submitted.
 // The function returns a list of the hashes of generated blocks.
-func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
+func (m *CPUMiner) GenerateNBlocks(n uint32,
+	validateKeys []*btcec.PrivateKey) ([]*chainhash.Hash, error) {
 	m.Lock()
 
 	// Respond with an error if there's virtually 0 chance of CPU-mining a block.
@@ -545,10 +572,13 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 		rand.Seed(time.Now().UnixNano())
 		payToAddr := cfg.miningAddrs[rand.Intn(len(cfg.miningAddrs))]
 
+		// Choose a validate key at random.
+		validateKey := validateKeys[rand.Intn(len(validateKeys))]
+
 		// Create a new block template using the available transactions
 		// in the memory pool as a source of transactions to potentially
 		// include in the block.
-		template, err := NewBlockTemplate(m.policy, m.server, payToAddr)
+		template, err := NewBlockTemplate(m.policy, m.server, payToAddr, validateKey)
 		m.submitBlockLock.Unlock()
 		if err != nil {
 			errStr := fmt.Sprintf("Failed to create new block "+
@@ -561,7 +591,7 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 		// with false when conditions that trigger a stale block, so
 		// a new block template can be generated.  When the return is
 		// true a solution was found, so submit the solved block.
-		if m.solveBlock(template.Block, curHeight+1, ticker, nil) {
+		if m.solveBlock(template.Block, curHeight+1, ticker, validateKey, nil) {
 			block := rmgutil.NewBlock(template.Block)
 			m.submitBlock(block)
 			blockHashes[i] = block.Hash()
