@@ -199,8 +199,7 @@ func mergeUtxoView(viewA *blockchain.UtxoViewpoint, viewB *blockchain.UtxoViewpo
 // it starts with the block height that is required by version 2 blocks and adds
 // the extra nonce as well as additional coinbase flags.
 func standardCoinbaseScript(nextBlockHeight int32) ([]byte, error) {
-	return txscript.NewScriptBuilder().AddInt64(int64(nextBlockHeight)).
-		AddData([]byte(coinbaseFlags)).
+	return txscript.NewScriptBuilder().AddData([]byte(coinbaseFlags)).
 		Script()
 }
 
