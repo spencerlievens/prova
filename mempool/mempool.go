@@ -34,7 +34,7 @@ const (
 
 	// MinHighPriority is the minimum priority value that allows a
 	// transaction to be considered high priority.
-	MinHighPriority = rmgutil.SatoshiPerBitcoin * 144.0 / 250
+	MinHighPriority = rmgutil.AtomsPerGram * 144.0 / 250
 
 	// mempoolHeight is the height used for the "block" height field of the
 	// contextual transaction information provided in a transaction view.
@@ -105,7 +105,7 @@ type Policy struct {
 	// of the max signature operations for a block.
 	MaxSigOpsPerTx int
 
-	// MinRelayTxFee defines the minimum transaction fee in BTC/kB to be
+	// MinRelayTxFee defines the minimum transaction fee in RMG/kB to be
 	// considered a non-zero fee.
 	MinRelayTxFee rmgutil.Amount
 }
@@ -1032,7 +1032,7 @@ func (mp *TxPool) RawMempoolVerbose() map[string]*btcjson.GetRawMempoolVerboseRe
 
 		mpd := &btcjson.GetRawMempoolVerboseResult{
 			Size:             int32(tx.MsgTx().SerializeSize()),
-			Fee:              rmgutil.Amount(desc.Fee).ToBTC(),
+			Fee:              rmgutil.Amount(desc.Fee).ToRMG(),
 			Time:             desc.Added.Unix(),
 			Height:           int64(desc.Height),
 			StartingPriority: desc.StartingPriority,

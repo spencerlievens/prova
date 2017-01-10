@@ -318,7 +318,7 @@ func (h *Harness) SendOutputs(targetOutputs []*wire.TxOut,
 
 // CreateTransaction returns a fully signed transaction paying to the specified
 // outputs while observing the desired fee rate. The passed fee rate should be
-// expressed in satoshis-per-byte. Any unspent outputs selected as inputs for
+// expressed in atoms-per-byte. Any unspent outputs selected as inputs for
 // the crafted transaction are marked as unspendable in order to avoid
 // potential double-spends by future calls to this method. If the created
 // transaction is cancelled for any reason then the selected inputs MUST be

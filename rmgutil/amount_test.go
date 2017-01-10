@@ -27,51 +27,51 @@ func TestAmountCreation(t *testing.T) {
 		},
 		{
 			name:     "max producible",
-			amount:   21e6,
+			amount:   21e8,
 			valid:    true,
-			expected: MaxSatoshi,
+			expected: MaxAtoms,
 		},
 		{
 			name:     "min producible",
-			amount:   -21e6,
+			amount:   -21e8,
 			valid:    true,
-			expected: -MaxSatoshi,
+			expected: -MaxAtoms,
 		},
 		{
 			name:     "exceeds max producible",
-			amount:   21e6 + 1e-8,
+			amount:   21e8 + 1e-6,
 			valid:    true,
-			expected: MaxSatoshi + 1,
+			expected: MaxAtoms + 1,
 		},
 		{
 			name:     "exceeds min producible",
-			amount:   -21e6 - 1e-8,
+			amount:   -21e8 - 1e-6,
 			valid:    true,
-			expected: -MaxSatoshi - 1,
+			expected: -MaxAtoms - 1,
 		},
 		{
 			name:     "one hundred",
 			amount:   100,
 			valid:    true,
-			expected: 100 * SatoshiPerBitcoin,
+			expected: 100 * AtomsPerGram,
 		},
 		{
 			name:     "fraction",
-			amount:   0.01234567,
+			amount:   0.123456,
 			valid:    true,
-			expected: 1234567,
+			expected: 123456,
 		},
 		{
 			name:     "rounding up",
 			amount:   54.999999999999943157,
 			valid:    true,
-			expected: 55 * SatoshiPerBitcoin,
+			expected: 55 * AtomsPerGram,
 		},
 		{
 			name:     "rounding down",
 			amount:   55.000000000000056843,
 			valid:    true,
-			expected: 55 * SatoshiPerBitcoin,
+			expected: 55 * AtomsPerGram,
 		},
 
 		// Negative tests.
@@ -119,56 +119,48 @@ func TestAmountUnitConversions(t *testing.T) {
 		s         string
 	}{
 		{
-			name:      "MBTC",
-			amount:    MaxSatoshi,
-			unit:      AmountMegaBTC,
-			converted: 21,
-			s:         "21 MBTC",
+			name:      "MRMG",
+			amount:    MaxAtoms,
+			unit:      AmountMegaRMG,
+			converted: 2100,
+			s:         "2100 MRMG",
 		},
 		{
-			name:      "kBTC",
+			name:      "kRMG",
 			amount:    44433322211100,
-			unit:      AmountKiloBTC,
-			converted: 444.33322211100,
-			s:         "444.333222111 kBTC",
+			unit:      AmountKiloRMG,
+			converted: 44433.322211100,
+			s:         "44433.3222111 kRMG",
 		},
 		{
-			name:      "BTC",
+			name:      "RMG",
 			amount:    44433322211100,
-			unit:      AmountBTC,
-			converted: 444333.22211100,
-			s:         "444333.222111 BTC",
+			unit:      AmountRMG,
+			converted: 44433322.211100,
+			s:         "44433322.2111 RMG",
 		},
 		{
-			name:      "mBTC",
+			name:      "mRMG",
 			amount:    44433322211100,
-			unit:      AmountMilliBTC,
-			converted: 444333222.11100,
-			s:         "444333222.111 mBTC",
-		},
-		{
-
-			name:      "μBTC",
-			amount:    44433322211100,
-			unit:      AmountMicroBTC,
-			converted: 444333222111.00,
-			s:         "444333222111 μBTC",
+			unit:      AmountMilliRMG,
+			converted: 44433322211.100,
+			s:         "44433322211.1 mRMG",
 		},
 		{
 
-			name:      "satoshi",
-			amount:    44433322211100,
-			unit:      AmountSatoshi,
-			converted: 44433322211100,
-			s:         "44433322211100 Satoshi",
+			name:      "Atom",
+			amount:    444333222111,
+			unit:      AmountAtoms,
+			converted: 444333222111,
+			s:         "444333222111 Atom",
 		},
 		{
 
 			name:      "non-standard unit",
 			amount:    44433322211100,
 			unit:      AmountUnit(-1),
-			converted: 4443332.2211100,
-			s:         "4443332.22111 1e-1 BTC",
+			converted: 444333222.11100,
+			s:         "444333222.111 1e-1 RMG",
 		},
 	}
 
@@ -185,18 +177,18 @@ func TestAmountUnitConversions(t *testing.T) {
 			continue
 		}
 
-		// Verify that Amount.ToBTC works as advertised.
-		f1 := test.amount.ToUnit(AmountBTC)
-		f2 := test.amount.ToBTC()
+		// Verify that Amount.ToRMG works as advertised.
+		f1 := test.amount.ToUnit(AmountRMG)
+		f2 := test.amount.ToRMG()
 		if f1 != f2 {
-			t.Errorf("%v: ToBTC does not match ToUnit(AmountBTC): %v != %v", test.name, f1, f2)
+			t.Errorf("%v: ToRMG does not match ToUnit(AmountRMG): %v != %v", test.name, f1, f2)
 		}
 
 		// Verify that Amount.String works as advertised.
-		s1 := test.amount.Format(AmountBTC)
+		s1 := test.amount.Format(AmountRMG)
 		s2 := test.amount.String()
 		if s1 != s2 {
-			t.Errorf("%v: String does not match Format(AmountBitcoin): %v != %v", test.name, s1, s2)
+			t.Errorf("%v: String does not match Format(AmountGrams): %v != %v", test.name, s1, s2)
 		}
 	}
 }
@@ -209,94 +201,94 @@ func TestAmountMulF64(t *testing.T) {
 		res  Amount
 	}{
 		{
-			name: "Multiply 0.1 BTC by 2",
-			amt:  100e5, // 0.1 BTC
+			name: "Multiply 0.1 RMG by 2",
+			amt:  100e5, // 0.1 RMG
 			mul:  2,
-			res:  200e5, // 0.2 BTC
+			res:  200e5, // 0.2 RMG
 		},
 		{
-			name: "Multiply 0.2 BTC by 0.02",
-			amt:  200e5, // 0.2 BTC
+			name: "Multiply 0.2 RMG by 0.02",
+			amt:  200e5, // 0.2 RMG
 			mul:  1.02,
-			res:  204e5, // 0.204 BTC
+			res:  204e5, // 0.204 RMG
 		},
 		{
-			name: "Multiply 0.1 BTC by -2",
-			amt:  100e5, // 0.1 BTC
+			name: "Multiply 0.1 RMG by -2",
+			amt:  100e5, // 0.1 RMG
 			mul:  -2,
-			res:  -200e5, // -0.2 BTC
+			res:  -200e5, // -0.2 RMG
 		},
 		{
-			name: "Multiply 0.2 BTC by -0.02",
-			amt:  200e5, // 0.2 BTC
+			name: "Multiply 0.2 RMG by -0.02",
+			amt:  200e5, // 0.2 RMG
 			mul:  -1.02,
-			res:  -204e5, // -0.204 BTC
+			res:  -204e5, // -0.204 RMG
 		},
 		{
-			name: "Multiply -0.1 BTC by 2",
-			amt:  -100e5, // -0.1 BTC
+			name: "Multiply -0.1 RMG by 2",
+			amt:  -100e5, // -0.1 RMG
 			mul:  2,
-			res:  -200e5, // -0.2 BTC
+			res:  -200e5, // -0.2 RMG
 		},
 		{
-			name: "Multiply -0.2 BTC by 0.02",
-			amt:  -200e5, // -0.2 BTC
+			name: "Multiply -0.2 RMG by 0.02",
+			amt:  -200e5, // -0.2 RMG
 			mul:  1.02,
-			res:  -204e5, // -0.204 BTC
+			res:  -204e5, // -0.204 RMG
 		},
 		{
-			name: "Multiply -0.1 BTC by -2",
-			amt:  -100e5, // -0.1 BTC
+			name: "Multiply -0.1 RMG by -2",
+			amt:  -100e5, // -0.1 RMG
 			mul:  -2,
-			res:  200e5, // 0.2 BTC
+			res:  200e5, // 0.2 RMG
 		},
 		{
-			name: "Multiply -0.2 BTC by -0.02",
-			amt:  -200e5, // -0.2 BTC
+			name: "Multiply -0.2 RMG by -0.02",
+			amt:  -200e5, // -0.2 RMG
 			mul:  -1.02,
-			res:  204e5, // 0.204 BTC
+			res:  204e5, // 0.204 RMG
 		},
 		{
 			name: "Round down",
-			amt:  49, // 49 Satoshis
+			amt:  49, // 49 Atoms
 			mul:  0.01,
 			res:  0,
 		},
 		{
 			name: "Round up",
-			amt:  50, // 50 Satoshis
+			amt:  50, // 50 Atoms
 			mul:  0.01,
-			res:  1, // 1 Satoshi
+			res:  1, // 1 Atom
 		},
 		{
 			name: "Multiply by 0.",
-			amt:  1e8, // 1 BTC
+			amt:  1e8, // 100 RMG
 			mul:  0,
-			res:  0, // 0 BTC
+			res:  0, // 0 RMG
 		},
 		{
 			name: "Multiply 1 by 0.5.",
-			amt:  1, // 1 Satoshi
+			amt:  1, // 1 Atom
 			mul:  0.5,
-			res:  1, // 1 Satoshi
+			res:  1, // 1 Atom
 		},
 		{
 			name: "Multiply 100 by 66%.",
-			amt:  100, // 100 Satoshis
+			amt:  100, // 100 Atoms
 			mul:  0.66,
-			res:  66, // 66 Satoshis
+			res:  66, // 66 Atoms
 		},
 		{
 			name: "Multiply 100 by 66.6%.",
-			amt:  100, // 100 Satoshis
+			amt:  100, // 100 Atoms
 			mul:  0.666,
-			res:  67, // 67 Satoshis
+			res:  67, // 67 Atoms
 		},
 		{
 			name: "Multiply 100 by 2/3.",
-			amt:  100, // 100 Satoshis
+			amt:  100, // 100 Atoms
 			mul:  2.0 / 3,
-			res:  67, // 67 Satoshis
+			res:  67, // 67 Atoms
 		},
 	}
 

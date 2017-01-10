@@ -51,7 +51,7 @@ var helpDescsEnUS = map[string]string{
 	"createrawtransaction-amounts":        "JSON object with the destination addresses as keys and amounts as values",
 	"createrawtransaction-amounts--key":   "address",
 	"createrawtransaction-amounts--value": "n.nnn",
-	"createrawtransaction-amounts--desc":  "The destination address as the key and the amount in BTC as the value",
+	"createrawtransaction-amounts--desc":  "The destination address as the key and the amount in RMG as the value",
 	"createrawtransaction-locktime":       "Locktime value; a non-zero value will also locktime-activate the inputs",
 	"createrawtransaction--result0":       "Hex-encoded bytes of the serialized transaction",
 
@@ -61,7 +61,7 @@ var helpDescsEnUS = map[string]string{
 	"prepareaztectransaction-amounts":        "JSON object with the destination addresses as keys and amounts as values",
 	"prepareaztectransaction-amounts--key":   "address",
 	"prepareaztectransaction-amounts--value": "n.nnn",
-	"prepareaztectransaction-amounts--desc":  "The destination address as the key and the amount in BTC as the value",
+	"prepareaztectransaction-amounts--desc":  "The destination address as the key and the amount in RMG as the value",
 	"prepareaztectransaction-locktime":       "Locktime value; a non-zero value will also locktime-activate the inputs",
 	"prepareaztectransaction--result0":       "Hex-encoded bytes of the serialized transaction",
 
@@ -96,7 +96,7 @@ var helpDescsEnUS = map[string]string{
 	"scriptpubkeyresult-addresses": "The bitcoin addresses associated with this script",
 
 	// Vout help.
-	"vout-value":        "The amount in BTC",
+	"vout-value":        "The amount in RMG",
 	"vout-n":            "The index of this transaction output",
 	"vout-scriptPubKey": "The public key script used to pay coins as a JSON object",
 
@@ -278,7 +278,7 @@ var helpDescsEnUS = map[string]string{
 	"getblocktemplateresulttx-data":    "Hex-encoded transaction data (byte-for-byte)",
 	"getblocktemplateresulttx-hash":    "Hex-encoded transaction hash (little endian if treated as a 256-bit number)",
 	"getblocktemplateresulttx-depends": "Other transactions before this one (by 1-based index in the 'transactions'  list) that must be present in the final block if this one is",
-	"getblocktemplateresulttx-fee":     "Difference in value between transaction inputs and outputs (in Satoshi)",
+	"getblocktemplateresulttx-fee":     "Difference in value between transaction inputs and outputs (in Atoms)",
 	"getblocktemplateresulttx-sigops":  "Total number of signature operations as counted for purposes of block limits",
 
 	// GetBlockTemplateResultAux help.
@@ -295,7 +295,7 @@ var helpDescsEnUS = map[string]string{
 	"getblocktemplateresult-version":           "The block version",
 	"getblocktemplateresult-coinbaseaux":       "Data that should be included in the coinbase signature script",
 	"getblocktemplateresult-coinbasetxn":       "Information about the coinbase transaction",
-	"getblocktemplateresult-coinbasevalue":     "Total amount available for the coinbase in Satoshi",
+	"getblocktemplateresult-coinbasevalue":     "Total amount available for the coinbase in Atoms",
 	"getblocktemplateresult-workid":            "This value must be returned with result if provided (not provided)",
 	"getblocktemplateresult-longpollid":        "Identifier for long poll request which allows monitoring for expiration",
 	"getblocktemplateresult-longpolluri":       "An alternate URI to use for long poll requests if provided (not provided)",
@@ -347,7 +347,7 @@ var helpDescsEnUS = map[string]string{
 	"infochainresult-proxy":           "The proxy used by the server",
 	"infochainresult-difficulty":      "The current target difficulty",
 	"infochainresult-testnet":         "Whether or not server is using testnet",
-	"infochainresult-relayfee":        "The minimum relay fee for non-free transactions in BTC/KB",
+	"infochainresult-relayfee":        "The minimum relay fee for non-free transactions in RMG/KB",
 	"infochainresult-errors":          "Any current errors",
 
 	// InfoWalletResult help.
@@ -364,8 +364,8 @@ var helpDescsEnUS = map[string]string{
 	"infowalletresult-keypoololdest":   "Seconds since 1 Jan 1970 GMT of the oldest pre-generated key in the key pool",
 	"infowalletresult-keypoolsize":     "The number of new keys that are pre-generated",
 	"infowalletresult-unlocked_until":  "The timestamp in seconds since 1 Jan 1970 GMT that the wallet is unlocked for transfers, or 0 if the wallet is locked",
-	"infowalletresult-paytxfee":        "The transaction fee set in BTC/KB",
-	"infowalletresult-relayfee":        "The minimum relay fee for non-free transactions in BTC/KB",
+	"infowalletresult-paytxfee":        "The transaction fee set in RMG/KB",
+	"infowalletresult-relayfee":        "The minimum relay fee for non-free transactions in RMG/KB",
 	"infowalletresult-errors":          "Any current errors",
 
 	// GetInfoCmd help.
@@ -434,7 +434,7 @@ var helpDescsEnUS = map[string]string{
 
 	// GetRawMempoolVerboseResult help.
 	"getrawmempoolverboseresult-size":             "Transaction size in bytes",
-	"getrawmempoolverboseresult-fee":              "Transaction fee in bitcoins",
+	"getrawmempoolverboseresult-fee":              "Transaction fee in grams",
 	"getrawmempoolverboseresult-time":             "Local time transaction entered pool in seconds since 1 Jan 1970 GMT",
 	"getrawmempoolverboseresult-height":           "Block height when transaction entered the pool",
 	"getrawmempoolverboseresult-startingpriority": "Priority when transaction entered the pool",
@@ -459,7 +459,7 @@ var helpDescsEnUS = map[string]string{
 	// GetTxOutResult help.
 	"gettxoutresult-bestblock":     "The block hash that contains the transaction output",
 	"gettxoutresult-confirmations": "The number of confirmations",
-	"gettxoutresult-value":         "The transaction amount in BTC",
+	"gettxoutresult-value":         "The transaction amount in RMG",
 	"gettxoutresult-scriptPubKey":  "The public key script used to pay coins as a JSON object",
 	"gettxoutresult-version":       "The transaction version",
 	"gettxoutresult-coinbase":      "Whether or not the transaction is a coinbase",

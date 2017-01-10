@@ -10,17 +10,17 @@ import (
 func ExampleAmount() {
 
 	a := rmgutil.Amount(0)
-	fmt.Println("Zero Satoshi:", a)
+	fmt.Println("Zero Atoms:", a)
 
-	a = rmgutil.Amount(1e8)
-	fmt.Println("100,000,000 Satoshis:", a)
+	a = rmgutil.Amount(1e6)
+	fmt.Println("1,000,000 Atoms:", a)
 
 	a = rmgutil.Amount(1e5)
-	fmt.Println("100,000 Satoshis:", a)
+	fmt.Println("100,000 Atoms:", a)
 	// Output:
-	// Zero Satoshi: 0 BTC
-	// 100,000,000 Satoshis: 1 BTC
-	// 100,000 Satoshis: 0.001 BTC
+	// Zero Atoms: 0 RMG
+	// 1,000,000 Atoms: 1 RMG
+	// 100,000 Atoms: 0.1 RMG
 }
 
 func ExampleNewAmount() {
@@ -31,7 +31,7 @@ func ExampleNewAmount() {
 	}
 	fmt.Println(amountOne) //Output 1
 
-	amountFraction, err := rmgutil.NewAmount(0.01234567)
+	amountFraction, err := rmgutil.NewAmount(0.012345)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -52,25 +52,23 @@ func ExampleNewAmount() {
 	}
 	fmt.Println(amountNaN) //Output 4
 
-	// Output: 1 BTC
-	// 0.01234567 BTC
-	// 0 BTC
-	// invalid bitcoin amount
+	// Output: 1 RMG
+	// 0.012345 RMG
+	// 0 RMG
+	// invalid amount
 }
 
 func ExampleAmount_unitConversions() {
-	amount := rmgutil.Amount(44433322211100)
+	amount := rmgutil.Amount(444333222111)
 
-	fmt.Println("Satoshi to kBTC:", amount.Format(rmgutil.AmountKiloBTC))
-	fmt.Println("Satoshi to BTC:", amount)
-	fmt.Println("Satoshi to MilliBTC:", amount.Format(rmgutil.AmountMilliBTC))
-	fmt.Println("Satoshi to MicroBTC:", amount.Format(rmgutil.AmountMicroBTC))
-	fmt.Println("Satoshi to Satoshi:", amount.Format(rmgutil.AmountSatoshi))
+	fmt.Println("Atom to kRMG:", amount.Format(rmgutil.AmountKiloRMG))
+	fmt.Println("Atom to RMG:", amount)
+	fmt.Println("Atom to MilliRMG:", amount.Format(rmgutil.AmountMilliRMG))
+	fmt.Println("Atom to Atom:", amount.Format(rmgutil.AmountAtoms))
 
 	// Output:
-	// Satoshi to kBTC: 444.333222111 kBTC
-	// Satoshi to BTC: 444333.222111 BTC
-	// Satoshi to MilliBTC: 444333222.111 mBTC
-	// Satoshi to MicroBTC: 444333222111 μBTC
-	// Satoshi to Satoshi: 44433322211100 Satoshi
+	// Atom to kRMG: 444.333222111 kRMG
+	// Atom to RMG: 444333.222111 RMG
+	// Atom to MilliRMG: 444333222.111 mRMG
+	// Atom to Atom: 444333222111 Atom
 }

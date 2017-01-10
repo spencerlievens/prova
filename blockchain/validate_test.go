@@ -15,6 +15,17 @@ import (
 	"github.com/bitgo/rmgd/wire"
 )
 
+// TestCalcBlockSubsidy tests the block subsidy calculation to ensure it
+// returns the expected subsidy value.
+func TestCalcBlockSubsidy(t *testing.T) {
+	subsidy := blockchain.CalcBlockSubsidy(0, &chaincfg.MainNetParams)
+
+	if subsidy != 5000*rmgutil.AtomsPerGram {
+		t.Errorf("TestCalcBlockSubsidy: inconsistent initial block "+
+			"subsidy %v", subsidy)
+	}
+}
+
 // TestCheckConnectBlock tests the CheckConnectBlock function to ensure it
 // fails.
 func TestCheckConnectBlock(t *testing.T) {

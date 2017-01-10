@@ -538,7 +538,7 @@ mempoolLoop:
 		prioItem.priority = mempool.CalcPriority(tx.MsgTx(), utxos,
 			nextBlockHeight)
 
-		// Calculate the fee in Satoshi/kB.
+		// Calculate the fee in Atoms/kB.
 		txSize := tx.MsgTx().SerializeSize()
 		prioItem.feePerKB = (txDesc.Fee * 1000) / int64(txSize)
 		prioItem.fee = txDesc.Fee

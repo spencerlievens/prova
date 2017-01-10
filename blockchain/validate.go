@@ -44,7 +44,7 @@ const (
 
 	// baseSubsidy is the starting subsidy amount for mined blocks.  This
 	// value is halved every SubsidyHalvingInterval blocks.
-	baseSubsidy = 50 * rmgutil.SatoshiPerBitcoin
+	baseSubsidy = 5000 * rmgutil.AtomsPerGram
 )
 
 var (
@@ -180,38 +180,38 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 	// output must not be negative or more than the max allowed per
 	// transaction.  Also, the total of all outputs must abide by the same
 	// restrictions.  All amounts in a transaction are in a unit value known
-	// as a satoshi.  One bitcoin is a quantity of satoshi as defined by the
-	// SatoshiPerBitcoin constant.
-	var totalSatoshi int64
+	// as an atom.  One gram is a quantity of atoms as defined by the
+	// AtomsPerGram constant.
+	var totalAtoms int64
 	for _, txOut := range msgTx.TxOut {
-		satoshi := txOut.Value
-		if satoshi < 0 {
+		atoms := txOut.Value
+		if atoms < 0 {
 			str := fmt.Sprintf("transaction output has negative "+
-				"value of %v", satoshi)
+				"value of %v", atoms)
 			return ruleError(ErrBadTxOutValue, str)
 		}
-		if satoshi > rmgutil.MaxSatoshi {
+		if atoms > rmgutil.MaxAtoms {
 			str := fmt.Sprintf("transaction output value of %v is "+
-				"higher than max allowed value of %v", satoshi,
-				rmgutil.MaxSatoshi)
+				"higher than max allowed value of %v", atoms,
+				rmgutil.MaxAtoms)
 			return ruleError(ErrBadTxOutValue, str)
 		}
 
 		// Two's complement int64 overflow guarantees that any overflow
 		// is detected and reported.  This is impossible for Bitcoin, but
 		// perhaps possible if an alt increases the total money supply.
-		totalSatoshi += satoshi
-		if totalSatoshi < 0 {
+		totalAtoms += atoms
+		if totalAtoms < 0 {
 			str := fmt.Sprintf("total value of all transaction "+
 				"outputs exceeds max allowed value of %v",
-				rmgutil.MaxSatoshi)
+				rmgutil.MaxAtoms)
 			return ruleError(ErrBadTxOutValue, str)
 		}
-		if totalSatoshi > rmgutil.MaxSatoshi {
+		if totalAtoms > rmgutil.MaxAtoms {
 			str := fmt.Sprintf("total value of all transaction "+
 				"outputs is %v which is higher than max "+
-				"allowed value of %v", totalSatoshi,
-				rmgutil.MaxSatoshi)
+				"allowed value of %v", totalAtoms,
+				rmgutil.MaxAtoms)
 			return ruleError(ErrBadTxOutValue, str)
 		}
 	}
@@ -739,7 +739,7 @@ func (b *BlockChain) checkBIP0030(node *blockNode, block *rmgutil.Block, view *U
 // requirements are met, detecting double spends, validating all values and fees
 // are in the legal range and the total output amount doesn't exceed the input
 // amount, and verifying the signatures to prove the spender was the owner of
-// the bitcoins and therefore allowed to spend them.  As it checks the inputs,
+// the funds and therefore allowed to spend them.  As it checks the inputs,
 // it also calculates the total fees for the transaction and returns that value.
 //
 // NOTE: The transaction MUST have already been sanity checked with the
@@ -751,7 +751,7 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	}
 
 	txHash := tx.Hash()
-	var totalSatoshiIn int64
+	var totalAtomsIn int64
 	for txInIndex, txIn := range tx.MsgTx().TxIn {
 		// Ensure the referenced input transaction is available.
 		originTxHash := &txIn.PreviousOutPoint.Hash
@@ -792,34 +792,34 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		// Ensure the transaction amounts are in range.  Each of the
 		// output values of the input transactions must not be negative
 		// or more than the max allowed per transaction.  All amounts in
-		// a transaction are in a unit value known as a satoshi.  One
-		// bitcoin is a quantity of satoshi as defined by the
-		// SatoshiPerBitcoin constant.
-		originTxSatoshi := utxoEntry.AmountByIndex(originTxIndex)
-		if originTxSatoshi < 0 {
+		// a transaction are in a unit value known as an atom.  One
+		// gram is a quantity of atoms as defined by the
+		// AtomsPerGram constant.
+		originTxAtoms := utxoEntry.AmountByIndex(originTxIndex)
+		if originTxAtoms < 0 {
 			str := fmt.Sprintf("transaction output has negative "+
-				"value of %v", rmgutil.Amount(originTxSatoshi))
+				"value of %v", rmgutil.Amount(originTxAtoms))
 			return 0, ruleError(ErrBadTxOutValue, str)
 		}
-		if originTxSatoshi > rmgutil.MaxSatoshi {
+		if originTxAtoms > rmgutil.MaxAtoms {
 			str := fmt.Sprintf("transaction output value of %v is "+
 				"higher than max allowed value of %v",
-				rmgutil.Amount(originTxSatoshi),
-				rmgutil.MaxSatoshi)
+				rmgutil.Amount(originTxAtoms),
+				rmgutil.MaxAtoms)
 			return 0, ruleError(ErrBadTxOutValue, str)
 		}
 
 		// The total of all outputs must not be more than the max
 		// allowed per transaction.  Also, we could potentially overflow
 		// the accumulator so check for overflow.
-		lastSatoshiIn := totalSatoshiIn
-		totalSatoshiIn += originTxSatoshi
-		if totalSatoshiIn < lastSatoshiIn ||
-			totalSatoshiIn > rmgutil.MaxSatoshi {
+		lastAtomsIn := totalAtomsIn
+		totalAtomsIn += originTxAtoms
+		if totalAtomsIn < lastAtomsIn ||
+			totalAtomsIn > rmgutil.MaxAtoms {
 			str := fmt.Sprintf("total value of all transaction "+
 				"inputs is %v which is higher than max "+
-				"allowed value of %v", totalSatoshiIn,
-				rmgutil.MaxSatoshi)
+				"allowed value of %v", totalAtomsIn,
+				rmgutil.MaxAtoms)
 			return 0, ruleError(ErrBadTxOutValue, str)
 		}
 	}
@@ -827,24 +827,24 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	// Calculate the total output amount for this transaction.  It is safe
 	// to ignore overflow and out of range errors here because those error
 	// conditions would have already been caught by checkTransactionSanity.
-	var totalSatoshiOut int64
+	var totalAtomsOut int64
 	for _, txOut := range tx.MsgTx().TxOut {
-		totalSatoshiOut += txOut.Value
+		totalAtomsOut += txOut.Value
 	}
 
 	// Ensure the transaction does not spend more than its inputs.
-	if totalSatoshiIn < totalSatoshiOut {
+	if totalAtomsIn < totalAtomsOut {
 		str := fmt.Sprintf("total value of all transaction inputs for "+
 			"transaction %v is %v which is less than the amount "+
-			"spent of %v", txHash, totalSatoshiIn, totalSatoshiOut)
+			"spent of %v", txHash, totalAtomsIn, totalAtomsOut)
 		return 0, ruleError(ErrSpendTooHigh, str)
 	}
 
 	// NOTE: bitcoind checks if the transaction fees are < 0 here, but that
 	// is an impossible condition because of the check above that ensures
 	// the inputs are >= the outputs.
-	txFeeInSatoshi := totalSatoshiIn - totalSatoshiOut
-	return txFeeInSatoshi, nil
+	txFeeInAtoms := totalAtomsIn - totalAtomsOut
+	return txFeeInAtoms, nil
 }
 
 // checkConnectBlock performs several checks to confirm connecting the passed
@@ -984,16 +984,16 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, vi
 	// mining the block.  It is safe to ignore overflow and out of range
 	// errors here because those error conditions would have already been
 	// caught by checkTransactionSanity.
-	var totalSatoshiOut int64
+	var totalAtomsOut int64
 	for _, txOut := range transactions[0].MsgTx().TxOut {
-		totalSatoshiOut += txOut.Value
+		totalAtomsOut += txOut.Value
 	}
-	expectedSatoshiOut := CalcBlockSubsidy(node.height, b.chainParams) +
+	expectedAtomsOut := CalcBlockSubsidy(node.height, b.chainParams) +
 		totalFees
-	if totalSatoshiOut > expectedSatoshiOut {
+	if totalAtomsOut > expectedAtomsOut {
 		str := fmt.Sprintf("coinbase transaction for block pays %v "+
 			"which is more than expected value of %v",
-			totalSatoshiOut, expectedSatoshiOut)
+			totalAtomsOut, expectedAtomsOut)
 		return ruleError(ErrBadCoinbaseValue, str)
 	}
 

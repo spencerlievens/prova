@@ -563,7 +563,7 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 	// some validity checks.
 	for encodedAddr, amount := range c.Amounts {
 		// Ensure amount is in the valid range for monetary amounts.
-		if amount <= 0 || amount > rmgutil.MaxSatoshi {
+		if amount <= 0 || amount > rmgutil.MaxAtoms {
 			return nil, &btcjson.RPCError{
 				Code:    btcjson.ErrRPCType,
 				Message: "Invalid amount",
@@ -607,14 +607,14 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 			return nil, internalRPCError(err.Error(), context)
 		}
 
-		// Convert the amount to satoshi.
-		satoshi, err := rmgutil.NewAmount(amount)
+		// Convert the amount to atoms.
+		atoms, err := rmgutil.NewAmount(amount)
 		if err != nil {
 			context := "Failed to convert amount"
 			return nil, internalRPCError(err.Error(), context)
 		}
 
-		txOut := wire.NewTxOut(int64(satoshi), pkScript)
+		txOut := wire.NewTxOut(int64(atoms), pkScript)
 		mtx.AddTxOut(txOut)
 	}
 
@@ -674,7 +674,7 @@ func handlePrepareAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-ch
 	// some validity checks.
 	for encodedAddr, amount := range c.Amounts {
 		// Ensure amount is in the valid range for monetary amounts.
-		if amount <= 0 || amount > rmgutil.MaxSatoshi {
+		if amount <= 0 || amount > rmgutil.MaxAtoms {
 			return nil, &btcjson.RPCError{
 				Code:    btcjson.ErrRPCType,
 				Message: "Invalid amount",
@@ -716,14 +716,14 @@ func handlePrepareAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-ch
 			return nil, internalRPCError(err.Error(), context)
 		}
 
-		// Convert the amount to satoshi.
-		satoshi, err := rmgutil.NewAmount(amount)
+		// Convert the amount to atoms.
+		atoms, err := rmgutil.NewAmount(amount)
 		if err != nil {
 			context := "Failed to convert amount"
 			return nil, internalRPCError(err.Error(), context)
 		}
 
-		txOut := wire.NewTxOut(int64(satoshi), pkScript)
+		txOut := wire.NewTxOut(int64(atoms), pkScript)
 		mtx.AddTxOut(txOut)
 	}
 
@@ -834,7 +834,7 @@ func createVoutList(mtx *wire.MsgTx, chainParams *chaincfg.Params, filterAddrMap
 
 		var vout btcjson.Vout
 		vout.N = uint32(i)
-		vout.Value = rmgutil.Amount(v.Value).ToBTC()
+		vout.Value = rmgutil.Amount(v.Value).ToRMG()
 		vout.ScriptPubKey.Addresses = encodedAddrs
 		vout.ScriptPubKey.Asm = disbuf
 		vout.ScriptPubKey.Hex = hex.EncodeToString(v.PkScript)
@@ -2368,7 +2368,7 @@ func handleGetInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (in
 		Proxy:           cfg.Proxy,
 		Difficulty:      getDifficultyRatio(best.Bits),
 		TestNet:         cfg.TestNet3,
-		RelayFee:        cfg.minRelayTxFee.ToBTC(),
+		RelayFee:        cfg.minRelayTxFee.ToRMG(),
 	}
 
 	return ret, nil
@@ -2863,7 +2863,7 @@ func handleGetTxOut(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 	txOutReply := &btcjson.GetTxOutResult{
 		BestBlock:     bestBlockHash,
 		Confirmations: int64(confirmations),
-		Value:         rmgutil.Amount(value).ToBTC(),
+		Value:         rmgutil.Amount(value).ToRMG(),
 		Version:       txVersion,
 		ScriptPubKey: btcjson.ScriptPubKeyResult{
 			Asm:       disbuf,
@@ -3420,7 +3420,7 @@ func createVinListPrevOut(s *rpcServer, mtx *wire.MsgTx, chainParams *chaincfg.P
 			vinListEntry := &vinList[len(vinList)-1]
 			vinListEntry.PrevOut = &btcjson.PrevOut{
 				Addresses: encodedAddrs,
-				Value:     rmgutil.Amount(originTxOut.Value).ToBTC(),
+				Value:     rmgutil.Amount(originTxOut.Value).ToRMG(),
 			}
 		}
 	}

@@ -46,10 +46,10 @@ func TestCalcMinRequiredTxRelayFee(t *testing.T) {
 			100000,
 		},
 		{
-			"max standard tx size with max satoshi relay fee",
+			"max standard tx size with max atoms relay fee",
 			maxStandardTxSize,
-			rmgutil.MaxSatoshi,
-			rmgutil.MaxSatoshi,
+			rmgutil.MaxAtoms,
+			rmgutil.MaxAtoms,
 		},
 		{
 			"1500 bytes with 5000 relay fee",
@@ -246,9 +246,9 @@ func TestDust(t *testing.T) {
 		},
 		{
 			// Maximum allowed value is never dust.
-			"max satoshi amount is never dust",
-			wire.TxOut{Value: rmgutil.MaxSatoshi, PkScript: pkScript},
-			rmgutil.MaxSatoshi,
+			"max atoms amount is never dust",
+			wire.TxOut{Value: rmgutil.MaxAtoms, PkScript: pkScript},
+			rmgutil.MaxAtoms,
 			false,
 		},
 		{
@@ -302,7 +302,7 @@ func TestCheckTransactionStandard(t *testing.T) {
 		t.Fatalf("PayToAddrScript: unexpected error: %v", err)
 	}
 	dummyTxOut := wire.TxOut{
-		Value:    100000000, // 1 BTC
+		Value:    100000000, // 100 RMG
 		PkScript: dummyPkScript,
 	}
 

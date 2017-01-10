@@ -348,7 +348,7 @@ func (m *memWallet) NewAddress() (rmgutil.Address, error) {
 // fundTx attempts to fund a transaction sending amt bitcoin. The coins are
 // selected such that the final amount spent pays enough fees as dictated by
 // the passed fee rate. The passed fee rate should be expressed in
-// satoshis-per-byte.
+// atoms-per-byte.
 //
 // NOTE: The memWallet's mutex must be held when this function is called.
 func (m *memWallet) fundTx(tx *wire.MsgTx, amt rmgutil.Amount, feeRate rmgutil.Amount) error {
@@ -416,7 +416,7 @@ func (m *memWallet) fundTx(tx *wire.MsgTx, amt rmgutil.Amount, feeRate rmgutil.A
 
 // SendOutputs creates, then sends a transaction paying to the specified output
 // while observing the passed fee rate. The passed fee rate should be expressed
-// in satoshis-per-byte.
+// in atoms-per-byte.
 func (m *memWallet) SendOutputs(outputs []*wire.TxOut,
 	feeRate rmgutil.Amount) (*chainhash.Hash, error) {
 
@@ -430,7 +430,7 @@ func (m *memWallet) SendOutputs(outputs []*wire.TxOut,
 
 // CreateTransaction returns a fully signed transaction paying to the specified
 // outputs while observing the desired fee rate. The passed fee rate should be
-// expressed in satoshis-per-byte.
+// expressed in atoms-per-byte.
 //
 // This function is safe for concurrent access.
 func (m *memWallet) CreateTransaction(outputs []*wire.TxOut, feeRate rmgutil.Amount) (*wire.MsgTx, error) {
