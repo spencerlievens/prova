@@ -1104,8 +1104,7 @@ func (b *BlockChain) CheckConnectBlock(block *rmgutil.Block) error {
 	defer b.chainLock.Unlock()
 
 	prevNode := b.bestNode
-	newNode := newBlockNode(&block.MsgBlock().Header, block.Hash(),
-		prevNode.height+1)
+	newNode := newBlockNode(&block.MsgBlock().Header, block.Hash())
 	newNode.parent = prevNode
 	newNode.workSum.Add(prevNode.workSum, newNode.workSum)
 

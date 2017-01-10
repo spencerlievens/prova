@@ -1398,7 +1398,6 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		context := "Failed to obtain block height"
 		return nil, internalRPCError(err.Error(), context)
 	}
-	blk.SetHeight(blockHeight)
 	best := s.chain.BestSnapshot()
 
 	// Get next block hash unless there are none.
@@ -1421,7 +1420,7 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		Nonce:            blockHeader.Nonce,
 		Time:             blockHeader.Timestamp.Unix(),
 		Confirmations:    uint64(1 + best.Height - blockHeight),
-		Height:           int64(blockHeight),
+		Height:           int64(blockHeader.Height),
 		Size:             int32(len(blkBytes)),
 		Bits:             strconv.FormatInt(int64(blockHeader.Bits), 16),
 		Difficulty:       getDifficultyRatio(blockHeader.Bits),
@@ -1536,7 +1535,7 @@ func handleGetBlockHeader(s *rpcServer, cmd interface{}, closeChan <-chan struct
 	blockHeaderReply := btcjson.GetBlockHeaderVerboseResult{
 		Hash:             c.Hash,
 		Confirmations:    uint64(1 + best.Height - blockHeight),
-		Height:           int32(blockHeight),
+		Height:           int32(blockHeader.Height),
 		Version:          blockHeader.Version,
 		MerkleRoot:       blockHeader.MerkleRoot.String(),
 		NextHash:         nextHashString,

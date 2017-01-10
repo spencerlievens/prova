@@ -153,6 +153,7 @@ func createBlock(prevBlock *rmgutil.Block, inclusionTxs []*rmgutil.Tx,
 		MerkleRoot: *merkles[len(merkles)-1],
 		Timestamp:  ts,
 		Bits:       net.PowLimitBits,
+		Height:     blockHeight,
 	}
 	for _, tx := range blockTxns {
 		if err := block.AddTransaction(tx.MsgTx()); err != nil {
@@ -166,6 +167,5 @@ func createBlock(prevBlock *rmgutil.Block, inclusionTxs []*rmgutil.Tx,
 	}
 
 	utilBlock := rmgutil.NewBlock(&block)
-	utilBlock.SetHeight(blockHeight)
 	return utilBlock, nil
 }

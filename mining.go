@@ -745,6 +745,7 @@ mempoolLoop:
 		MerkleRoot: *merkles[len(merkles)-1],
 		Timestamp:  ts,
 		Bits:       reqDifficulty,
+		Height:     nextBlockHeight,
 	}
 
 	// Sign the block
@@ -760,7 +761,6 @@ mempoolLoop:
 	// consensus rules to ensure it properly connects to the current best
 	// chain with no issues.
 	block := rmgutil.NewBlock(&msgBlock)
-	block.SetHeight(nextBlockHeight)
 	if err := blockManager.chain.CheckConnectBlock(block); err != nil {
 		return nil, err
 	}

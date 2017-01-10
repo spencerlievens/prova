@@ -376,7 +376,6 @@ func (h *Harness) GenerateAndSubmitBlock(txns []*rmgutil.Tx, blockVersion int32,
 		return nil, err
 	}
 	prevBlock := rmgutil.NewBlock(mBlock)
-	prevBlock.SetHeight(prevBlockHeight)
 
 	// Create a new block including the specified transactions
 	newBlock, err := createBlock(prevBlock, txns, blockVersion,

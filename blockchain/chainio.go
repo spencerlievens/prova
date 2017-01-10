@@ -1051,7 +1051,7 @@ func (b *BlockChain) createChainState() error {
 	// Create a new node from the genesis block and set it as the best node.
 	genesisBlock := rmgutil.NewBlock(b.chainParams.GenesisBlock)
 	header := &genesisBlock.MsgBlock().Header
-	node := newBlockNode(header, genesisBlock.Hash(), 0)
+	node := newBlockNode(header, genesisBlock.Hash())
 	node.inMainChain = true
 	b.bestNode = node
 
@@ -1151,7 +1151,8 @@ func (b *BlockChain) initChainState() error {
 		// Create a new node and set it as the best node.  The preceding
 		// nodes will be loaded on demand as needed.
 		header := &block.Header
-		node := newBlockNode(header, &state.hash, int32(state.height))
+		header.Height = int32(state.height)
+		node := newBlockNode(header, &state.hash)
 		node.inMainChain = true
 		node.workSum = state.workSum
 		b.bestNode = node
@@ -1222,12 +1223,6 @@ func dbFetchHeaderByHeight(dbTx database.Tx, height int32) (*wire.BlockHeader, e
 // block for the provided hash, deserialize it, retrieve the appropriate height
 // from the index, and return a rmgutil.Block with the height set.
 func dbFetchBlockByHash(dbTx database.Tx, hash *chainhash.Hash) (*rmgutil.Block, error) {
-	// First find the height associated with the provided hash in the index.
-	blockHeight, err := dbFetchHeightByHash(dbTx, hash)
-	if err != nil {
-		return nil, err
-	}
-
 	// Load the raw block bytes from the database.
 	blockBytes, err := dbTx.FetchBlock(hash)
 	if err != nil {
@@ -1239,7 +1234,6 @@ func dbFetchBlockByHash(dbTx database.Tx, hash *chainhash.Hash) (*rmgutil.Block,
 	if err != nil {
 		return nil, err
 	}
-	block.SetHeight(blockHeight)
 
 	return block, nil
 }
@@ -1265,7 +1259,6 @@ func dbFetchBlockByHeight(dbTx database.Tx, height int32) (*rmgutil.Block, error
 	if err != nil {
 		return nil, err
 	}
-	block.SetHeight(height)
 
 	return block, nil
 }

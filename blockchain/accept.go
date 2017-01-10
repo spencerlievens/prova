@@ -31,14 +31,6 @@ func (b *BlockChain) maybeAcceptBlock(block *rmgutil.Block, flags BehaviorFlags)
 		return false, err
 	}
 
-	// The height of this block is one more than the referenced previous
-	// block.
-	blockHeight := int32(0)
-	if prevNode != nil {
-		blockHeight = prevNode.height + 1
-	}
-	block.SetHeight(blockHeight)
-
 	// The block must pass all of the validation rules which depend on the
 	// position of the block within the block chain.
 	err = b.checkBlockContext(block, prevNode, flags)
@@ -58,10 +50,10 @@ func (b *BlockChain) maybeAcceptBlock(block *rmgutil.Block, flags BehaviorFlags)
 	// Create a new block node for the block and add it to the in-memory
 	// block chain (could be either a side chain or the main chain).
 	blockHeader := &block.MsgBlock().Header
-	newNode := newBlockNode(blockHeader, block.Hash(), blockHeight)
+	newNode := newBlockNode(blockHeader, block.Hash())
 	if prevNode != nil {
 		newNode.parent = prevNode
-		newNode.height = blockHeight
+		newNode.height = blockHeader.Height
 		newNode.workSum.Add(prevNode.workSum, newNode.workSum)
 	}
 

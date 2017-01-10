@@ -311,7 +311,6 @@ func (m *Manager) Init(chain *blockchain.BlockChain) error {
 				if err != nil {
 					return err
 				}
-				block.SetHeight(height)
 
 				// When the index requires all of the referenced
 				// txouts they need to be retrieved from the

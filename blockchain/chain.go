@@ -72,7 +72,7 @@ type blockNode struct {
 // completely disconnected from the chain and the workSum value is just the work
 // for the passed block.  The work sum is updated accordingly when the node is
 // inserted into a chain.
-func newBlockNode(blockHeader *wire.BlockHeader, blockHash *chainhash.Hash, height int32) *blockNode {
+func newBlockNode(blockHeader *wire.BlockHeader, blockHash *chainhash.Hash) *blockNode {
 	// Make a copy of the hash so the node doesn't keep a reference to part
 	// of the full block/block header preventing it from being garbage
 	// collected.
@@ -81,7 +81,7 @@ func newBlockNode(blockHeader *wire.BlockHeader, blockHash *chainhash.Hash, heig
 		hash:             blockHash,
 		parentHash:       &prevHash,
 		workSum:          CalcWork(blockHeader.Bits),
-		height:           height,
+		height:           blockHeader.Height,
 		version:          blockHeader.Version,
 		bits:             blockHeader.Bits,
 		timestamp:        blockHeader.Timestamp,
@@ -404,13 +404,9 @@ func (b *BlockChain) loadBlockNode(dbTx database.Tx, hash *chainhash.Hash) (*blo
 	if err != nil {
 		return nil, err
 	}
-	blockHeight, err := dbFetchHeightByHash(dbTx, hash)
-	if err != nil {
-		return nil, err
-	}
 
 	// Create the new block node for the block and set the work.
-	node := newBlockNode(blockHeader, hash, blockHeight)
+	node := newBlockNode(blockHeader, hash)
 	node.inMainChain = true
 
 	// Add the node to the chain.
