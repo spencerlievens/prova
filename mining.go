@@ -35,7 +35,7 @@ const (
 	// coinbaseFlags is added to the coinbase script of a generated block
 	// and is used to monitor BIP16 support as well as blocks that are
 	// generated via btcd.
-	coinbaseFlags = "/P2SH/btcd/"
+	coinbaseFlags = "/rmgd/"
 )
 
 // txPrioItem houses a transaction along with extra information that allows the
@@ -198,7 +198,7 @@ func mergeUtxoView(viewA *blockchain.UtxoViewpoint, viewB *blockchain.UtxoViewpo
 // signature script of the coinbase transaction of a new block.  In particular,
 // it starts with the block height that is required by version 2 blocks and adds
 // the extra nonce as well as additional coinbase flags.
-func standardCoinbaseScript(nextBlockHeight int32) ([]byte, error) {
+func standardCoinbaseScript() ([]byte, error) {
 	return txscript.NewScriptBuilder().AddData([]byte(coinbaseFlags)).
 		Script()
 }
@@ -416,7 +416,7 @@ func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress rmguti
 	// ensure the transaction is not a duplicate transaction (paying the
 	// same value to the same public key address would otherwise be an
 	// identical transaction for block version 1).
-	coinbaseScript, err := standardCoinbaseScript(nextBlockHeight)
+	coinbaseScript, err := standardCoinbaseScript()
 	if err != nil {
 		return nil, err
 	}
