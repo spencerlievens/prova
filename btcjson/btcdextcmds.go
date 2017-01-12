@@ -60,16 +60,14 @@ func NewDebugLevelCmd(levelSpec string) *DebugLevelCmd {
 
 // GenerateCmd defines the generate JSON-RPC command.
 type GenerateCmd struct {
-	NumBlocks    uint32
-	ValidateKeys []string
+	NumBlocks uint32
 }
 
 // NewGenerateCmd returns a new instance which can be used to issue a generate
 // JSON-RPC command.
-func NewGenerateCmd(numBlocks uint32, validateKeys []string) *GenerateCmd {
+func NewGenerateCmd(numBlocks uint32) *GenerateCmd {
 	return &GenerateCmd{
-		NumBlocks:    numBlocks,
-		ValidateKeys: validateKeys,
+		NumBlocks: numBlocks,
 	}
 }
 

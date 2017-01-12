@@ -515,8 +515,7 @@ func (m *CPUMiner) ValidateKeys() []*btcec.PrivateKey {
 // detecting when it is performing stale work and reacting accordingly by
 // generating a new block template.  When a block is solved, it is submitted.
 // The function returns a list of the hashes of generated blocks.
-func (m *CPUMiner) GenerateNBlocks(n uint32,
-	validateKeys []*btcec.PrivateKey) ([]*chainhash.Hash, error) {
+func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 	m.Lock()
 
 	// Respond with an error if there's virtually 0 chance of CPU-mining a block.
@@ -573,6 +572,7 @@ func (m *CPUMiner) GenerateNBlocks(n uint32,
 		payToAddr := cfg.miningAddrs[rand.Intn(len(cfg.miningAddrs))]
 
 		// Choose a validate key at random.
+		validateKeys := m.ValidateKeys()
 		validateKey := validateKeys[rand.Intn(len(validateKeys))]
 
 		// Create a new block template using the available transactions

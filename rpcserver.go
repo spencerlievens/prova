@@ -1088,23 +1088,6 @@ func handleGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 
 	c := cmd.(*btcjson.GenerateCmd)
 
-	// Update the keys that should be used to sign the generated block.
-	if c.ValidateKeys == nil || len(c.ValidateKeys) < 1 {
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCInternal.Code,
-			Message: "No validate keys provided via --generate",
-		}
-	}
-	validateKeys := make([]*btcec.PrivateKey, len(c.ValidateKeys))
-	for i, privKeyStr := range c.ValidateKeys {
-		privKey, err := hex.DecodeString(privKeyStr)
-		if err != nil {
-			return nil, rpcDecodeHexError(privKeyStr)
-		}
-		key, _ := btcec.PrivKeyFromBytes(btcec.S256(), privKey)
-		validateKeys[i] = key
-	}
-
 	// Respond with an error if the client is requesting 0 blocks to be generated.
 	if c.NumBlocks == 0 {
 		return nil, &btcjson.RPCError{
@@ -1113,10 +1096,37 @@ func handleGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		}
 	}
 
+	// Attempt to establish validate keys from the environment var if there
+	// are none already registered.
+	validateKeyValue := os.Getenv(validateKeysEnvironmentKey)
+	if len(s.server.cpuMiner.ValidateKeys()) == 0 && validateKeyValue != "" {
+		validateKeys := strings.Split(validateKeyValue, ",")
+		validatePrivKeys := make([]*btcec.PrivateKey, len(validateKeys))
+		for i, privKeyStr := range validateKeys {
+			privKeyBytes, err := hex.DecodeString(privKeyStr)
+			if err != nil {
+				return nil, rpcDecodeHexError(privKeyStr)
+			}
+			privKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), privKeyBytes)
+			validatePrivKeys[i] = privKey
+		}
+		s.server.cpuMiner.SetValidateKeys(validatePrivKeys)
+	}
+
+	// Check that there are validate keys set
+	if len(s.server.cpuMiner.ValidateKeys()) == 0 {
+		return nil, &btcjson.RPCError{
+			Code: btcjson.ErrRPCInternal.Code,
+			Message: "No validate keys provided via " +
+				"--setvalidatekeys or RMGD_VALIDATE_KEYS " +
+				"environment variable",
+		}
+	}
+
 	// Create a reply
 	reply := make([]string, c.NumBlocks)
 
-	blockHashes, err := s.server.cpuMiner.GenerateNBlocks(c.NumBlocks, validateKeys)
+	blockHashes, err := s.server.cpuMiner.GenerateNBlocks(c.NumBlocks)
 	if err != nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInternal.Code,
@@ -3834,7 +3844,8 @@ func handleSetGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 		return nil, &btcjson.RPCError{
 			Code: btcjson.ErrRPCInternal.Code,
 			Message: "No validating priv keys specified " +
-				"via setvalidatekeys",
+				"via --setvalidatekeys or RMGD_VALIDATE_KEYS" +
+				"env variable",
 		}
 	}
 

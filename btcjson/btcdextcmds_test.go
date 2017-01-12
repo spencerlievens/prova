@@ -103,15 +103,14 @@ func TestBtcdExtCmds(t *testing.T) {
 		{
 			name: "generate",
 			newCmd: func() (interface{}, error) {
-				return btcjson.NewCmd("generate", 1, []string{"1234"})
+				return btcjson.NewCmd("generate", 1)
 			},
 			staticCmd: func() interface{} {
-				return btcjson.NewGenerateCmd(1, []string{"1234"})
+				return btcjson.NewGenerateCmd(1)
 			},
-			marshalled: `{"jsonrpc":"1.0","method":"generate","params":[1,["1234"]],"id":1}`,
+			marshalled: `{"jsonrpc":"1.0","method":"generate","params":[1],"id":1}`,
 			unmarshalled: &btcjson.GenerateCmd{
-				NumBlocks:    1,
-				ValidateKeys: []string{"1234"},
+				NumBlocks: 1,
 			},
 		},
 		{
