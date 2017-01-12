@@ -160,6 +160,7 @@ func createBlock(prevBlock *rmgutil.Block, inclusionTxs []*rmgutil.Tx,
 			return nil, err
 		}
 	}
+	block.Header.Size = block.SerializeSize()
 
 	found := solveBlock(&block.Header, net.PowLimit)
 	if !found {

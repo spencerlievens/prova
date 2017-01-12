@@ -442,8 +442,13 @@ func checkBlockSanity(block *rmgutil.Block, powLimit *big.Int, timeSource Median
 	}
 
 	// A block must not exceed the maximum allowed block payload when
-	// serialized.
+	// serialized.  The serialized size must match the header size value.
 	serializedSize := msgBlock.SerializeSize()
+	if serializedSize != int(header.Size) {
+		str := fmt.Sprintf("serialized block size %d, does not match "+
+			"header size %d", serializedSize, header.Size)
+		return ruleError(ErrInconsistentBlkSize, str)
+	}
 	if serializedSize > wire.MaxBlockPayload {
 		str := fmt.Sprintf("serialized block is too big - got %d, "+
 			"max %d", serializedSize, wire.MaxBlockPayload)

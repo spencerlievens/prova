@@ -69,7 +69,6 @@ type BlockHeader struct {
 	Height int32
 
 	// Size is the size of the serialized block in its entirety.
-	// TODO(aztec): implement
 	Size uint32
 
 	// Nonce used to generate the block (64 bits, to avoid extraNonce)

@@ -194,6 +194,10 @@ const (
 	// ErrExcessiveTrailing indicates that a block cannot be added to the
 	// block chain because it would constitute a too-long run of blocks.
 	ErrExcessiveTrailing
+
+	// ErrInconsistentBlkSize indicates the block size attested to in the
+	// block header does not match the block size of the actual block.
+	ErrInconsistentBlkSize
 )
 
 // Map of ErrorCode values back to their constant names for pretty printing.
@@ -238,6 +242,7 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrScriptValidation:     "ErrScriptValidation",
 	ErrExcessiveChainShare:  "ErrExcessiveChainShare",
 	ErrExcessiveTrailing:    "ErrExcessiveTrailing",
+	ErrInconsistentBlkSize:  "ErrInconsistentBlkSize",
 }
 
 // String returns the ErrorCode as a human-readable name.

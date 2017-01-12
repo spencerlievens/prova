@@ -1431,7 +1431,7 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		Time:             blockHeader.Timestamp.Unix(),
 		Confirmations:    uint64(1 + best.Height - blockHeight),
 		Height:           int64(blockHeader.Height),
-		Size:             int32(len(blkBytes)),
+		Size:             int32(blockHeader.Size),
 		Bits:             strconv.FormatInt(int64(blockHeader.Bits), 16),
 		Difficulty:       getDifficultyRatio(blockHeader.Bits),
 		NextHash:         nextHashString,
@@ -2242,6 +2242,12 @@ func chainErrToGBTErrString(err error) string {
 		return "bad-script-malformed"
 	case blockchain.ErrScriptValidation:
 		return "bad-script-validate"
+	case blockchain.ErrExcessiveChainShare:
+		return "excessive-chain-share"
+	case blockchain.ErrExcessiveTrailing:
+		return "excessive-trailing"
+	case blockchain.ErrInconsistentBlkSize:
+		return "bad-size-value"
 	}
 
 	return "rejected: " + err.Error()

@@ -746,6 +746,7 @@ mempoolLoop:
 		Timestamp:  ts,
 		Bits:       reqDifficulty,
 		Height:     nextBlockHeight,
+		Size:       blockSize,
 	}
 
 	// Sign the block

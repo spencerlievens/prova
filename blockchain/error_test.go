@@ -55,6 +55,9 @@ func TestErrorCodeStringer(t *testing.T) {
 		{blockchain.ErrBadCoinbaseValue, "ErrBadCoinbaseValue"},
 		{blockchain.ErrScriptMalformed, "ErrScriptMalformed"},
 		{blockchain.ErrScriptValidation, "ErrScriptValidation"},
+		{blockchain.ErrExcessiveChainShare, "ErrExcessiveChainShare"},
+		{blockchain.ErrExcessiveTrailing, "ErrExcessiveTrailing"},
+		{blockchain.ErrInconsistentBlkSize, "ErrInconsistentBlkSize"},
 		{0xffff, "Unknown ErrorCode (65535)"},
 	}
 
