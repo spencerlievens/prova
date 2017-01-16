@@ -112,12 +112,6 @@ type Params struct {
 	// networks and should not be set on a main network.
 	ReduceMinDifficulty bool
 
-	// MinDiffReductionTime is the amount of time after which the minimum
-	// required difficulty should be reduced when a block hasn't been found.
-	//
-	// NOTE: This only applies if ReduceMinDifficulty is true.
-	MinDiffReductionTime time.Duration
-
 	// GenerateSupported specifies whether or not CPU mining is allowed.
 	GenerateSupported bool
 
@@ -202,7 +196,6 @@ var MainNetParams = Params{
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
 	TargetTimePerBlock:       time.Minute,         // 1 minute
 	ReduceMinDifficulty:      false,
-	MinDiffReductionTime:     0,
 	GenerateSupported:        false,
 
 	// Checkpoints ordered from oldest to newest.
@@ -306,7 +299,6 @@ var RegressionNetParams = Params{
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
 	TargetTimePerBlock:       time.Minute,         // 1 minute
 	ReduceMinDifficulty:      true,
-	MinDiffReductionTime:     time.Minute * 20, // TargetTimePerBlock * 2
 	GenerateSupported:        true,
 
 	// Checkpoints ordered from oldest to newest.
@@ -392,7 +384,6 @@ var TestNet3Params = Params{
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
 	TargetTimePerBlock:       time.Minute,         // 1 minute
 	ReduceMinDifficulty:      true,
-	MinDiffReductionTime:     time.Minute * 20, // TargetTimePerBlock * 2
 	GenerateSupported:        false,
 
 	// Checkpoints ordered from oldest to newest.
@@ -464,7 +455,6 @@ var SimNetParams = Params{
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
 	TargetTimePerBlock:       time.Minute,         // 1 minutes
 	ReduceMinDifficulty:      true,
-	MinDiffReductionTime:     time.Minute * 20, // TargetTimePerBlock * 2
 	GenerateSupported:        true,
 
 	// Checkpoints ordered from oldest to newest.
