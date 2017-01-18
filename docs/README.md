@@ -10,6 +10,8 @@ The RMG blockchain is a Bitcoin-derived blockchain, custom-designed for the use 
 
 [Safe Multi-Sig Addresses](design/safe_multisig.md)
 
+[Administrative Transactions](design/admin.md)
+
 [Validator Rate-Limiting](design/rate_limiter.md)
 
 [Proof-of-Work Hash Function Exploration](design/hashfuncs.md)
