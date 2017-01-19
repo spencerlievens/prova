@@ -5,10 +5,13 @@
 package main
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +37,10 @@ const (
 	// reduce the amount of syncs between the workers that must be done to
 	// keep track of the hashes per second.
 	hashUpdateSecs = 15
+
+	// validateKeysEnvironmentKey specifies the environment var name to
+	// look up when populating the validate keys of the CPU miner.
+	validateKeysEnvironmentKey = "RMGD_VALIDATE_KEYS"
 )
 
 var (
@@ -287,6 +294,14 @@ out:
 		rand.Seed(time.Now().UnixNano())
 		payToAddr := cfg.miningAddrs[rand.Intn(len(cfg.miningAddrs))]
 
+		// Confirm that validate keys are present.
+		if len(m.validateKeys) == 0 {
+			errStr := fmt.Sprintf("Missing validate keys, set via"+
+				" setvalidatekeys or env var %s", validateKeysEnvironmentKey)
+			minrLog.Errorf(errStr)
+			continue
+		}
+
 		// Choose a signing key at random.
 		// TODO(aztec) omit rate limited keys
 		validateKey := m.validateKeys[rand.Intn(len(m.validateKeys))]
@@ -379,6 +394,29 @@ out:
 	m.wg.Done()
 }
 
+// EstablishValidateKeys attempts to populate validate keys from an env var.
+func (m *CPUMiner) EstablishValidateKeys() {
+	validateKeyValue := os.Getenv(validateKeysEnvironmentKey)
+	// Avoid attempting to establish validate keys when there is no value.
+	if validateKeyValue == "" {
+		return
+	}
+	validateKeys := strings.Split(validateKeyValue, ",")
+	validatePrivKeys := make([]*btcec.PrivateKey, len(validateKeys))
+	for i, privKeyStr := range validateKeys {
+		privKeyBytes, err := hex.DecodeString(privKeyStr)
+		if err != nil {
+			errStr := fmt.Sprintf("Failed parsing validate"+
+				" key: %v %v", privKeyStr, err)
+			minrLog.Errorf(errStr)
+			return
+		}
+		privKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), privKeyBytes)
+		validatePrivKeys[i] = privKey
+	}
+	m.validateKeys = validatePrivKeys
+}
+
 // Start begins the CPU mining process as well as the speed monitor used to
 // track hashing metrics.  Calling this function when the CPU miner has
 // already been started will have no effect.
@@ -392,6 +430,10 @@ func (m *CPUMiner) Start() {
 	// mode (using GenerateNBlocks).
 	if m.started || m.discreteMining {
 		return
+	}
+
+	if len(m.validateKeys) == 0 {
+		m.EstablishValidateKeys()
 	}
 
 	m.quit = make(chan struct{})

@@ -82,10 +82,6 @@ const (
 
 	// maxProtocolVersion is the max protocol version the server supports.
 	maxProtocolVersion = 70002
-
-	// validateKeysEnvironmentKey specifies the environment var name to
-	// look up when populating the validate keys of the CPU miner.
-	validateKeysEnvironmentKey = "RMGD_VALIDATE_KEYS"
 )
 
 var (
@@ -1098,19 +1094,8 @@ func handleGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 
 	// Attempt to establish validate keys from the environment var if there
 	// are none already registered.
-	validateKeyValue := os.Getenv(validateKeysEnvironmentKey)
-	if len(s.server.cpuMiner.ValidateKeys()) == 0 && validateKeyValue != "" {
-		validateKeys := strings.Split(validateKeyValue, ",")
-		validatePrivKeys := make([]*btcec.PrivateKey, len(validateKeys))
-		for i, privKeyStr := range validateKeys {
-			privKeyBytes, err := hex.DecodeString(privKeyStr)
-			if err != nil {
-				return nil, rpcDecodeHexError(privKeyStr)
-			}
-			privKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), privKeyBytes)
-			validatePrivKeys[i] = privKey
-		}
-		s.server.cpuMiner.SetValidateKeys(validatePrivKeys)
+	if len(s.server.cpuMiner.ValidateKeys()) == 0 {
+		s.server.cpuMiner.EstablishValidateKeys()
 	}
 
 	// Check that there are validate keys set
@@ -3817,23 +3802,6 @@ func handleSetGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 		return nil, nil
 	}
 
-	// Attempt to establish validate keys from the environment var if there
-	// are none already registered.
-	validateKeyValue := os.Getenv(validateKeysEnvironmentKey)
-	if len(s.server.cpuMiner.ValidateKeys()) == 0 && validateKeyValue != "" {
-		validateKeys := strings.Split(validateKeyValue, ",")
-		validatePrivKeys := make([]*btcec.PrivateKey, len(validateKeys))
-		for i, privKeyStr := range validateKeys {
-			privKeyBytes, err := hex.DecodeString(privKeyStr)
-			if err != nil {
-				return nil, rpcDecodeHexError(privKeyStr)
-			}
-			privKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), privKeyBytes)
-			validatePrivKeys[i] = privKey
-		}
-		s.server.cpuMiner.SetValidateKeys(validatePrivKeys)
-	}
-
 	// Respond with an error if there are no addresses to pay the
 	// created blocks to.
 	if len(cfg.miningAddrs) == 0 {
@@ -3842,6 +3810,12 @@ func handleSetGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 			Message: "No payment addresses specified " +
 				"via --miningaddr",
 		}
+	}
+
+	// Attempt to establish validate keys from the environment var if there
+	// are none already registered.
+	if len(s.server.cpuMiner.ValidateKeys()) == 0 {
+		s.server.cpuMiner.EstablishValidateKeys()
 	}
 
 	// Respond with an error if there are no validate keys available to
