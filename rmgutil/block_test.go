@@ -36,7 +36,7 @@ func TestBlock(t *testing.T) {
 	}
 
 	// Hash for block 100,000.
-	wantHashStr := "730785803d7a7dee39c7909b08cb35207de8cf70c762ffa62bfa97907b2c0573"
+	wantHashStr := "a3438930bbb6ae5f63828507f3ecf4b9046e5a5bf37d01176e21172733b5ac22"
 	wantHash, err := chainhash.NewHashFromStr(wantHashStr)
 	if err != nil {
 		t.Errorf("NewHashFromStr: %v", err)
@@ -192,6 +192,9 @@ func TestNewBlockFromBytes(t *testing.T) {
 			spew.Sdump(serializedBytes),
 			spew.Sdump(block100000Bytes))
 	}
+
+	wantHeight := int32(100000)
+	b.SetHeight(wantHeight)
 
 	// Ensure the generated MsgBlock is correct.
 	if msgBlock := b.MsgBlock(); !reflect.DeepEqual(msgBlock, &Block100000) {

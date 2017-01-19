@@ -8,11 +8,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"time"
-
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
+	"time"
 )
 
 // Bip16Activation is the timestamp where BIP0016 is valid to use in the
@@ -333,6 +333,22 @@ func ThreadPkScript(keyHashes [][]byte) ([]byte, error) {
 		pkScript.AddData(keyHashes[i])
 	}
 	return pkScript.AddInt64(int64(len(keyHashes))).AddOp(OP_CHECKTHREAD).Script()
+}
+
+// ExtractAdminData can read OP_*KEYADD and OP_*KEYREVOKE from admin outputs.
+func ExtractAdminData(pkScript []parsedOpcode) (byte, *btcec.PublicKey, error) {
+	// Admin outputs have an expected structure like this:
+	// opReturnByte+adminOpByte+pubKeyBytes
+	if len(pkScript) != 2 || pkScript[0].opcode.value != OP_RETURN {
+		return OP_FALSE, nil, fmt.Errorf("unable to extract admin data from script, "+
+			"unknown script structure %v", pkScript)
+	}
+	op := pkScript[1].data[0]
+	pubKey, err := btcec.ParsePubKey(pkScript[1].data[1:len(pkScript[1].data)], btcec.S256())
+	if err != nil {
+		return 0, nil, err
+	}
+	return op, pubKey, nil
 }
 
 // canonicalPush returns true if the object is either not a push instruction

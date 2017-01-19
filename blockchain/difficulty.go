@@ -6,10 +6,9 @@
 package blockchain
 
 import (
+	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"math/big"
 	"time"
-
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
 )
 
 var (

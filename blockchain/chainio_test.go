@@ -7,13 +7,13 @@ package blockchain
 import (
 	"bytes"
 	"errors"
-	"math/big"
-	"reflect"
-	"testing"
-
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/database"
 	"github.com/bitgo/rmgd/wire"
+	"math/big"
+	"reflect"
+	"testing"
 )
 
 // TestErrNotInMainChain ensures the functions related to errNotInMainChain work
@@ -935,8 +935,13 @@ func TestBestChainStateSerialization(t *testing.T) {
 					workSum.Add(workSum, CalcWork(486604799))
 					return new(big.Int).Set(workSum)
 				}(), // 0x0100010001
+				issuingKeys: func() keySlice {
+					pubKey, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+					return []btcec.PublicKey{*pubKey}
+				}(),
+				// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
 			},
-			serialized: hexToBytes("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000000000000100000000000000050000000100010001"),
+			serialized: hexToBytes("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d619000000000000000000010000000000000005000000010001000101000000025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"),
 		},
 		{
 			name: "block 1",
@@ -948,8 +953,15 @@ func TestBestChainStateSerialization(t *testing.T) {
 					workSum.Add(workSum, CalcWork(486604799))
 					return new(big.Int).Set(workSum)
 				}(), // 0x0200020002
+				issuingKeys: func() keySlice {
+					// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
+					pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+					// priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+					pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
+					return []btcec.PublicKey{*pubKey1, *pubKey2}
+				}(),
 			},
-			serialized: hexToBytes("4860eb18bf1b1620e37e9490fc8a427514416fd75159ab86688e9a8300000000010000000200000000000000050000000200020002"),
+			serialized: hexToBytes("4860eb18bf1b1620e37e9490fc8a427514416fd75159ab86688e9a830000000001000000020000000000000005000000020002000202000000025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"),
 		},
 	}
 

@@ -172,6 +172,7 @@ func isGeneralAztec(pops []parsedOpcode) bool {
 	return true
 }
 
+// isAztec returns true if the passed script is a 2 of 3 aztec transaction.
 func isAztec(pops []parsedOpcode) bool {
 	return len(pops) == 6 &&
 		pops[0].opcode.value == OP_2 &&
@@ -179,6 +180,36 @@ func isAztec(pops []parsedOpcode) bool {
 		isGeneralAztec(pops)
 }
 
+// GetAdminDetails will read threadID and admin outputs from and admin transaction.
+func GetAdminDetails(tx *rmgutil.Tx) (int, [][]parsedOpcode) {
+	// The first output of the admin transaction is the thread transaction.
+	// Additional outputs modify the chain state. We expect at least one additional.
+	if len(tx.MsgTx().TxOut) <= 1 {
+		return -1, nil
+	}
+	pops, err := ParseScript(tx.MsgTx().TxOut[0].PkScript)
+	if err != nil {
+		return -1, nil
+	}
+	if TypeOfScript(pops) != AztecAdminTy {
+		return -1, nil
+	}
+	threadID, err := ExtractThreadID(pops)
+	if err != nil {
+		return -1, nil
+	}
+	adminOutputs := make([][]parsedOpcode, len(tx.MsgTx().TxOut)-1)
+	for i := 1; i < len(tx.MsgTx().TxOut); i++ {
+		pops, err := ParseScript(tx.MsgTx().TxOut[i].PkScript)
+		if err != nil {
+			return -1, nil
+		}
+		adminOutputs[i-1] = pops
+	}
+	return int(threadID), adminOutputs
+}
+
+// isAztecAdmin returns true if the passed script is admin tread script.
 func isAztecAdmin(pops []parsedOpcode) bool {
 	sLen := len(pops)
 	if sLen != 2 {

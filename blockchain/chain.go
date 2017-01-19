@@ -7,17 +7,17 @@ package blockchain
 import (
 	"container/list"
 	"fmt"
-	"math/big"
-	"sort"
-	"sync"
-	"time"
-
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/database"
 	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
+	"math/big"
+	"sort"
+	"sync"
+	"time"
 )
 
 const (
@@ -122,6 +122,32 @@ func removeChildNode(children []*blockNode, node *blockNode) []*blockNode {
 	return children
 }
 
+// keySlice is a structure that can keep a list of keys encoded as byte arrays.
+type keySlice []btcec.PublicKey
+
+// Pos returns the position of a public key in keySlice.
+// -1 is returned if element not found.
+// This is a basic collection operation, golang should have it out of the box.
+func (slice keySlice) Pos(key *btcec.PublicKey) int {
+	for p, v := range slice {
+		if v.IsEqual(key) {
+			return p
+		}
+	}
+	return -1
+}
+
+// remove will remove the element at position i.
+func (slice keySlice) remove(pos int) keySlice {
+	if pos >= len(slice) {
+		return slice
+	}
+	//move element at pos to end of slice through assignment
+	slice[len(slice)-1], slice[pos] = slice[pos], slice[len(slice)-1]
+	//cut last element off
+	return slice[:len(slice)-1]
+}
+
 // BestState houses information about the current best block and other info
 // related to the state of the main chain as it exists from the point of view of
 // the current best block.
@@ -132,25 +158,27 @@ func removeChildNode(children []*blockNode, node *blockNode) []*blockNode {
 // However, the returned snapshot must be treated as immutable since it is
 // shared by all callers.
 type BestState struct {
-	Hash       *chainhash.Hash // The hash of the block.
-	Height     int32           // The height of the block.
-	Bits       uint32          // The difficulty bits of the block.
-	BlockSize  uint64          // The size of the block.
-	NumTxns    uint64          // The number of txns in the block.
-	TotalTxns  uint64          // The total number of txns in the chain.
-	MedianTime time.Time       // Median time as per CalcPastMedianTime.
+	Hash        *chainhash.Hash // The hash of the block.
+	Height      int32           // The height of the block.
+	Bits        uint32          // The difficulty bits of the block.
+	BlockSize   uint64          // The size of the block.
+	NumTxns     uint64          // The number of txns in the block.
+	TotalTxns   uint64          // The total number of txns in the chain.
+	MedianTime  time.Time       // Median time as per CalcPastMedianTime.
+	IssuingKeys keySlice        // Set of issuing keys valid in the chain.
 }
 
 // newBestState returns a new best stats instance for the given parameters.
-func newBestState(node *blockNode, blockSize, numTxns, totalTxns uint64, medianTime time.Time) *BestState {
+func newBestState(node *blockNode, blockSize, numTxns, totalTxns uint64, medianTime time.Time, issuingKeys keySlice) *BestState {
 	return &BestState{
-		Hash:       node.hash,
-		Height:     node.height,
-		Bits:       node.bits,
-		BlockSize:  blockSize,
-		NumTxns:    numTxns,
-		TotalTxns:  totalTxns,
-		MedianTime: medianTime,
+		Hash:        node.hash,
+		Height:      node.height,
+		Bits:        node.bits,
+		BlockSize:   blockSize,
+		NumTxns:     numTxns,
+		TotalTxns:   totalTxns,
+		MedianTime:  medianTime,
+		IssuingKeys: issuingKeys,
 	}
 }
 
@@ -498,7 +526,7 @@ func (b *BlockChain) getPrevNodeFromNode(node *blockNode) (*blockNode, error) {
 	}
 
 	// Genesis block.
-	if node.hash.IsEqual(b.chainParams.GenesisHash) {
+	if node.hash.IsEqual(b.chainParams.GenesisHash) || node.height == 0 {
 		return nil, nil
 	}
 
@@ -794,7 +822,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, view *U
 	numTxns := uint64(len(block.MsgBlock().Transactions))
 	blockSize := uint64(block.MsgBlock().SerializeSize())
 	state := newBestState(node, blockSize, numTxns, curTotalTxns+numTxns,
-		medianTime)
+		medianTime, view.IssuingKeys())
 
 	// Atomically insert info into the database.
 	err = b.db.Update(func(dbTx database.Tx) error {
@@ -926,7 +954,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, view
 	blockSize := uint64(prevBlock.MsgBlock().SerializeSize())
 	newTotalTxns := curTotalTxns - uint64(len(block.MsgBlock().Transactions))
 	state := newBestState(prevNode, blockSize, numTxns, newTotalTxns,
-		medianTime)
+		medianTime, view.IssuingKeys())
 
 	err = b.db.Update(func(dbTx database.Tx) error {
 		// Update best block state.
@@ -1049,6 +1077,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	// database and using that information to unspend all of the spent txos
 	// and remove the utxos created by the blocks.
 	view := NewUtxoViewpoint()
+	view.SetIssuingKeys(b.stateSnapshot.IssuingKeys)
 	view.SetBestHash(b.bestNode.hash)
 	for e := detachNodes.Front(); e != nil; e = e.Next() {
 		n := e.Value.(*blockNode)
@@ -1125,6 +1154,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	// view to be valid from the viewpoint of each block being connected or
 	// disconnected.
 	view = NewUtxoViewpoint()
+	view.SetIssuingKeys(b.stateSnapshot.IssuingKeys)
 	view.SetBestHash(b.bestNode.hash)
 
 	// Disconnect blocks from the main chain.
@@ -1227,6 +1257,7 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *rmgutil.Block, fla
 		// to the main chain without violating any rules and without
 		// actually connecting the block.
 		view := NewUtxoViewpoint()
+		view.SetIssuingKeys(b.stateSnapshot.IssuingKeys)
 		view.SetBestHash(node.parentHash)
 		stxos := make([]spentTxOut, 0, countSpentOutputs(block))
 		if !fastAdd {

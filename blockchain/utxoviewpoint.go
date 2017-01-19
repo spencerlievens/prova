@@ -197,9 +197,9 @@ func newUtxoEntry(version int32, isCoinBase bool, blockHeight int32) *UtxoEntry 
 // The unspent outputs are needed by other transactions for things such as
 // script validation and double spend prevention.
 type UtxoViewpoint struct {
-	// TODO(aztec): include administrative key registrations (admin, mining, co-signer)
-	entries  map[chainhash.Hash]*UtxoEntry
-	bestHash chainhash.Hash
+	entries     map[chainhash.Hash]*UtxoEntry
+	bestHash    chainhash.Hash
+	issuingKeys keySlice
 }
 
 // BestHash returns the hash of the best block in the chain the view currently
@@ -212,6 +212,17 @@ func (view *UtxoViewpoint) BestHash() *chainhash.Hash {
 // respresents.
 func (view *UtxoViewpoint) SetBestHash(hash *chainhash.Hash) {
 	view.bestHash = *hash
+}
+
+// IssuingKeys returns the set of valid issuing keys.
+func (view *UtxoViewpoint) IssuingKeys() keySlice {
+	return view.issuingKeys
+}
+
+// IssuingKeys returns the set of valid issuing keys.
+// TODO(aztec): do this for other admin state data.
+func (view *UtxoViewpoint) SetIssuingKeys(issuingKeys keySlice) {
+	view.issuingKeys = append(view.issuingKeys, issuingKeys...)
 }
 
 // LookupEntry returns information about a given transaction according to the
@@ -335,6 +346,37 @@ func (view *UtxoViewpoint) AddTxOuts(tx *rmgutil.Tx, blockHeight int32) {
 	return
 }
 
+// ProcessAdminOuts finds admin transactions and executes all ops in it
+// TODO(aztec): execute more than the first op.
+// TODO(aztec): add more threads and ops.
+func (view *UtxoViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight int32) {
+	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
+	if threadInt < int(rmgutil.RootThread) {
+		// not admin transaction
+		//not all transaction that we receive are relevant, so we skip them.
+		return
+	}
+	threadID := rmgutil.ThreadID(threadInt)
+	for i := 0; i < len(adminOutputs); i++ {
+		switch threadID {
+		case rmgutil.ProvisionThread:
+			op, pubKey, _ := txscript.ExtractAdminData(adminOutputs[i])
+			if op == txscript.OP_ISSUINGKEYADD {
+
+				if view.issuingKeys.Pos(pubKey) < 0 {
+					view.issuingKeys = append(view.issuingKeys, *pubKey)
+				}
+			}
+			if op == txscript.OP_ISSUINGKEYREVOKE {
+				pos := view.issuingKeys.Pos(pubKey)
+				if pos >= 0 {
+					view.issuingKeys = view.issuingKeys.remove(pos)
+				}
+			}
+		}
+	}
+}
+
 // connectTransaction updates the view by adding all new utxos created by the
 // passed transaction and marking all utxos that the transactions spend as
 // spent.  In addition, when the 'stxos' argument is not nil, it will be updated
@@ -389,6 +431,8 @@ func (view *UtxoViewpoint) connectTransaction(tx *rmgutil.Tx, blockHeight int32,
 
 	// Add the transaction's outputs as available utxos.
 	view.AddTxOuts(tx, blockHeight)
+	// Process the admin outputs that are part of this tx.
+	view.ProcessAdminOuts(tx, blockHeight)
 	return nil
 }
 
@@ -444,13 +488,39 @@ func (view *UtxoViewpoint) disconnectTransactions(block *rmgutil.Block, stxos []
 		entry.modified = true
 		entry.sparseOutputs = make(map[uint32]*utxoOutput)
 
+		if isCoinbase {
+			continue
+		}
+
+		// If an admin transaction is disconnected, undo what it did to chain state.
+		// TODO(aztec): execute more than the first op.
+		// TODO(aztec): add more threads and ops.
+		threadInt, adminOutputs := txscript.GetAdminDetails(tx)
+		if threadInt >= int(rmgutil.RootThread) {
+			threadID := rmgutil.ThreadID(threadInt)
+			for i := 0; i < len(adminOutputs); i++ {
+				switch threadID {
+				case rmgutil.ProvisionThread:
+					op, pubKey, _ := txscript.ExtractAdminData(adminOutputs[i])
+					if op == txscript.OP_ISSUINGKEYREVOKE {
+						if view.issuingKeys.Pos(pubKey) < 0 {
+							view.issuingKeys = append(view.issuingKeys, *pubKey)
+						}
+					}
+					if op == txscript.OP_ISSUINGKEYADD {
+						pos := view.issuingKeys.Pos(pubKey)
+						if pos >= 0 {
+							view.issuingKeys = view.issuingKeys.remove(pos)
+						}
+					}
+				}
+			}
+		}
+
 		// Loop backwards through all of the transaction inputs (except
 		// for the coinbase which has no inputs) and unspend the
 		// referenced txos.  This is necessary to match the order of the
 		// spent txout entries.
-		if isCoinbase {
-			continue
-		}
 		for txInIdx := len(tx.MsgTx().TxIn) - 1; txInIdx > -1; txInIdx-- {
 			// Ensure the spent txout index is decremented to stay
 			// in sync with the transaction input.
@@ -636,7 +706,8 @@ func (view *UtxoViewpoint) fetchInputUtxos(db database.DB, block *rmgutil.Block)
 // NewUtxoViewpoint returns a new empty unspent transaction output view.
 func NewUtxoViewpoint() *UtxoViewpoint {
 	return &UtxoViewpoint{
-		entries: make(map[chainhash.Hash]*UtxoEntry),
+		entries:     make(map[chainhash.Hash]*UtxoEntry),
+		issuingKeys: make([]btcec.PublicKey, 0),
 	}
 }
 
@@ -665,6 +736,7 @@ func (b *BlockChain) FetchUtxoView(tx *rmgutil.Tx) (*UtxoViewpoint, error) {
 	// Request the utxos from the point of view of the end of the main
 	// chain.
 	view := NewUtxoViewpoint()
+	view.SetIssuingKeys(b.stateSnapshot.IssuingKeys)
 	err := view.fetchUtxosMain(b.db, txNeededSet)
 	return view, err
 }

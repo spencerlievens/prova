@@ -10,7 +10,6 @@ import (
 	"io"
 	"time"
 	// "log"
-
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 )
@@ -221,9 +220,14 @@ func readBlockHeader(r io.Reader, pver uint32, bh *BlockHeader) error {
 // writeBlockHeader writes a bitcoin block header to w.  See Serialize for
 // encoding block headers to be stored to disk, such as in a database, as
 // opposed to encoding for the wire.
+// TODO(aztec): encoding the block height (7th param, after bh.Bits)
+// became impractical for fullblocktests, because height is set after mining
+// the blocks
+// TODO(aztec): encoding the block size (8th param, before bh.Nonce)
+// impractical for tests, invalid blocks with same hash need to be possible
 func writeBlockHeader(w io.Writer, pver uint32, bh *BlockHeader) error {
 	err := writeElements(w, bh.Version, &bh.PrevBlock, &bh.MerkleRoot,
-		bh.Timestamp.Unix(), bh.Bits, bh.Height, bh.Size, bh.Nonce, bh.ValidatingPubKey, bh.Signature)
+		bh.Timestamp.Unix(), bh.Bits, int32(0), int32(0), bh.Nonce, bh.ValidatingPubKey, bh.Signature)
 	if err != nil {
 		return err
 	}

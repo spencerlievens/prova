@@ -8,13 +8,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"math/big"
-	"sort"
-
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/database"
 	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
+	"math/big"
+	"sort"
 )
 
 var (
@@ -948,9 +948,13 @@ func dbFetchHashByHeight(dbTx database.Tx, height int32) (*chainhash.Hash, error
 // number of transactions up to and including those in the best block, and the
 // accumulated work sum up to and including the best block.
 //
+// The best chain state has been extended by the admin state, sets of keys that
+// are used to administrate the chain. Best Chain State has been chosen because
+// it is easy to extend and is
+//
 // The serialized format is:
 //
-//   <block hash><block height><total txns><work sum length><work sum>
+//   <block hash><block height><total txns><work sum length><work sum><issuing length><issuing keys>
 //
 //   Field             Type             Size
 //   block hash        chainhash.Hash   chainhash.HashSize
@@ -958,15 +962,18 @@ func dbFetchHashByHeight(dbTx database.Tx, height int32) (*chainhash.Hash, error
 //   total txns        uint64           8 bytes
 //   work sum length   uint32           4 bytes
 //   work sum          big.Int          work sum length
+//   issuing length    uint32           4 bytes
+//   issuing keys      []byte           issuing length * 33
 // -----------------------------------------------------------------------------
 
 // bestChainState represents the data to be stored the database for the current
 // best chain state.
 type bestChainState struct {
-	hash      chainhash.Hash
-	height    uint32
-	totalTxns uint64
-	workSum   *big.Int
+	hash        chainhash.Hash
+	height      uint32
+	totalTxns   uint64
+	workSum     *big.Int
+	issuingKeys keySlice
 }
 
 // serializeBestChainState returns the serialization of the passed block best
@@ -975,8 +982,7 @@ func serializeBestChainState(state bestChainState) []byte {
 	// Calculate the full size needed to serialize the chain state.
 	workSumBytes := state.workSum.Bytes()
 	workSumBytesLen := uint32(len(workSumBytes))
-	serializedLen := chainhash.HashSize + 4 + 8 + 4 + workSumBytesLen
-
+	serializedLen := chainhash.HashSize + 4 + 8 + 4 + workSumBytesLen + 4 + (uint32(len(state.issuingKeys)) * btcec.PubKeyBytesLenCompressed)
 	// Serialize the chain state.
 	serializedData := make([]byte, serializedLen)
 	copy(serializedData[0:chainhash.HashSize], state.hash[:])
@@ -988,6 +994,14 @@ func serializeBestChainState(state bestChainState) []byte {
 	byteOrder.PutUint32(serializedData[offset:], workSumBytesLen)
 	offset += 4
 	copy(serializedData[offset:], workSumBytes)
+	offset += workSumBytesLen
+
+	byteOrder.PutUint32(serializedData[offset:], uint32(len(state.issuingKeys)))
+	offset += 4
+	for _, v := range state.issuingKeys {
+		copy(serializedData[offset:], v.SerializeCompressed())
+		offset += btcec.PubKeyBytesLenCompressed
+	}
 	return serializedData[:]
 }
 
@@ -1025,6 +1039,25 @@ func deserializeBestChainState(serializedData []byte) (bestChainState, error) {
 	}
 	workSumBytes := serializedData[offset : offset+workSumBytesLen]
 	state.workSum = new(big.Int).SetBytes(workSumBytes)
+	offset += workSumBytesLen
+
+	issuingKeysLen := byteOrder.Uint32(serializedData[offset : offset+4])
+	offset += 4
+
+	// Ensure the serialized data has enough bytes to deserialize the keys
+	if uint32(len(serializedData[offset:])) < issuingKeysLen*btcec.PubKeyBytesLenCompressed {
+		return bestChainState{}, database.Error{
+			ErrorCode:   database.ErrCorruption,
+			Description: "corrupt admin state, not all keys can be read",
+		}
+	}
+	state.issuingKeys = make([]btcec.PublicKey, issuingKeysLen)
+	for i := uint32(0); i < issuingKeysLen; i++ {
+		pubKey, _ := btcec.ParsePubKey(
+			serializedData[offset:offset+btcec.PubKeyBytesLenCompressed], btcec.S256())
+		state.issuingKeys[i] = *pubKey
+		offset += btcec.PubKeyBytesLenCompressed
+	}
 
 	return state, nil
 }
@@ -1062,8 +1095,10 @@ func (b *BlockChain) createChainState() error {
 	// genesis block, use its timestamp for the median time.
 	numTxns := uint64(len(genesisBlock.MsgBlock().Transactions))
 	blockSize := uint64(genesisBlock.MsgBlock().SerializeSize())
+	// TODO(aztec): add admin keys from genesis block
+	var issuingKeys keySlice = make([]btcec.PublicKey, 0)
 	b.stateSnapshot = newBestState(b.bestNode, blockSize, numTxns, numTxns,
-		b.bestNode.timestamp)
+		b.bestNode.timestamp, issuingKeys)
 
 	// Create the initial the database chain state including creating the
 	// necessary index buckets and inserting the genesis block.
@@ -1172,7 +1207,7 @@ func (b *BlockChain) initChainState() error {
 		blockSize := uint64(len(blockBytes))
 		numTxns := uint64(len(block.Transactions))
 		b.stateSnapshot = newBestState(b.bestNode, blockSize, numTxns,
-			state.totalTxns, medianTime)
+			state.totalTxns, medianTime, state.issuingKeys)
 
 		isStateInitialized = true
 		return nil

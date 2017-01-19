@@ -18,6 +18,7 @@ import (
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/database"
 	_ "github.com/bitgo/rmgd/database/ffldb"
+	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
 )
 
@@ -56,9 +57,9 @@ func isSupportedDbType(dbType string) bool {
 }
 
 // chainSetup is used to create a new db and chain instance with the genesis
-// block already inserted.  In addition to the new chain instnce, it returns
+// block already inserted.  In addition to the new chain instance, it returns
 // a teardown function the caller should invoke when done testing to clean up.
-func chainSetup(dbName string) (*blockchain.BlockChain, func(), error) {
+func chainSetup(dbName string, params *chaincfg.Params) (*blockchain.BlockChain, func(), error) {
 	if !isSupportedDbType(testDbType) {
 		return nil, nil, fmt.Errorf("unsupported db type %v", testDbType)
 	}
@@ -109,13 +110,14 @@ func chainSetup(dbName string) (*blockchain.BlockChain, func(), error) {
 
 	// Copy the chain params to ensure any modifications the tests do to
 	// the chain parameters do not affect the global instance.
-	mainNetParams := chaincfg.MainNetParams
+	paramsCopy := *params
 
 	// Create the main chain instance.
 	chain, err := blockchain.New(&blockchain.Config{
 		DB:          db,
-		ChainParams: &mainNetParams,
+		ChainParams: &paramsCopy,
 		TimeSource:  blockchain.NewMedianTime(),
+		SigCache:    txscript.NewSigCache(1000),
 	})
 	if err != nil {
 		teardown()

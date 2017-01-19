@@ -14,6 +14,8 @@ btcd.db
 *.o
 *.a
 *.so
+!/.arcconfig
+!/.gitignore
 
 # Folders
 _obj
@@ -33,3 +35,5 @@ _cgo_export.*
 _testmain.go
 
 *.exe
+
+.arc

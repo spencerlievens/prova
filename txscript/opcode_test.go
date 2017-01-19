@@ -122,9 +122,25 @@ func TestOpcodeDisasm(t *testing.T) {
 			expectedStr = "OP_CHECKSAFEMULTISIG"
 		case opcodeVal == 0xbb:
 			expectedStr = "OP_CHECKTHREAD"
+		case opcodeVal == 0xbd:
+			expectedStr = "OP_ISSUINGKEYADD"
+		case opcodeVal == 0xbe:
+			expectedStr = "OP_ISSUINGKEYREVOKE"
+		case opcodeVal == 0xbf:
+			expectedStr = "OP_PROVISIONINGKEYADD"
+		case opcodeVal == 0xc0:
+			expectedStr = "OP_PROVISIONINGKEYREVOKE"
+		case opcodeVal == 0xc1:
+			expectedStr = "OP_VALIDATEKEYADD"
+		case opcodeVal == 0xc2:
+			expectedStr = "OP_VALIDATEKEYREVOKE"
+		case opcodeVal == 0xc3:
+			expectedStr = "OP_WSPKEYADD"
+		case opcodeVal == 0xc4:
+			expectedStr = "OP_WSPKEYREVOKE"
 
 		// OP_UNKNOWN#.
-		case opcodeVal >= 0xbc && opcodeVal <= 0xf8 || opcodeVal == 0xfc:
+		case opcodeVal >= 0xc5 && opcodeVal <= 0xf8 || opcodeVal == 0xbc || opcodeVal == 0xfc:
 			expectedStr = "OP_UNKNOWN" + strconv.Itoa(int(opcodeVal))
 		}
 
@@ -190,6 +206,22 @@ func TestOpcodeDisasm(t *testing.T) {
 			expectedStr = "OP_CHECKSAFEMULTISIG"
 		case opcodeVal == 0xbb:
 			expectedStr = "OP_CHECKTHREAD"
+		case opcodeVal == 0xbd:
+			expectedStr = "OP_ISSUINGKEYADD"
+		case opcodeVal == 0xbe:
+			expectedStr = "OP_ISSUINGKEYREVOKE"
+		case opcodeVal == 0xbf:
+			expectedStr = "OP_PROVISIONINGKEYADD"
+		case opcodeVal == 0xc0:
+			expectedStr = "OP_PROVISIONINGKEYREVOKE"
+		case opcodeVal == 0xc1:
+			expectedStr = "OP_VALIDATEKEYADD"
+		case opcodeVal == 0xc2:
+			expectedStr = "OP_VALIDATEKEYREVOKE"
+		case opcodeVal == 0xc3:
+			expectedStr = "OP_WSPKEYADD"
+		case opcodeVal == 0xc4:
+			expectedStr = "OP_WSPKEYREVOKE"
 
 		// OP_UNKNOWN#.
 		case opcodeVal >= 0xbc && opcodeVal <= 0xf8 || opcodeVal == 0xfc:
