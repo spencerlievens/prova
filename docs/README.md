@@ -22,4 +22,4 @@ The RMG blockchain is a Bitcoin-derived blockchain, custom-designed for the use 
 
 [Admin RPC API](admin-api.md)
 
-[Example Raw Transactions](https://gist.github.com/alexbosworth/3f5c959c828090c7e92a7d694181a57c)
+[Example Raw Transactions](example/rawtx.md)
