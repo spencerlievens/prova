@@ -85,7 +85,7 @@ func (b *BlockChain) LatestCheckpoint() *chaincfg.Checkpoint {
 // checkpoint data for the passed block height.
 //
 // This function MUST be called with the chain lock held (for reads).
-func (b *BlockChain) verifyCheckpoint(height int32, hash *chainhash.Hash) bool {
+func (b *BlockChain) verifyCheckpoint(height uint32, hash *chainhash.Hash) bool {
 	if b.noCheckpoints || len(b.chainParams.Checkpoints) == 0 {
 		return true
 	}

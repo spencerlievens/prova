@@ -59,7 +59,7 @@ func (b *BlockChain) blockLocatorFromHash(hash *chainhash.Hash) BlockLocator {
 		// Try to look up the height for passed block hash.  Assume an
 		// error means it doesn't exist and just return the locator for
 		// the block itself.
-		var height int32
+		var height uint32
 		err := b.db.View(func(dbTx database.Tx) error {
 			var err error
 			height, err = dbFetchHeightByHash(dbTx, hash)
@@ -69,16 +69,16 @@ func (b *BlockChain) blockLocatorFromHash(hash *chainhash.Hash) BlockLocator {
 			return locator
 		}
 
-		blockHeight = height
+		blockHeight = int32(height)
 	} else {
-		blockHeight = node.height
+		blockHeight = int32(node.height)
 
 		// Find the height at which this node forks from the main chain
 		// if the node is on a side chain.
 		if !node.inMainChain {
 			for n := node; n.parent != nil; n = n.parent {
 				if n.inMainChain {
-					forkHeight = n.height
+					forkHeight = int32(n.height)
 					break
 				}
 			}
@@ -117,10 +117,10 @@ func (b *BlockChain) blockLocatorFromHash(hash *chainhash.Hash) BlockLocator {
 				// block locators.  Side chain blocks should
 				// always be in memory already, and if they
 				// aren't for some reason it's ok to skip them.
-				for iterNode != nil && blockHeight > iterNode.height {
+				for iterNode != nil && blockHeight > int32(iterNode.height) {
 					iterNode = iterNode.parent
 				}
-				if iterNode != nil && iterNode.height == blockHeight {
+				if iterNode != nil && int32(iterNode.height) == blockHeight {
 					locator = append(locator, iterNode.hash)
 				}
 				continue
@@ -128,7 +128,7 @@ func (b *BlockChain) blockLocatorFromHash(hash *chainhash.Hash) BlockLocator {
 
 			// The desired block height is in the main chain, so
 			// look it up from the main chain database.
-			h, err := dbFetchHashByHeight(dbTx, blockHeight)
+			h, err := dbFetchHashByHeight(dbTx, uint32(blockHeight))
 			if err != nil {
 				// This shouldn't happen and it's ok to ignore
 				// block locators, so just continue to the next

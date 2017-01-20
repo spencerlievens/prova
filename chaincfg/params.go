@@ -46,7 +46,7 @@ var (
 // documentation for blockchain.IsCheckpointCandidate for details on the
 // selection criteria.
 type Checkpoint struct {
-	Height int32
+	Height uint32
 	Hash   *chainhash.Hash
 }
 
@@ -92,7 +92,7 @@ type Params struct {
 
 	// SubsidyReductionInterval is the interval of blocks before the subsidy
 	// is reduced.
-	SubsidyReductionInterval int32
+	SubsidyReductionInterval uint32
 
 	// TargetTimespan is the desired amount of time that should elapse
 	// before the block difficulty requirement is examined to determine how

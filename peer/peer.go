@@ -346,8 +346,8 @@ type StatsSnap struct {
 	Version        uint32
 	UserAgent      string
 	Inbound        bool
-	StartingHeight int32
-	LastBlock      int32
+	StartingHeight uint32
+	LastBlock      uint32
 	LastPingNonce  uint64
 	LastPingTime   time.Time
 	LastPingMicros int64
@@ -355,7 +355,7 @@ type StatsSnap struct {
 
 // HashFunc is a function which returns a block hash, height and error
 // It is used as a callback to get newest block details.
-type HashFunc func() (hash *chainhash.Hash, height int32, err error)
+type HashFunc func() (hash *chainhash.Hash, height uint32, err error)
 
 // AddrFunc is a func which takes an address and returns a related address.
 type AddrFunc func(remoteAddr *wire.NetAddress) *wire.NetAddress
@@ -432,8 +432,8 @@ type Peer struct {
 	statsMtx           sync.RWMutex
 	timeOffset         int64
 	timeConnected      time.Time
-	startingHeight     int32
-	lastBlock          int32
+	startingHeight     uint32
+	lastBlock          uint32
 	lastAnnouncedBlock *chainhash.Hash
 	lastPingNonce      uint64    // Set to nonce if we have a pending ping.
 	lastPingTime       time.Time // Time we sent last ping.
@@ -461,11 +461,11 @@ func (p *Peer) String() string {
 // UpdateLastBlockHeight updates the last known block for the peer.
 //
 // This function is safe for concurrent access.
-func (p *Peer) UpdateLastBlockHeight(newHeight int32) {
+func (p *Peer) UpdateLastBlockHeight(newHeight uint32) {
 	p.statsMtx.Lock()
 	log.Tracef("Updating last block height of peer %v from %v to %v",
 		p.addr, p.lastBlock, newHeight)
-	p.lastBlock = int32(newHeight)
+	p.lastBlock = newHeight
 	p.statsMtx.Unlock()
 }
 
@@ -657,7 +657,7 @@ func (p *Peer) ProtocolVersion() uint32 {
 // LastBlock returns the last block of the peer.
 //
 // This function is safe for concurrent access.
-func (p *Peer) LastBlock() int32 {
+func (p *Peer) LastBlock() uint32 {
 	p.statsMtx.RLock()
 	defer p.statsMtx.RUnlock()
 
@@ -718,7 +718,7 @@ func (p *Peer) TimeOffset() int64 {
 // initial negotiation phase.
 //
 // This function is safe for concurrent access.
-func (p *Peer) StartingHeight() int32 {
+func (p *Peer) StartingHeight() uint32 {
 	p.statsMtx.RLock()
 	defer p.statsMtx.RUnlock()
 
@@ -739,7 +739,7 @@ func (p *Peer) WantsHeaders() bool {
 // localVersionMsg creates a version message that can be used to send to the
 // remote peer.
 func (p *Peer) localVersionMsg() (*wire.MsgVersion, error) {
-	var blockNum int32
+	var blockNum uint32
 	if p.cfg.NewestBlock != nil {
 		var err error
 		_, blockNum, err = p.cfg.NewestBlock()
@@ -781,7 +781,7 @@ func (p *Peer) localVersionMsg() (*wire.MsgVersion, error) {
 	sentNonces.Add(nonce)
 
 	// Version message.
-	msg := wire.NewMsgVersion(ourNA, theirNA, nonce, int32(blockNum))
+	msg := wire.NewMsgVersion(ourNA, theirNA, nonce, uint32(blockNum))
 	msg.AddUserAgent(p.cfg.UserAgentName, p.cfg.UserAgentVersion)
 
 	// XXX: bitcoind appears to always enable the full node services flag

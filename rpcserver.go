@@ -849,7 +849,7 @@ func createVoutList(mtx *wire.MsgTx, chainParams *chaincfg.Params, filterAddrMap
 // to a raw transaction JSON object.
 func createTxRawResult(chainParams *chaincfg.Params, mtx *wire.MsgTx,
 	txHash string, blkHeader *wire.BlockHeader, blkHash string,
-	blkHeight int32, chainHeight int32) (*btcjson.TxRawResult, error) {
+	blkHeight uint32, chainHeight uint32) (*btcjson.TxRawResult, error) {
 
 	mtxHex, err := messageToHex(mtx)
 	if err != nil {
@@ -1472,7 +1472,7 @@ func handleGetBlockCount(s *rpcServer, cmd interface{}, closeChan <-chan struct{
 // handleGetBlockHash implements the getblockhash command.
 func handleGetBlockHash(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.GetBlockHashCmd)
-	hash, err := s.chain.BlockHashByHeight(int32(c.Index))
+	hash, err := s.chain.BlockHashByHeight(uint32(c.Index))
 	if err != nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCOutOfRange,
@@ -2468,11 +2468,11 @@ func handleGetNetworkHashPS(s *rpcServer, cmd interface{}, closeChan <-chan stru
 	if c.Height != nil {
 		endHeight = int32(*c.Height)
 	}
-	if endHeight > best.Height || endHeight == 0 {
+	if endHeight > int32(best.Height) || endHeight == 0 {
 		return int64(0), nil
 	}
 	if endHeight < 0 {
-		endHeight = best.Height
+		endHeight = int32(best.Height)
 	}
 
 	// Calculate the number of blocks per retarget interval based on the
@@ -2505,7 +2505,7 @@ func handleGetNetworkHashPS(s *rpcServer, cmd interface{}, closeChan <-chan stru
 	var minTimestamp, maxTimestamp time.Time
 	totalWork := big.NewInt(0)
 	for curHeight := startHeight; curHeight <= endHeight; curHeight++ {
-		hash, err := s.chain.BlockHashByHeight(curHeight)
+		hash, err := s.chain.BlockHashByHeight(uint32(curHeight))
 		if err != nil {
 			context := "Failed to fetch block hash"
 			return nil, internalRPCError(err.Error(), context)
@@ -2633,7 +2633,7 @@ func handleGetRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan str
 	// try the block database.
 	var mtx *wire.MsgTx
 	var blkHash *chainhash.Hash
-	var blkHeight int32
+	var blkHeight uint32
 	tx, err := s.server.txMemPool.FetchTransaction(txHash)
 	if err != nil {
 		txIndex := s.server.txIndex
@@ -2712,7 +2712,7 @@ func handleGetRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan str
 	// The verbose flag is set, so generate the JSON object and return it.
 	var blkHeader *wire.BlockHeader
 	var blkHashStr string
-	var chainHeight int32
+	var chainHeight uint32
 	if blkHash != nil {
 		// Load the raw header bytes.
 		var headerBytes []byte
@@ -2795,7 +2795,7 @@ func handleGetTxOut(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 	// If requested and the tx is available in the mempool try to fetch it
 	// from there, otherwise attempt to fetch from the block database.
 	var bestBlockHash string
-	var confirmations int32
+	var confirmations uint32
 	var txVersion int32
 	var value int64
 	var pkScript []byte
@@ -3690,7 +3690,7 @@ func handleSearchRawTransactions(s *rpcServer, cmd interface{}, closeChan <-chan
 		// confirmations or block information).
 		var blkHeader *wire.BlockHeader
 		var blkHashStr string
-		var blkHeight int32
+		var blkHeight uint32
 		if blkHash := rtx.blkHash; blkHash != nil {
 			// Load the raw header bytes from the database.
 			var headerBytes []byte
@@ -3930,7 +3930,7 @@ func handleValidateAddress(s *rpcServer, cmd interface{}, closeChan <-chan struc
 	return result, nil
 }
 
-func verifyChain(s *rpcServer, level, depth int32) error {
+func verifyChain(s *rpcServer, level int32, depth uint32) error {
 	best := s.chain.BestSnapshot()
 	finishHeight := best.Height - depth
 	if finishHeight < 0 {
@@ -3977,7 +3977,7 @@ func handleVerifyChain(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 		checkDepth = *c.CheckDepth
 	}
 
-	err := verifyChain(s, checkLevel, checkDepth)
+	err := verifyChain(s, checkLevel, uint32(checkDepth))
 	return err == nil, nil
 }
 

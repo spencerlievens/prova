@@ -21,7 +21,7 @@ func TestVersion(t *testing.T) {
 	pver := ProtocolVersion
 
 	// Create version message data.
-	lastBlock := int32(234234)
+	lastBlock := uint32(234234)
 	tcpAddrMe := &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8333}
 	me, err := NewNetAddress(tcpAddrMe, SFNodeNetwork)
 	if err != nil {

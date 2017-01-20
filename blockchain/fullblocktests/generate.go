@@ -77,7 +77,7 @@ type TestInstance interface {
 type AcceptedBlock struct {
 	Name        string
 	Block       *wire.MsgBlock
-	Height      int32
+	Height      uint32
 	IsMainChain bool
 	IsOrphan    bool
 	AdminKey    *btcec.PublicKey
@@ -97,7 +97,7 @@ func (b AcceptedBlock) FullBlockTestInstance() {}
 type RejectedBlock struct {
 	Name       string
 	Block      *wire.MsgBlock
-	Height     int32
+	Height     uint32
 	RejectCode blockchain.ErrorCode
 }
 
@@ -119,7 +119,7 @@ func (b RejectedBlock) FullBlockTestInstance() {}
 type OrphanOrRejectedBlock struct {
 	Name   string
 	Block  *wire.MsgBlock
-	Height int32
+	Height uint32
 }
 
 // Ensure ExpectedTip implements the TestInstance interface.
@@ -136,7 +136,7 @@ func (b OrphanOrRejectedBlock) FullBlockTestInstance() {}
 type ExpectedTip struct {
 	Name   string
 	Block  *wire.MsgBlock
-	Height int32
+	Height uint32
 }
 
 // Ensure ExpectedTip implements the TestInstance interface.
@@ -153,7 +153,7 @@ func (b ExpectedTip) FullBlockTestInstance() {}
 type RejectedNonCanonicalBlock struct {
 	Name     string
 	RawBlock []byte
-	Height   int32
+	Height   uint32
 }
 
 // FullBlockTestInstance only exists to allow RejectedNonCanonicalBlock to be treated as
@@ -194,10 +194,10 @@ type testGenerator struct {
 	params       *chaincfg.Params
 	tip          *wire.MsgBlock
 	tipName      string
-	tipHeight    int32
+	tipHeight    uint32
 	blocks       map[chainhash.Hash]*wire.MsgBlock
 	blocksByName map[string]*wire.MsgBlock
-	blockHeights map[string]int32
+	blockHeights map[string]uint32
 
 	// Used for tracking spendable coinbase outputs.
 	spendableOuts     []spendableOut
@@ -223,7 +223,7 @@ func makeTestGenerator(params *chaincfg.Params) (testGenerator, error) {
 		params:       params,
 		blocks:       map[chainhash.Hash]*wire.MsgBlock{genesisHash: genesis},
 		blocksByName: map[string]*wire.MsgBlock{"genesis": genesis},
-		blockHeights: map[string]int32{"genesis": 0},
+		blockHeights: map[string]uint32{"genesis": 0},
 		tip:          genesis,
 		tipName:      "genesis",
 		tipHeight:    0,
@@ -261,7 +261,7 @@ func pushDataScript(items ...[]byte) []byte {
 // standardCoinbaseScript returns a standard script suitable for use as the
 // signature script of the coinbase transaction of a new block.  In particular,
 // it starts with the block height that is required by version 2 blocks.
-func standardCoinbaseScript(blockHeight int32, extraNonce uint64) ([]byte, error) {
+func standardCoinbaseScript(blockHeight uint32, extraNonce uint64) ([]byte, error) {
 	return txscript.NewScriptBuilder().AddInt64(int64(blockHeight)).
 		AddInt64(int64(extraNonce)).Script()
 }
@@ -321,7 +321,7 @@ func aztecAdminScript(opcode byte, pubKey *btcec.PublicKey) []byte {
 // createCoinbaseTx returns a coinbase transaction paying an appropriate
 // subsidy based on the passed block height.  The coinbase signature script
 // conforms to the requirements of version 2 blocks.
-func (g *testGenerator) createCoinbaseTx(blockHeight int32) *wire.MsgTx {
+func (g *testGenerator) createCoinbaseTx(blockHeight uint32) *wire.MsgTx {
 	extraNonce := uint64(0)
 	coinbaseScript, err := standardCoinbaseScript(blockHeight, extraNonce)
 	if err != nil {
@@ -2164,7 +2164,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	// Collect all of the spendable coinbase outputs from the previous
 	// collection point up to the current tip.
 	g.saveSpendableCoinbaseOuts()
-	spendableOutOffset := g.tipHeight - int32(coinbaseMaturity)
+	spendableOutOffset := g.tipHeight - uint32(coinbaseMaturity)
 
 	// Extend the main chain by a large number of max size blocks.
 	//
@@ -2173,7 +2173,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	reorgSpend := *outs[spendableOutOffset]
 	reorgStartBlockName := g.tipName
 	chain1TipName := g.tipName
-	for i := int32(0); i < numLargeReorgBlocks; i++ {
+	for i := uint32(0); i < numLargeReorgBlocks; i++ {
 		chain1TipName = fmt.Sprintf("br%d", i)
 		g.nextBlock(chain1TipName, &reorgSpend, func(b *wire.MsgBlock) {
 			bytesToMaxSize := maxBlockSize - b.SerializeSize() - 3
@@ -2188,7 +2188,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 		// Use the next available spendable output.  First use up any
 		// remaining spendable outputs that were already popped into the
 		// outs slice, then just pop them from the stack.
-		if spendableOutOffset+1+i < int32(len(outs)) {
+		if spendableOutOffset+1+i < uint32(len(outs)) {
 			reorgSpend = *outs[spendableOutOffset+1+i]
 		} else {
 			reorgSpend = g.oldestCoinbaseOut()

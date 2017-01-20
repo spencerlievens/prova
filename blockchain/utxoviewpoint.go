@@ -55,7 +55,7 @@ type UtxoEntry struct {
 	modified      bool                   // Entry changed since load.
 	version       int32                  // The version of this tx.
 	isCoinBase    bool                   // Whether entry is a coinbase tx.
-	blockHeight   int32                  // Height of block containing tx.
+	blockHeight   uint32                 // Height of block containing tx.
 	sparseOutputs map[uint32]*utxoOutput // Sparse map of unspent outputs.
 }
 
@@ -72,7 +72,7 @@ func (entry *UtxoEntry) IsCoinBase() bool {
 
 // BlockHeight returns the height of the block containing the transaction the
 // utxo entry represents.
-func (entry *UtxoEntry) BlockHeight() int32 {
+func (entry *UtxoEntry) BlockHeight() uint32 {
 	return entry.blockHeight
 }
 
@@ -180,7 +180,7 @@ func (entry *UtxoEntry) Clone() *UtxoEntry {
 
 // newUtxoEntry returns a new unspent transaction output entry with the provided
 // coinbase flag and block height ready to have unspent outputs added.
-func newUtxoEntry(version int32, isCoinBase bool, blockHeight int32) *UtxoEntry {
+func newUtxoEntry(version int32, isCoinBase bool, blockHeight uint32) *UtxoEntry {
 	return &UtxoEntry{
 		version:       version,
 		isCoinBase:    isCoinBase,
@@ -302,7 +302,7 @@ func (view *UtxoViewpoint) GetAdminKeyHashes(threadID rmgutil.ThreadID) ([][]byt
 // unspendable to the view.  When the view already has entries for any of the
 // outputs, they are simply marked unspent.  All fields will be updated for
 // existing entries since it's possible it has changed during a reorg.
-func (view *UtxoViewpoint) AddTxOuts(tx *rmgutil.Tx, blockHeight int32) {
+func (view *UtxoViewpoint) AddTxOuts(tx *rmgutil.Tx, blockHeight uint32) {
 	// When there are not already any utxos associated with the transaction,
 	// add a new entry for it to the view.
 	entry := view.LookupEntry(tx.Hash())
@@ -349,7 +349,7 @@ func (view *UtxoViewpoint) AddTxOuts(tx *rmgutil.Tx, blockHeight int32) {
 // ProcessAdminOuts finds admin transactions and executes all ops in it
 // TODO(aztec): execute more than the first op.
 // TODO(aztec): add more threads and ops.
-func (view *UtxoViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight int32) {
+func (view *UtxoViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
 	if threadInt < int(rmgutil.RootThread) {
 		// not admin transaction
@@ -382,7 +382,7 @@ func (view *UtxoViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight int32) {
 // spent.  In addition, when the 'stxos' argument is not nil, it will be updated
 // to append an entry for each spent txout.  An error will be returned if the
 // view does not contain the required utxos.
-func (view *UtxoViewpoint) connectTransaction(tx *rmgutil.Tx, blockHeight int32, stxos *[]spentTxOut) error {
+func (view *UtxoViewpoint) connectTransaction(tx *rmgutil.Tx, blockHeight uint32, stxos *[]spentTxOut) error {
 	// Coinbase transactions don't have any inputs to spend.
 	if IsCoinBase(tx) {
 		// Add the transaction's outputs as available utxos.

@@ -49,7 +49,7 @@ type blockNode struct {
 	parentHash *chainhash.Hash
 
 	// height is the position in the block chain.
-	height int32
+	height uint32
 
 	// workSum is the total amount of work in the chain up to and including
 	// this node.
@@ -169,7 +169,7 @@ func (slice keySlice) remove(pos int) keySlice {
 // shared by all callers.
 type BestState struct {
 	Hash        *chainhash.Hash // The hash of the block.
-	Height      int32           // The height of the block.
+	Height      uint32          // The height of the block.
 	Bits        uint32          // The difficulty bits of the block.
 	BlockSize   uint64          // The size of the block.
 	NumTxns     uint64          // The number of txns in the block.
@@ -200,7 +200,7 @@ type BlockChain struct {
 	// The following fields are set when the instance is created and can't
 	// be changed afterwards, so there is no need to protect them with a
 	// separate mutex.
-	checkpointsByHeight map[int32]*chaincfg.Checkpoint
+	checkpointsByHeight map[uint32]*chaincfg.Checkpoint
 	db                  database.DB
 	chainParams         *chaincfg.Params
 	timeSource          MedianTimeSource
@@ -1523,9 +1523,9 @@ func New(config *Config) (*BlockChain, error) {
 
 	// Generate a checkpoint by height map from the provided checkpoints.
 	params := config.ChainParams
-	var checkpointsByHeight map[int32]*chaincfg.Checkpoint
+	var checkpointsByHeight map[uint32]*chaincfg.Checkpoint
 	if len(params.Checkpoints) > 0 {
-		checkpointsByHeight = make(map[int32]*chaincfg.Checkpoint)
+		checkpointsByHeight = make(map[uint32]*chaincfg.Checkpoint)
 		for i := range params.Checkpoints {
 			checkpoint := &params.Checkpoints[i]
 			checkpointsByHeight[checkpoint.Height] = checkpoint

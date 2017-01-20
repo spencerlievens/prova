@@ -22,7 +22,7 @@ type TxDesc struct {
 
 	// Height is the block height when the entry was added to the the source
 	// pool.
-	Height int32
+	Height uint32
 
 	// Fee is the total fee the transaction associated with the entry pays.
 	Fee int64

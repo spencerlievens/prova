@@ -1786,7 +1786,7 @@ func rescanBlock(wsc *wsClient, lookups *rescanKeys, blk *rmgutil.Block) {
 // verifies that the new range of blocks is on the same fork as a previous
 // range of blocks.  If this condition does not hold true, the JSON-RPC error
 // for an unrecoverable reorganize is returned.
-func recoverFromReorg(chain *blockchain.BlockChain, minBlock, maxBlock int32,
+func recoverFromReorg(chain *blockchain.BlockChain, minBlock, maxBlock uint32,
 	lastBlock *chainhash.Hash) ([]chainhash.Hash, error) {
 
 	hashList, err := chain.HeightRange(minBlock, maxBlock)
@@ -1935,7 +1935,7 @@ func handleRescan(wsc *wsClient, icmd interface{}) (interface{}, error) {
 		}
 	}
 
-	maxBlock := int32(math.MaxInt32)
+	maxBlock := uint32(math.MaxUint32)
 	if cmd.EndBlock != nil {
 		maxBlockHash, err := chainhash.NewHashFromStr(*cmd.EndBlock)
 		if err != nil {
@@ -2065,7 +2065,7 @@ fetchRange:
 				// A goto is used to branch executation back to
 				// before the range was evaluated, as it must be
 				// reevaluated for the new hashList.
-				minBlock += int32(i)
+				minBlock += uint32(i)
 				hashList, err = recoverFromReorg(chain,
 					minBlock, maxBlock, lastBlockHash)
 				if err != nil {
@@ -2125,7 +2125,7 @@ fetchRange:
 			}
 		}
 
-		minBlock += int32(len(hashList))
+		minBlock += uint32(len(hashList))
 	}
 
 	// Notify websocket client of the finished rescan.  Due to how btcd
@@ -2136,7 +2136,7 @@ fetchRange:
 	// is needed to safely inform clients that all rescan notifications have
 	// been sent.
 	n := btcjson.NewRescanFinishedNtfn(lastBlockHash.String(),
-		lastBlock.Height(),
+		int32(lastBlock.Height()),
 		lastBlock.MsgBlock().Header.Timestamp.Unix())
 	if mn, err := btcjson.MarshalCmd(nil, n); err != nil {
 		rpcsLog.Errorf("Failed to marshal rescan finished "+

@@ -57,7 +57,7 @@ type Config struct {
 
 	// BestHeight defines the function to use to access the block height of
 	// the current best chain.
-	BestHeight func() int32
+	BestHeight func() uint32
 
 	// SigCache defines a signature cache to use.
 	SigCache *txscript.SigCache
@@ -409,7 +409,7 @@ func (mp *TxPool) RemoveDoubleSpends(tx *rmgutil.Tx) {
 // helper for maybeAcceptTransaction.
 //
 // This function MUST be called with the mempool lock held (for writes).
-func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *rmgutil.Tx, height int32, fee int64) {
+func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *rmgutil.Tx, height uint32, fee int64) {
 	// Add the transaction to the pool and mark the referenced outpoints
 	// as spent by the pool.
 	mp.pool[*tx.Hash()] = &TxDesc{

@@ -28,7 +28,7 @@ func TestBlock(t *testing.T) {
 	}
 
 	// Ensure block height set and get work properly.
-	wantHeight := int32(100000)
+	wantHeight := uint32(100000)
 	b.SetHeight(wantHeight)
 	if gotHeight := b.Height(); gotHeight != wantHeight {
 		t.Errorf("Height: mismatched height - got %v, want %v",
@@ -193,7 +193,7 @@ func TestNewBlockFromBytes(t *testing.T) {
 			spew.Sdump(block100000Bytes))
 	}
 
-	wantHeight := int32(100000)
+	wantHeight := uint32(100000)
 	b.SetHeight(wantHeight)
 
 	// Ensure the generated MsgBlock is correct.

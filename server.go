@@ -102,7 +102,7 @@ type relayMsg struct {
 // selecting sync peer candidacy.
 type updatePeerHeightsMsg struct {
 	newHash    *chainhash.Hash
-	newHeight  int32
+	newHeight  uint32
 	originPeer *serverPeer
 }
 
@@ -254,7 +254,7 @@ func newServerPeer(s *server, isPersistent bool) *serverPeer {
 
 // newestBlock returns the current best block hash and height using the format
 // required by the configuration for the peer package.
-func (sp *serverPeer) newestBlock() (*chainhash.Hash, int32, error) {
+func (sp *serverPeer) newestBlock() (*chainhash.Hash, uint32, error) {
 	best := sp.server.blockManager.chain.BestSnapshot()
 	return best.Hash, best.Height, nil
 }
@@ -623,7 +623,7 @@ func (sp *serverPeer) OnGetBlocks(p *peer.Peer, msg *wire.MsgGetBlocks) {
 	// no stop hash was specified.
 	// Attempt to find the ending index of the stop hash if specified.
 	chain := sp.server.blockManager.chain
-	endIdx := int32(math.MaxInt32)
+	endIdx := uint32(math.MaxUint32)
 	if !msg.HashStop.IsEqual(&zeroHash) {
 		height, err := chain.BlockHeightByHash(&msg.HashStop)
 		if err == nil {
@@ -636,7 +636,7 @@ func (sp *serverPeer) OnGetBlocks(p *peer.Peer, msg *wire.MsgGetBlocks) {
 	// provided locator are known.  This does mean the client will start
 	// over with the genesis block if unknown block locators are provided.
 	// This mirrors the behavior in the reference implementation.
-	startIdx := int32(1)
+	startIdx := uint32(1)
 	for _, hash := range msg.BlockLocatorHashes {
 		height, err := chain.BlockHeightByHash(hash)
 		if err == nil {
@@ -692,7 +692,7 @@ func (sp *serverPeer) OnGetHeaders(p *peer.Peer, msg *wire.MsgGetHeaders) {
 
 	// Attempt to look up the height of the provided stop hash.
 	chain := sp.server.blockManager.chain
-	endIdx := int32(math.MaxInt32)
+	endIdx := uint32(math.MaxUint32)
 	height, err := chain.BlockHeightByHash(&msg.HashStop)
 	if err == nil {
 		endIdx = height + 1
@@ -741,7 +741,7 @@ func (sp *serverPeer) OnGetHeaders(p *peer.Peer, msg *wire.MsgGetHeaders) {
 	// provided locator are known.  This does mean the client will start
 	// over with the genesis block if unknown block locators are provided.
 	// This mirrors the behavior in the reference implementation.
-	startIdx := int32(1)
+	startIdx := uint32(1)
 	for _, hash := range msg.BlockLocatorHashes {
 		height, err := chain.BlockHeightByHash(hash)
 		if err == nil {
@@ -2032,7 +2032,7 @@ func (s *server) NetTotals() (uint64, uint64) {
 // the latest connected main chain block, or a recognized orphan. These height
 // updates allow us to dynamically refresh peer heights, ensuring sync peer
 // selection has access to the latest block heights for each peer.
-func (s *server) UpdatePeerHeights(latestBlkHash *chainhash.Hash, latestHeight int32, updateSource *serverPeer) {
+func (s *server) UpdatePeerHeights(latestBlkHash *chainhash.Hash, latestHeight uint32, updateSource *serverPeer) {
 	s.peerHeightsUpdate <- updatePeerHeightsMsg{
 		newHash:    latestBlkHash,
 		newHeight:  latestHeight,
@@ -2530,7 +2530,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 		},
 		ChainParams:   chainParams,
 		FetchUtxoView: s.blockManager.chain.FetchUtxoView,
-		BestHeight:    func() int32 { return bm.chain.BestSnapshot().Height },
+		BestHeight:    func() uint32 { return bm.chain.BestSnapshot().Height },
 		SigCache:      s.sigCache,
 		HashCache:     s.hashCache,
 		TimeSource:    s.timeSource,

@@ -174,7 +174,7 @@ func (m *CPUMiner) submitBlock(block *rmgutil.Block) bool {
 // This function will return early with false when conditions that trigger a
 // stale block such as a new block showing up or periodically when there are
 // new transactions and enough time has elapsed without finding a solution.
-func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
+func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight uint32,
 	ticker *time.Ticker, validateKey *btcec.PrivateKey,
 	quit chan struct{}) bool {
 

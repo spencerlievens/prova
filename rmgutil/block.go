@@ -39,7 +39,7 @@ type Block struct {
 	txnsGenerated   bool            // ALL wrapped transactions generated
 }
 
-func (b *Block) blockHeight() int32 {
+func (b *Block) blockHeight() uint32 {
 	return b.msgBlock.Header.Height
 }
 
@@ -206,14 +206,13 @@ func (b *Block) TxLoc() ([]wire.TxLoc, error) {
 	return txLocs, err
 }
 
-// Height returns the saved height of the block in the block chain.  This value
-// will be BlockHeightUnknown if it hasn't already explicitly been set.
-func (b *Block) Height() int32 {
+// Height returns the saved height of the block in the block chain.
+func (b *Block) Height() uint32 {
 	return b.blockHeight()
 }
 
 // SetHeight sets the height of the block in the block chain.
-func (b *Block) SetHeight(height int32) {
+func (b *Block) SetHeight(height uint32) {
 	b.msgBlock.Header.Height = height
 }
 

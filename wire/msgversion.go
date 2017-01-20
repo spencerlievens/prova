@@ -52,7 +52,7 @@ type MsgVersion struct {
 	UserAgent string
 
 	// Last block seen by the generator of the version message.
-	LastBlock int32
+	LastBlock uint32
 
 	// Don't announce transactions to peer.
 	DisableRelayTx bool
@@ -222,7 +222,7 @@ func (msg *MsgVersion) MaxPayloadLength(pver uint32) uint32 {
 // Message interface using the passed parameters and defaults for the remaining
 // fields.
 func NewMsgVersion(me *NetAddress, you *NetAddress, nonce uint64,
-	lastBlock int32) *MsgVersion {
+	lastBlock uint32) *MsgVersion {
 
 	// Limit the timestamp to one second precision since the protocol
 	// doesn't support better.
@@ -243,7 +243,7 @@ func NewMsgVersion(me *NetAddress, you *NetAddress, nonce uint64,
 // and local address from conn and returns a new bitcoin version message that
 // conforms to the Message interface.  See NewMsgVersion.
 func NewMsgVersionFromConn(conn net.Conn, nonce uint64,
-	lastBlock int32) (*MsgVersion, error) {
+	lastBlock uint32) (*MsgVersion, error) {
 
 	// Don't assume any services until we know otherwise.
 	lna, err := NewNetAddress(conn.LocalAddr(), 0)

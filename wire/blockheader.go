@@ -64,8 +64,7 @@ type BlockHeader struct {
 	Bits uint32
 
 	// Height is the block height in the block chain.
-	// NOTE: intentionally signed to allow -1 as an unspecified value
-	Height int32
+	Height uint32
 
 	// Size is the size of the serialized block in its entirety.
 	Size uint32

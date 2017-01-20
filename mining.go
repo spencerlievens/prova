@@ -170,7 +170,7 @@ type BlockTemplate struct {
 
 	// Height is the height at which the block template connects to the main
 	// chain.
-	Height int32
+	Height uint32
 
 	// ValidPayAddress indicates whether or not the template coinbase pays
 	// to an address or is redeemable by anyone.  See the documentation on
@@ -209,7 +209,7 @@ func standardCoinbaseScript() ([]byte, error) {
 //
 // See the comment for NewBlockTemplate for more information about why the nil
 // address handling is useful.
-func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight int32, addr rmgutil.Address) (*rmgutil.Tx, error) {
+func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight uint32, addr rmgutil.Address) (*rmgutil.Tx, error) {
 	// Create the script to pay to the provided payment address if one was
 	// specified.  Otherwise create a script that allows the coinbase to be
 	// redeemable by anyone.
@@ -267,7 +267,7 @@ func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight int32, addr rmgutil
 // spendTransaction updates the passed view by marking the inputs to the passed
 // transaction as spent.  It also adds all outputs in the passed transaction
 // which are not provably unspendable as available unspent transaction outputs.
-func spendTransaction(utxoView *blockchain.UtxoViewpoint, tx *rmgutil.Tx, height int32) error {
+func spendTransaction(utxoView *blockchain.UtxoViewpoint, tx *rmgutil.Tx, height uint32) error {
 	for _, txIn := range tx.MsgTx().TxIn {
 		originHash := &txIn.PreviousOutPoint.Hash
 		originIndex := txIn.PreviousOutPoint.Index
@@ -745,7 +745,7 @@ mempoolLoop:
 		MerkleRoot: *merkles[len(merkles)-1],
 		Timestamp:  ts,
 		Bits:       reqDifficulty,
-		Height:     nextBlockHeight,
+		Height:     uint32(nextBlockHeight),
 		Size:       blockSize,
 	}
 

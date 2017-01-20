@@ -131,7 +131,7 @@ type pauseMsg struct {
 // headerNode is used as a node in a list of headers that are linked together
 // between checkpoints.
 type headerNode struct {
-	height int32
+	height uint32
 	hash   *chainhash.Hash
 }
 
@@ -144,7 +144,7 @@ type headerNode struct {
 type chainState struct {
 	sync.Mutex
 	newestHash        *chainhash.Hash
-	newestHeight      int32
+	newestHeight      uint32
 	pastMedianTime    time.Time
 	pastMedianTimeErr error
 }
@@ -153,7 +153,7 @@ type chainState struct {
 // chain.
 //
 // This function is safe for concurrent access.
-func (c *chainState) Best() (*chainhash.Hash, int32) {
+func (c *chainState) Best() (*chainhash.Hash, uint32) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -189,7 +189,7 @@ type blockManager struct {
 
 // resetHeaderState sets the headers-first mode state to values appropriate for
 // syncing from a new peer.
-func (b *blockManager) resetHeaderState(newestHash *chainhash.Hash, newestHeight int32) {
+func (b *blockManager) resetHeaderState(newestHash *chainhash.Hash, newestHeight uint32) {
 	b.headersFirstMode = false
 	b.headerList.Init()
 	b.startHeader = nil
@@ -207,7 +207,7 @@ func (b *blockManager) resetHeaderState(newestHash *chainhash.Hash, newestHeight
 // This allows fast access to chain information since btcchain is currently not
 // safe for concurrent access and the block manager is typically quite busy
 // processing block and inventory.
-func (b *blockManager) updateChainState(newestHash *chainhash.Hash, newestHeight int32) {
+func (b *blockManager) updateChainState(newestHash *chainhash.Hash, newestHeight uint32) {
 	b.chainState.Lock()
 	defer b.chainState.Unlock()
 
@@ -225,7 +225,7 @@ func (b *blockManager) updateChainState(newestHash *chainhash.Hash, newestHeight
 // It returns nil when there is not one either because the height is already
 // later than the final checkpoint or some other reason such as disabled
 // checkpoints.
-func (b *blockManager) findNextHeaderCheckpoint(height int32) *chaincfg.Checkpoint {
+func (b *blockManager) findNextHeaderCheckpoint(height uint32) *chaincfg.Checkpoint {
 	// There is no next checkpoint if checkpoints are disabled or there are
 	// none for this current network.
 	if cfg.DisableCheckpoints {
@@ -601,7 +601,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 	// the block heights over other peers who's invs may have been ignored
 	// if we are actively syncing while the chain is not yet current or
 	// who may have lost the lock announcment race.
-	var heightUpdate int32
+	var heightUpdate uint32
 	var blkHashUpdate *chainhash.Hash
 
 	// Request the parents for the orphan block from the peer that sent it.
@@ -658,7 +658,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 	if blkHashUpdate != nil && heightUpdate != 0 {
 		bmsg.peer.UpdateLastBlockHeight(heightUpdate)
 		if isOrphan || b.current() {
-			go b.server.UpdatePeerHeights(blkHashUpdate, int32(heightUpdate), bmsg.peer)
+			go b.server.UpdatePeerHeights(blkHashUpdate, heightUpdate, bmsg.peer)
 		}
 	}
 
@@ -925,7 +925,7 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 	if lastBlock != -1 && b.current() {
 		blkHeight, err := b.chain.BlockHeightByHash(&invVects[lastBlock].Hash)
 		if err == nil {
-			imsg.peer.UpdateLastBlockHeight(int32(blkHeight))
+			imsg.peer.UpdateLastBlockHeight(uint32(blkHeight))
 		}
 	}
 

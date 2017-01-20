@@ -95,8 +95,8 @@ type peerStats struct {
 	wantConnected       bool
 	wantVersionKnown    bool
 	wantVerAckReceived  bool
-	wantLastBlock       int32
-	wantStartingHeight  int32
+	wantLastBlock       uint32
+	wantStartingHeight  uint32
 	wantLastPingTime    time.Time
 	wantLastPingNonce   uint64
 	wantLastPingMicros  int64
@@ -523,7 +523,7 @@ func TestPeerListeners(t *testing.T) {
 func TestOutboundPeer(t *testing.T) {
 
 	peerCfg := &peer.Config{
-		NewestBlock: func() (*chainhash.Hash, int32, error) {
+		NewestBlock: func() (*chainhash.Hash, uint32, error) {
 			return nil, 0, errors.New("newest block not found")
 		},
 		UserAgentName:    "peer",
@@ -579,7 +579,7 @@ func TestOutboundPeer(t *testing.T) {
 	p.Disconnect()
 
 	// Test NewestBlock
-	var newestBlock = func() (*chainhash.Hash, int32, error) {
+	var newestBlock = func() (*chainhash.Hash, uint32, error) {
 		hashStr := "14a0810ac680a3eb3f82edc878cea25ec41d6b790744e5daeef"
 		hash, err := chainhash.NewHashFromStr(hashStr)
 		if err != nil {

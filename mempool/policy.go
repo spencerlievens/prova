@@ -83,7 +83,7 @@ func calcMinRequiredTxRelayFee(serializedSize int64, minRelayTxFee rmgutil.Amoun
 // of each of its input values multiplied by their age (# of confirmations).
 // Thus, the final formula for the priority is:
 // sum(inputValue * inputAge) / adjustedTxSize
-func CalcPriority(tx *wire.MsgTx, utxoView *blockchain.UtxoViewpoint, nextBlockHeight int32) float64 {
+func CalcPriority(tx *wire.MsgTx, utxoView *blockchain.UtxoViewpoint, nextBlockHeight uint32) float64 {
 	// In order to encourage spending multiple old unspent transaction
 	// outputs thereby reducing the total set, don't count the constant
 	// overhead for each input as well as enough bytes of the signature
@@ -125,7 +125,7 @@ func CalcPriority(tx *wire.MsgTx, utxoView *blockchain.UtxoViewpoint, nextBlockH
 // age is the sum of this value for each txin.  Any inputs to the transaction
 // which are currently in the mempool and hence not mined into a block yet,
 // contribute no additional input age to the transaction.
-func calcInputValueAge(tx *wire.MsgTx, utxoView *blockchain.UtxoViewpoint, nextBlockHeight int32) float64 {
+func calcInputValueAge(tx *wire.MsgTx, utxoView *blockchain.UtxoViewpoint, nextBlockHeight uint32) float64 {
 	var totalInputAge float64
 	for _, txIn := range tx.TxIn {
 		// Don't attempt to accumulate the total input age if the
@@ -138,7 +138,7 @@ func calcInputValueAge(tx *wire.MsgTx, utxoView *blockchain.UtxoViewpoint, nextB
 			// have their block height set to a special constant.
 			// Their input age should be computed as zero since
 			// their parent hasn't made it into a block yet.
-			var inputAge int32
+			var inputAge uint32
 			originHeight := txEntry.BlockHeight()
 			if originHeight == mempoolHeight {
 				inputAge = 0
@@ -326,7 +326,7 @@ func isDust(txOut *wire.TxOut, minRelayTxFee rmgutil.Amount) bool {
 // finalized, conforming to more stringent size constraints, having scripts
 // of recognized forms, and not containing "dust" outputs (those that are
 // so small it costs more to process them than they are worth).
-func checkTransactionStandard(tx *rmgutil.Tx, height int32, timeSource blockchain.MedianTimeSource, minRelayTxFee rmgutil.Amount) error {
+func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockchain.MedianTimeSource, minRelayTxFee rmgutil.Amount) error {
 	// The transaction must be a currently supported version.
 	msgTx := tx.MsgTx()
 	if msgTx.Version > wire.TxVersion || msgTx.Version < 1 {

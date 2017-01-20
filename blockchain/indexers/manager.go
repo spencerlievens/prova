@@ -89,7 +89,7 @@ func dbIndexConnectBlock(dbTx database.Tx, indexer Indexer, block *rmgutil.Block
 	}
 
 	// Update the current index tip.
-	return dbPutIndexerTip(dbTx, idxKey, block.Hash(), block.Height())
+	return dbPutIndexerTip(dbTx, idxKey, block.Hash(), int32(block.Height()))
 }
 
 // dbIndexDisconnectBlock removes all of the index entries associated with the
@@ -119,7 +119,7 @@ func dbIndexDisconnectBlock(dbTx database.Tx, indexer Indexer, block *rmgutil.Bl
 
 	// Update the current index tip.
 	prevHash := &block.MsgBlock().Header.PrevBlock
-	return dbPutIndexerTip(dbTx, idxKey, prevHash, block.Height()-1)
+	return dbPutIndexerTip(dbTx, idxKey, prevHash, int32(block.Height())-1)
 }
 
 // Manager defines an index manager that manages multiple optional indexes and
@@ -354,7 +354,7 @@ func (m *Manager) Init(chain *blockchain.BlockChain) error {
 	// lowest one so the catchup code only needs to start at the earliest
 	// block and is able to skip connecting the block for the indexes that
 	// don't need it.
-	bestHeight := chain.BestSnapshot().Height
+	bestHeight := int32(chain.BestSnapshot().Height)
 	lowestHeight := bestHeight
 	indexerHeights := make([]int32, len(m.enabledIndexes))
 	err = m.db.View(func(dbTx database.Tx) error {
@@ -394,7 +394,7 @@ func (m *Manager) Init(chain *blockchain.BlockChain) error {
 	for height := lowestHeight + 1; height <= bestHeight; height++ {
 		// Load the block for the height since it is required to index
 		// it.
-		block, err := chain.BlockByHeight(height)
+		block, err := chain.BlockByHeight(uint32(height))
 		if err != nil {
 			return err
 		}

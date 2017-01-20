@@ -25,7 +25,7 @@ import (
 type fakeChain struct {
 	sync.RWMutex
 	utxos         *blockchain.UtxoViewpoint
-	currentHeight int32
+	currentHeight uint32
 }
 
 // FetchUtxoView loads utxo details about the input transactions referenced by
@@ -58,7 +58,7 @@ func (s *fakeChain) FetchUtxoView(tx *rmgutil.Tx) (*blockchain.UtxoViewpoint, er
 
 // BestHeight returns the current height associated with the fake chain
 // instance.
-func (s *fakeChain) BestHeight() int32 {
+func (s *fakeChain) BestHeight() uint32 {
 	s.RLock()
 	height := s.currentHeight
 	s.RUnlock()
@@ -66,7 +66,7 @@ func (s *fakeChain) BestHeight() int32 {
 }
 
 // SetHeight sets the current height associated with the fake chain instance.
-func (s *fakeChain) SetHeight(height int32) {
+func (s *fakeChain) SetHeight(height uint32) {
 	s.Lock()
 	s.currentHeight = height
 	s.Unlock()
@@ -112,7 +112,7 @@ type poolHarness struct {
 // address associated with the harness.  It automatically uses a standard
 // signature script that starts with the block height that is required by
 // version 2 blocks.
-func (p *poolHarness) CreateCoinbaseTx(blockHeight int32, numOutputs uint32) (*rmgutil.Tx, error) {
+func (p *poolHarness) CreateCoinbaseTx(blockHeight uint32, numOutputs uint32) (*rmgutil.Tx, error) {
 	// Create standard coinbase script.
 	coinbaseScript, err := txscript.NewScriptBuilder().
 		AddInt64(int64(blockHeight)).Script()
@@ -307,7 +307,7 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 	for i := uint32(0); i < numOutputs; i++ {
 		outputs = append(outputs, txOutToSpendableOut(coinbase, i))
 	}
-	harness.chain.SetHeight(int32(chainParams.CoinbaseMaturity) + curHeight)
+	harness.chain.SetHeight(uint32(chainParams.CoinbaseMaturity) + curHeight)
 
 	return &harness, outputs, nil
 }
