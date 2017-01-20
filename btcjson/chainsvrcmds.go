@@ -152,6 +152,15 @@ func NewGetAddedNodeInfoCmd(dns bool, node *string) *GetAddedNodeInfoCmd {
 	}
 }
 
+// GetAdminInfoCmd defines the getadmininfo JSON-RPC command.
+type GetAdminInfoCmd struct{}
+
+// NewGetAdminInfoCmd returns a new instance which can be used to issue a
+// getadmininfo JSON-RPC command.
+func NewGetAdminInfoCmd() *GetAdminInfoCmd {
+	return &GetAdminInfoCmd{}
+}
+
 // GetBestBlockHashCmd defines the getbestblockhash JSON-RPC command.
 type GetBestBlockHashCmd struct{}
 
@@ -765,6 +774,7 @@ func init() {
 	MustRegisterCmd("decodescript", (*DecodeScriptCmd)(nil), flags)
 	MustRegisterCmd("getaddresstxids", (*GetAddressTxIdsCmd)(nil), flags)
 	MustRegisterCmd("getaddednodeinfo", (*GetAddedNodeInfoCmd)(nil), flags)
+	MustRegisterCmd("getadmininfo", (*GetAdminInfoCmd)(nil), flags)
 	MustRegisterCmd("getbestblockhash", (*GetBestBlockHashCmd)(nil), flags)
 	MustRegisterCmd("getblock", (*GetBlockCmd)(nil), flags)
 	MustRegisterCmd("getblockchaininfo", (*GetBlockChainInfoCmd)(nil), flags)

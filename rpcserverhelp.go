@@ -176,6 +176,19 @@ var helpDescsEnUS = map[string]string{
 	"getbestblock--synopsis": "Get block height and hash of best block in the main chain.",
 	"getbestblock--result0":  "Get block height and hash of best block in the main chain.",
 
+	// GetAdminInfoResult help.
+	"getadmininforesult-hash":             "block hash at which returned admin state is valid.",
+	"getadmininforesult-height":           "Height of the block at which returned admin state is valid.",
+	"getadmininforesult-rootkeys":         "list of compressed, serialized strings of root pubKeys",
+	"getadmininforesult-provisioningkeys": "list of compressed, serialized strings of provisioning pubKeys",
+	"getadmininforesult-issuingkeys":      "list of compressed, serialized strings of issuing pubKeys",
+	"getadmininforesult-validatekeys":     "list of compressed, serialized strings of validate pubKeys",
+	"getadmininforesult-wpskeys":          "list of compressed, serialized strings of wps pubKeys",
+
+	// GetAdminInfoCmd help.
+	"getadmininfo--synopsis": "Get admin key sets at best block in the main chain.",
+	"getadmininfo--result0":  "Get admin key sets at best block in the main chain.",
+
 	// GetBestBlockHashCmd help.
 	"getbestblockhash--synopsis": "Returns the hash of the of the best (most recent) block in the longest block chain.",
 	"getbestblockhash--result0":  "The hex-encoded block hash",
@@ -626,6 +639,7 @@ var rpcResultTypes = map[string][]interface{}{
 	"generate":             {(*[]string)(nil)},
 	"getaddednodeinfo":     {(*[]string)(nil), (*[]btcjson.GetAddedNodeInfoResult)(nil)},
 	"getaddresstxids":      {(*[]string)(nil)},
+	"getadmininfo":         {(*btcjson.GetAdminInfoResult)(nil)},
 	"getbestblock":         {(*btcjson.GetBestBlockResult)(nil)},
 	"getbestblockhash":     {(*string)(nil)},
 	"getblock":             {(*string)(nil), (*btcjson.GetBlockVerboseResult)(nil)},

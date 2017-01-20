@@ -141,6 +141,7 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"generate":             handleGenerate,
 	"getaddednodeinfo":     handleGetAddedNodeInfo,
 	"getaddresstxids":      handleGetAddressTxIds,
+	"getadmininfo":         handleGetAdminInfo,
 	"getbestblock":         handleGetBestBlock,
 	"getbestblockhash":     handleGetBestBlockHash,
 	"getblock":             handleGetBlock,
@@ -254,6 +255,7 @@ var rpcLimited = map[string]struct{}{
 	"decoderawtransaction":    {},
 	"decodescript":            {},
 	"getaddresstxids":         {},
+	"getadmininfo":            {},
 	"getbestblock":            {},
 	"getbestblockhash":        {},
 	"getblock":                {},
@@ -1309,6 +1311,17 @@ func handleGetAddressTxIds(s *rpcServer, cmd interface{}, closeChan <-chan struc
 	}
 
 	return reply, nil
+}
+
+// handleGetAdminInfo implements the getadmininfo command.
+func handleGetAdminInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	best := s.chain.BestSnapshot()
+	result := &btcjson.GetAdminInfoResult{
+		Hash:        best.Hash.String(),
+		Height:      best.Height,
+		IssuingKeys: best.IssuingKeys.ToStringArray(),
+	}
+	return result, nil
 }
 
 // handleGetBestBlock implements the getbestblock command.

@@ -6,6 +6,7 @@ package blockchain
 
 import (
 	"container/list"
+	"encoding/hex"
 	"fmt"
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
@@ -135,6 +136,15 @@ func (slice keySlice) Pos(key *btcec.PublicKey) int {
 		}
 	}
 	return -1
+}
+
+// ToStringArray returns a string array of serialized keys.
+func (slice keySlice) ToStringArray() []string {
+	rv := make([]string, len(slice))
+	for i, v := range slice {
+		rv[i] = hex.EncodeToString(v.SerializeCompressed())
+	}
+	return rv
 }
 
 // remove will remove the element at position i.

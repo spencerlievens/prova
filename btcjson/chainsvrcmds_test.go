@@ -128,6 +128,17 @@ func TestChainSvrCmds(t *testing.T) {
 			},
 		},
 		{
+			name: "getadmininfo",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("getadmininfo")
+			},
+			staticCmd: func() interface{} {
+				return btcjson.NewGetAdminInfoCmd()
+			},
+			marshalled:   `{"jsonrpc":"1.0","method":"getadmininfo","params":[],"id":1}`,
+			unmarshalled: &btcjson.GetAdminInfoCmd{},
+		},
+		{
 			name: "getbestblockhash",
 			newCmd: func() (interface{}, error) {
 				return btcjson.NewCmd("getbestblockhash")
