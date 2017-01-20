@@ -80,7 +80,7 @@ type GetAddedNodeInfoResult struct {
 // GetBestBlockResult models the data from the getbestblock command.
 type GetAdminInfoResult struct {
 	Hash             string   `json:"hash"`
-	Height           int32    `json:"height"`
+	Height           uint32   `json:"height"`
 	RootKeys         []string `json:"rootkeys,omitempty"`
 	ProvisioningKeys []string `json:"provisioningkeys,omitempty"`
 	IssuingKeys      []string `json:"issuingkeys,omitempty"`
