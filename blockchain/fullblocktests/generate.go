@@ -590,6 +590,7 @@ func (g *testGenerator) nextBlock(blockName string, spend *spendableOut, mungers
 			MerkleRoot: calcMerkleRoot(txns),
 			Bits:       g.params.PowLimitBits,
 			Timestamp:  ts,
+			Height:     nextHeight,
 			Nonce:      0, // To be solved.
 		},
 		Transactions: txns,
@@ -1681,67 +1682,13 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	})
 	accepted()
 
-	// ---------------------------------------------------------------------
-	// CVE-2012-2459 (block hash collision due to merkle tree algo) tests.
-	// ---------------------------------------------------------------------
-
-	// Create two blocks that have the same hash via merkle tree tricks to
-	// ensure that the valid block is accepted even though it has the same
-	// hash as the invalid block that was rejected first.
-	//
-	// This is accomplished by building the blocks as follows:
-	//
-	// b57 (valid block):
-	//
-	//                root = h1234 = h(h12 || h34)
-	//	        //                           \\
-	//	  h12 = h(h(cb) || h(tx2))  h34 = h(h(tx3) || h(tx3))
-	//	   //                  \\             //           \\
-	//	 coinbase              tx2           tx3           nil
-	//
-	//   transactions: coinbase, tx2, tx3
-	//   merkle tree level 1: h12 = h(h(cb) || h(tx2))
-	//                        h34 = h(h(tx3) || h(tx3)) // Algo reuses tx3
-	//   merkle tree root: h(h12 || h34)
-	//
-	// b56 (invalid block with the same hash):
-	//
-	//                root = h1234 = h(h12 || h34)
-	//	        //                          \\
-	//	  h12 = h(h(cb) || h(tx2))  h34 = h(h(tx3) || h(tx3))
-	//	   //                  \\             //           \\
-	//	 coinbase              tx2           tx3           tx3
-	//
-	//   transactions: coinbase, tx2, tx3, tx3
-	//   merkle tree level 1: h12 = h(h(cb) || h(tx2))
-	//                        h34 = h(h(tx3) || h(tx3)) // real tx3 dup
-	//   merkle tree root: h(h12 || h34)
-	//
-	//   ... -> b55(15) -> b57(16)
-	//                 \-> b56(16)
 	g.setTip("b55")
-	b57 := g.nextBlock("b57", outs[16], func(b *wire.MsgBlock) {
+	g.nextBlock("b57", outs[16], func(b *wire.MsgBlock) {
 		tx2 := b.Transactions[1]
 		tx3 := createSpendTxForTx(tx2, lowFee)
 		b.AddTransaction(tx3)
 	})
 	g.assertTipBlockNumTxns(3)
-
-	g.setTip("b55")
-	b56 := g.nextBlock("b56", nil, func(b *wire.MsgBlock) {
-		*b = cloneBlock(b57)
-		b.AddTransaction(b.Transactions[2])
-	})
-	g.assertTipBlockNumTxns(4)
-	g.assertTipBlockHash(b57.BlockHash())
-	g.assertTipBlockMerkleRoot(b57.Header.MerkleRoot)
-	rejected(blockchain.ErrDuplicateTx)
-
-	// Since the two blocks have the same hash and the generator state now
-	// has b56 associated with the hash, manually remove b56, replace it
-	// with b57, and then reset the tip to it.
-	g.updateBlockState("b56", b56.BlockHash(), "b57", b57)
-	g.setTip("b57")
 	accepted()
 
 	// Create a block that contains two duplicate txns that are not in a
