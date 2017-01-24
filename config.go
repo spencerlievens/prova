@@ -126,7 +126,7 @@ type config struct {
 	Upnp               bool          `long:"upnp" description:"Use UPnP to map our listening port outside of NAT"`
 	MinRelayTxFee      float64       `long:"minrelaytxfee" description:"The minimum transaction fee in RMG/kB to be considered a non-zero fee."`
 	FreeTxRelayLimit   float64       `long:"limitfreerelay" description:"Limit relay of transactions with no transaction fee to the given amount in thousands of bytes per minute"`
-	NoRelayPriority    bool          `long:"norelaypriority" description:"Do not require free or low-fee transactions to have high priority for relaying"`
+	RelayPriority      bool          `long:"relaypriority" description:"Require free or low-fee transactions to have high priority for relaying"`
 	MaxOrphanTxs       int           `long:"maxorphantx" description:"Max number of orphan transactions to keep in memory"`
 	Generate           bool          `long:"generate" description:"Generate (mine) blocks using the CPU"`
 	MiningAddrs        []string      `long:"miningaddr" description:"Add the specified payment address to the list of addresses to use for generated blocks -- At least one address is required if the generate option is set"`

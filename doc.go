@@ -88,7 +88,7 @@ Application Options:
       --limitfreerelay=     Limit relay of transactions with no transaction fee
                             to the given amount in thousands of bytes per
                             minute (15)
-      --norelaypriority     Do not require free or low-fee transactions to have
+      --relaypriority       Require free or low-fee transactions to have
                             high priority for relaying
       --maxorphantx=        Max number of orphan transactions to keep in memory
                             (1000)
