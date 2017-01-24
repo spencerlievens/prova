@@ -1,10 +1,22 @@
-hash: 8f89ba1940f8798b8a0449810532e3f0bc552ed97d907bc3447a8941a2ea3a4a
-updated: 2016-09-21T18:04:46.586977232-04:00
+hash: 9984e56213a2a93f9b6812b5721ec173916c08dd2f9de93d64ed6f9a2bd83abc
+updated: 2017-01-24T13:40:57.099268311-08:00
 imports:
+- name: github.com/btcsuite/btcd
+  version: f6ad7eb2c963151c71de2bd37d04d9af644a891d
+  subpackages:
+  - btcec
+  - btcjson
+  - chaincfg
+  - chaincfg/chainhash
+  - wire
 - name: github.com/btcsuite/btclog
   version: 73889fb79bd687870312b6e40effcecffbd57d30
 - name: github.com/btcsuite/btcrpcclient
   version: 7903290fd9956021ed7b65463f8667df345b365e
+- name: github.com/btcsuite/btcutil
+  version: 9b9ce80a2edafc6198569550fcc01df11d214425
+  subpackages:
+  - base58
 - name: github.com/btcsuite/fastsha256
   version: 637e656429416087660c84436a2a035d69d54e2e
 - name: github.com/btcsuite/go-flags
@@ -50,4 +62,8 @@ imports:
   version: 346938d642f2ec3594ed81d874461961cd0faa76
   subpackages:
   - spew
+- name: golang.org/x/crypto
+  version: 41d678d1df78cd0410143162dff954e6dc09300f
+  subpackages:
+  - sha3
 testImports: []
