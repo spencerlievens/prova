@@ -588,6 +588,9 @@ func (mp *TxPool) maybeAcceptTransaction(tx *rmgutil.Tx, isNew, rateLimit bool) 
 		return nil, err
 	}
 
+	//TODO(aztec): where to get this from?
+	keyView := blockchain.NewKeyViewpoint()
+
 	// Don't allow the transaction if it exists in the main chain and is not
 	// not already fully spent.
 	txEntry := utxoView.LookupEntry(txHash)
@@ -732,7 +735,7 @@ func (mp *TxPool) maybeAcceptTransaction(tx *rmgutil.Tx, isNew, rateLimit bool) 
 
 	// Verify crypto signatures for each input and reject the transaction if
 	// any don't verify.
-	err = blockchain.ValidateTransactionScripts(tx, utxoView,
+	err = blockchain.ValidateTransactionScripts(tx, utxoView, keyView,
 		txscript.StandardVerifyFlags, mp.cfg.SigCache, mp.cfg.HashCache)
 	if err != nil {
 		if cerr, ok := err.(blockchain.RuleError); ok {

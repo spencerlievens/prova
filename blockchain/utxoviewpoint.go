@@ -5,14 +5,11 @@
 package blockchain
 
 import (
-	"encoding/hex"
 	"fmt"
-	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/database"
 	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/txscript"
-	"sort"
 )
 
 // utxoOutput houses details about an individual unspent transaction output such
@@ -197,9 +194,8 @@ func newUtxoEntry(version int32, isCoinBase bool, blockHeight uint32) *UtxoEntry
 // The unspent outputs are needed by other transactions for things such as
 // script validation and double spend prevention.
 type UtxoViewpoint struct {
-	entries     map[chainhash.Hash]*UtxoEntry
-	bestHash    chainhash.Hash
-	issuingKeys keySlice
+	entries  map[chainhash.Hash]*UtxoEntry
+	bestHash chainhash.Hash
 }
 
 // BestHash returns the hash of the best block in the chain the view currently
@@ -214,17 +210,6 @@ func (view *UtxoViewpoint) SetBestHash(hash *chainhash.Hash) {
 	view.bestHash = *hash
 }
 
-// IssuingKeys returns the set of valid issuing keys.
-func (view *UtxoViewpoint) IssuingKeys() keySlice {
-	return view.issuingKeys
-}
-
-// IssuingKeys returns the set of valid issuing keys.
-// TODO(aztec): do this for other admin state data.
-func (view *UtxoViewpoint) SetIssuingKeys(issuingKeys keySlice) {
-	view.issuingKeys = append(view.issuingKeys, issuingKeys...)
-}
-
 // LookupEntry returns information about a given transaction according to the
 // current state of the view.  It will return nil if the passed transaction
 // hash does not exist in the view or is otherwise not available such as when
@@ -236,66 +221,6 @@ func (view *UtxoViewpoint) LookupEntry(txHash *chainhash.Hash) *UtxoEntry {
 	}
 
 	return entry
-}
-
-// LookupKeyIDs returs pubKeyHashes for all registered KeyIDs
-// TODO(aztec) replace static lookup with dynamic one from utxView
-func (view *UtxoViewpoint) LookupKeyIDs(keyIDs []rmgutil.KeyID) map[rmgutil.KeyID][]byte {
-	keyIdMap := make(map[rmgutil.KeyID][]byte)
-	for _, keyID := range keyIDs {
-		keyIdMap[keyID] = []byte{53, 219, 191, 4, 188, 160, 97, 228, 157, 172, 224, 143, 133, 141, 135, 117, 192, 165, 124, 142}
-		if keyID == 1 {
-			keyIdMap[keyID] = []byte{207, 85, 250, 254, 141, 22, 106, 190, 101, 133, 28, 207, 125, 127, 53, 172, 186, 5, 176, 249}
-		}
-	}
-	return keyIdMap
-}
-
-// GetAdminKeyHashes returns pubKeyHashes according to the provided threadID.
-// TODO(aztec) replace static with dynamic list
-func (view *UtxoViewpoint) GetAdminKeyHashes(threadID rmgutil.ThreadID) ([][]byte, error) {
-	rootKeyPubs := []string{
-		// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
-		"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1",
-		// priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
-		"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"}
-	provisionKeyPubs := []string{
-		// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
-		"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1",
-		// priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
-		"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202",
-		// priv 6e6b5b6ff0fc11cea9c0949595cfb01b8c268325b564d0d74cd77e4348b06177
-		"02cf712ca1d7784bc0c381c250f2a7c7f2729da771abaaca5772201c6103575bb8",
-		// priv 7bb53c8506695b19f9d6d863748d91efccd948b768984761d4de5d69ca2d3847
-		"03ecf4f686b7528197f6e58183e7c76f6dad16c38d6e5ce2ac73e469fda56f5f0e",
-		// priv 07cf1bf3bd286649f837df98c1737af40ec62d7da9581b34c529c7f894f7e3e3
-		"038e8031f881cdbf553abf7c59d22183e8333bea265eabe4e9d8aa762fe9fe619c"}
-	issueKeyPubs := []string{
-		// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
-		"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1",
-		// priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
-		"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"}
-	adminKeyPubs := [3][]string{rootKeyPubs, provisionKeyPubs, issueKeyPubs}
-
-	if int(threadID) >= len(adminKeyPubs) {
-		return nil, fmt.Errorf("unknown threadID %v", threadID)
-	}
-
-	pubs := adminKeyPubs[threadID]
-	sort.Strings(pubs)
-	hashes := make([][]byte, len(pubs))
-	for i, pubKeyStr := range pubs {
-		pubKeyBytes, err := hex.DecodeString(pubKeyStr)
-		if err != nil {
-			return nil, err
-		}
-		pubKey, err := btcec.ParsePubKey(pubKeyBytes, btcec.S256())
-		if err != nil {
-			return nil, err
-		}
-		hashes[i] = rmgutil.Hash160(pubKey.SerializeCompressed())
-	}
-	return hashes, nil
 }
 
 // AddTxOuts adds all outputs in the passed transaction which are not provably
@@ -344,37 +269,6 @@ func (view *UtxoViewpoint) AddTxOuts(tx *rmgutil.Tx, blockHeight uint32) {
 		}
 	}
 	return
-}
-
-// ProcessAdminOuts finds admin transactions and executes all ops in it
-// TODO(aztec): execute more than the first op.
-// TODO(aztec): add more threads and ops.
-func (view *UtxoViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
-	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
-	if threadInt < int(rmgutil.RootThread) {
-		// not admin transaction
-		//not all transaction that we receive are relevant, so we skip them.
-		return
-	}
-	threadID := rmgutil.ThreadID(threadInt)
-	for i := 0; i < len(adminOutputs); i++ {
-		switch threadID {
-		case rmgutil.ProvisionThread:
-			op, pubKey, _ := txscript.ExtractAdminData(adminOutputs[i])
-			if op == txscript.OP_ISSUINGKEYADD {
-
-				if view.issuingKeys.Pos(pubKey) < 0 {
-					view.issuingKeys = append(view.issuingKeys, *pubKey)
-				}
-			}
-			if op == txscript.OP_ISSUINGKEYREVOKE {
-				pos := view.issuingKeys.Pos(pubKey)
-				if pos >= 0 {
-					view.issuingKeys = view.issuingKeys.remove(pos)
-				}
-			}
-		}
-	}
 }
 
 // connectTransaction updates the view by adding all new utxos created by the
@@ -431,8 +325,6 @@ func (view *UtxoViewpoint) connectTransaction(tx *rmgutil.Tx, blockHeight uint32
 
 	// Add the transaction's outputs as available utxos.
 	view.AddTxOuts(tx, blockHeight)
-	// Process the admin outputs that are part of this tx.
-	view.ProcessAdminOuts(tx, blockHeight)
 	return nil
 }
 
@@ -490,31 +382,6 @@ func (view *UtxoViewpoint) disconnectTransactions(block *rmgutil.Block, stxos []
 
 		if isCoinbase {
 			continue
-		}
-
-		// If an admin transaction is disconnected, undo what it did to chain state.
-		// TODO(aztec): execute more than the first op.
-		// TODO(aztec): add more threads and ops.
-		threadInt, adminOutputs := txscript.GetAdminDetails(tx)
-		if threadInt >= int(rmgutil.RootThread) {
-			threadID := rmgutil.ThreadID(threadInt)
-			for i := 0; i < len(adminOutputs); i++ {
-				switch threadID {
-				case rmgutil.ProvisionThread:
-					op, pubKey, _ := txscript.ExtractAdminData(adminOutputs[i])
-					if op == txscript.OP_ISSUINGKEYREVOKE {
-						if view.issuingKeys.Pos(pubKey) < 0 {
-							view.issuingKeys = append(view.issuingKeys, *pubKey)
-						}
-					}
-					if op == txscript.OP_ISSUINGKEYADD {
-						pos := view.issuingKeys.Pos(pubKey)
-						if pos >= 0 {
-							view.issuingKeys = view.issuingKeys.remove(pos)
-						}
-					}
-				}
-			}
 		}
 
 		// Loop backwards through all of the transaction inputs (except
@@ -706,8 +573,7 @@ func (view *UtxoViewpoint) fetchInputUtxos(db database.DB, block *rmgutil.Block)
 // NewUtxoViewpoint returns a new empty unspent transaction output view.
 func NewUtxoViewpoint() *UtxoViewpoint {
 	return &UtxoViewpoint{
-		entries:     make(map[chainhash.Hash]*UtxoEntry),
-		issuingKeys: make([]btcec.PublicKey, 0),
+		entries: make(map[chainhash.Hash]*UtxoEntry),
 	}
 }
 
@@ -736,7 +602,6 @@ func (b *BlockChain) FetchUtxoView(tx *rmgutil.Tx) (*UtxoViewpoint, error) {
 	// Request the utxos from the point of view of the end of the main
 	// chain.
 	view := NewUtxoViewpoint()
-	view.SetIssuingKeys(b.stateSnapshot.IssuingKeys)
 	err := view.fetchUtxosMain(b.db, txNeededSet)
 	return view, err
 }

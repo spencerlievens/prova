@@ -804,7 +804,7 @@ func dbMaybeStoreBlock(dbTx database.Tx, block *rmgutil.Block) error {
 // it would be inefficient to repeat it.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, view *UtxoViewpoint, stxos []spentTxOut) error {
+func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint, stxos []spentTxOut) error {
 	// Make sure it's extending the end of the best chain.
 	prevHash := &block.MsgBlock().Header.PrevBlock
 	if !prevHash.IsEqual(b.bestNode.hash) {
@@ -832,8 +832,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, view *U
 	numTxns := uint64(len(block.MsgBlock().Transactions))
 	blockSize := uint64(block.MsgBlock().SerializeSize())
 	state := newBestState(node, blockSize, numTxns, curTotalTxns+numTxns,
-		medianTime, view.IssuingKeys())
-
+		medianTime, keyView.Keys(rmgutil.IssueThread))
 	// Atomically insert info into the database.
 	err = b.db.Update(func(dbTx database.Tx) error {
 		// Update best block state.
@@ -852,7 +851,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, view *U
 		// Update the utxo set using the state of the utxo view.  This
 		// entails removing all of the utxos spent and adding the new
 		// ones created by the block.
-		err = dbPutUtxoView(dbTx, view)
+		err = dbPutUtxoView(dbTx, utxoView)
 		if err != nil {
 			return err
 		}
@@ -874,7 +873,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, view *U
 		// optional indexes with the block being connected so they can
 		// update themselves accordingly.
 		if b.indexManager != nil {
-			err := b.indexManager.ConnectBlock(dbTx, block, view)
+			err := b.indexManager.ConnectBlock(dbTx, block, utxoView)
 			if err != nil {
 				return err
 			}
@@ -888,7 +887,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, view *U
 
 	// Prune fully spent entries and mark all entries in the view unmodified
 	// now that the modifications have been committed to the database.
-	view.commit()
+	utxoView.commit()
 
 	// Add the new node to the memory main chain indices for faster
 	// lookups.
@@ -922,7 +921,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, view *U
 // the main (best) chain.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, view *UtxoViewpoint) error {
+func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint) error {
 	// Make sure the node being disconnected is the end of the best chain.
 	if !node.hash.IsEqual(b.bestNode.hash) {
 		return AssertError("disconnectBlock must be called with the " +
@@ -964,7 +963,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, view
 	blockSize := uint64(prevBlock.MsgBlock().SerializeSize())
 	newTotalTxns := curTotalTxns - uint64(len(block.MsgBlock().Transactions))
 	state := newBestState(prevNode, blockSize, numTxns, newTotalTxns,
-		medianTime, view.IssuingKeys())
+		medianTime, keyView.Keys(rmgutil.IssueThread))
 
 	err = b.db.Update(func(dbTx database.Tx) error {
 		// Update best block state.
@@ -983,7 +982,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, view
 		// Update the utxo set using the state of the utxo view.  This
 		// entails restoring all of the utxos spent and removing the new
 		// ones created by the block.
-		err = dbPutUtxoView(dbTx, view)
+		err = dbPutUtxoView(dbTx, utxoView)
 		if err != nil {
 			return err
 		}
@@ -999,7 +998,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, view
 		// optional indexes with the block being disconnected so they
 		// can update themselves accordingly.
 		if b.indexManager != nil {
-			err := b.indexManager.DisconnectBlock(dbTx, block, view)
+			err := b.indexManager.DisconnectBlock(dbTx, block, utxoView)
 			if err != nil {
 				return err
 			}
@@ -1013,7 +1012,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, view
 
 	// Prune fully spent entries and mark all entries in the view unmodified
 	// now that the modifications have been committed to the database.
-	view.commit()
+	utxoView.commit()
 
 	// Put block in the side chain cache.
 	node.inMainChain = false
@@ -1086,9 +1085,14 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	// entails loading the blocks and their associated spent txos from the
 	// database and using that information to unspend all of the spent txos
 	// and remove the utxos created by the blocks.
-	view := NewUtxoViewpoint()
-	view.SetIssuingKeys(b.stateSnapshot.IssuingKeys)
-	view.SetBestHash(b.bestNode.hash)
+	utxoView := NewUtxoViewpoint()
+	utxoView.SetBestHash(b.bestNode.hash)
+	// Disconnecting all of the blocks back to the point of the fork also
+	// entails reverting all admin operations that have happened in these
+	// blocks.
+	keyView := NewKeyViewpoint()
+	keyView.SetKeys(rmgutil.IssueThread, b.stateSnapshot.IssuingKeys)
+	keyView.SetBestHash(b.bestNode.hash)
 	for e := detachNodes.Front(); e != nil; e = e.Next() {
 		n := e.Value.(*blockNode)
 		var block *rmgutil.Block
@@ -1100,7 +1104,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 
 		// Load all of the utxos referenced by the block that aren't
 		// already in the view.
-		err = view.fetchInputUtxos(b.db, block)
+		err = utxoView.fetchInputUtxos(b.db, block)
 		if err != nil {
 			return err
 		}
@@ -1109,7 +1113,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 		// journal.
 		var stxos []spentTxOut
 		err = b.db.View(func(dbTx database.Tx) error {
-			stxos, err = dbFetchSpendJournalEntry(dbTx, block, view)
+			stxos, err = dbFetchSpendJournalEntry(dbTx, block, utxoView)
 			return err
 		})
 		if err != nil {
@@ -1120,7 +1124,11 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 		detachBlocks = append(detachBlocks, block)
 		detachSpentTxOuts = append(detachSpentTxOuts, stxos)
 
-		err = view.disconnectTransactions(block, stxos)
+		err = utxoView.disconnectTransactions(block, stxos)
+		if err != nil {
+			return err
+		}
+		err = keyView.disconnectTransactions(block)
 		if err != nil {
 			return err
 		}
@@ -1146,7 +1154,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 		// thus will not be generated.  This is done because the state
 		// is not being immediately written to the database, so it is
 		// not needed.
-		err := b.checkConnectBlock(n, block, view, nil)
+		err := b.checkConnectBlock(n, block, utxoView, keyView, nil)
 		if err != nil {
 			return err
 		}
@@ -1163,9 +1171,8 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	// the reorg would be successful and the connection code requires the
 	// view to be valid from the viewpoint of each block being connected or
 	// disconnected.
-	view = NewUtxoViewpoint()
-	view.SetIssuingKeys(b.stateSnapshot.IssuingKeys)
-	view.SetBestHash(b.bestNode.hash)
+	utxoView = NewUtxoViewpoint()
+	utxoView.SetBestHash(b.bestNode.hash)
 
 	// Disconnect blocks from the main chain.
 	for i, e := 0, detachNodes.Front(); e != nil; i, e = i+1, e.Next() {
@@ -1174,20 +1181,20 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 
 		// Load all of the utxos referenced by the block that aren't
 		// already in the view.
-		err := view.fetchInputUtxos(b.db, block)
+		err := utxoView.fetchInputUtxos(b.db, block)
 		if err != nil {
 			return err
 		}
 
 		// Update the view to unspend all of the spent txos and remove
 		// the utxos created by the block.
-		err = view.disconnectTransactions(block, detachSpentTxOuts[i])
+		err = utxoView.disconnectTransactions(block, detachSpentTxOuts[i])
 		if err != nil {
 			return err
 		}
 
 		// Update the database and chain state.
-		err = b.disconnectBlock(n, block, view)
+		err = b.disconnectBlock(n, block, utxoView, keyView)
 		if err != nil {
 			return err
 		}
@@ -1200,7 +1207,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 
 		// Load all of the utxos referenced by the block that aren't
 		// already in the view.
-		err := view.fetchInputUtxos(b.db, block)
+		err := utxoView.fetchInputUtxos(b.db, block)
 		if err != nil {
 			return err
 		}
@@ -1210,13 +1217,17 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 		// to it.  Also, provide an stxo slice so the spent txout
 		// details are generated.
 		stxos := make([]spentTxOut, 0, countSpentOutputs(block))
-		err = view.connectTransactions(block, &stxos)
+		err = utxoView.connectTransactions(block, &stxos)
+		if err != nil {
+			return err
+		}
+		err = keyView.connectTransactions(block)
 		if err != nil {
 			return err
 		}
 
 		// Update the database and chain state.
-		err = b.connectBlock(n, block, view, stxos)
+		err = b.connectBlock(n, block, utxoView, keyView, stxos)
 		if err != nil {
 			return err
 		}
@@ -1266,12 +1277,19 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *rmgutil.Block, fla
 		// Perform several checks to verify the block can be connected
 		// to the main chain without violating any rules and without
 		// actually connecting the block.
-		view := NewUtxoViewpoint()
-		view.SetIssuingKeys(b.stateSnapshot.IssuingKeys)
-		view.SetBestHash(node.parentHash)
+		utxoView := NewUtxoViewpoint()
+		utxoView.SetBestHash(node.parentHash)
+		// To perform the above verification, KeyViewpoint needs to provide
+		// the admin state of the chain.
+		// The block can only be connected if:
+		// - it is mined by provisioned validator key.
+		// - all keyIDs used for outputs are provisioned.
+		keyView := NewKeyViewpoint()
+		keyView.SetKeys(rmgutil.IssueThread, b.stateSnapshot.IssuingKeys)
+		keyView.SetBestHash(node.parentHash)
 		stxos := make([]spentTxOut, 0, countSpentOutputs(block))
 		if !fastAdd {
-			err := b.checkConnectBlock(node, block, view, &stxos)
+			err := b.checkConnectBlock(node, block, utxoView, keyView, &stxos)
 			if err != nil {
 				return false, err
 			}
@@ -1287,18 +1305,22 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *rmgutil.Block, fla
 		// utxos, spend them, and add the new utxos being created by
 		// this block.
 		if fastAdd {
-			err := view.fetchInputUtxos(b.db, block)
+			err := utxoView.fetchInputUtxos(b.db, block)
 			if err != nil {
 				return false, err
 			}
-			err = view.connectTransactions(block, &stxos)
+			err = utxoView.connectTransactions(block, &stxos)
+			if err != nil {
+				return false, err
+			}
+			err = keyView.connectTransactions(block)
 			if err != nil {
 				return false, err
 			}
 		}
 
 		// Connect the block to the main chain.
-		err := b.connectBlock(node, block, view, stxos)
+		err := b.connectBlock(node, block, utxoView, keyView, stxos)
 		if err != nil {
 			return false, err
 		}

@@ -62,11 +62,11 @@ func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript
 	if err != nil {
 		return fmt.Errorf("failed to parse script %s: %v", msg, err)
 	}
+	keyView := blockchain.NewKeyViewpoint()
 	// If script is Aztec script, we replace all keyIDs with pubKeyHashes.
 	if txscript.TypeOfScript(pops) == txscript.AztecTy {
 		keyIDs, err := txscript.ExtractKeyIDs(pops)
-		view := blockchain.NewUtxoViewpoint()
-		keyIdMap := view.LookupKeyIDs(keyIDs)
+		keyIdMap := keyView.LookupKeyIDs(keyIDs)
 		txscript.ReplaceKeyIDs(pops, keyIdMap)
 		pkScript, err = txscript.UnparseScript(pops)
 		if err != nil {
@@ -77,8 +77,7 @@ func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript
 	// If script is Aztec admin script, we replace the threadID with pubKeyHashes.
 	if txscript.TypeOfScript(pops) == txscript.AztecAdminTy {
 		threadID, err := txscript.ExtractThreadID(pops)
-		view := blockchain.NewUtxoViewpoint()
-		keyHashes, err := view.GetAdminKeyHashes(threadID)
+		keyHashes, err := keyView.GetAdminKeyHashes(threadID)
 		pkScript, err = txscript.ThreadPkScript(keyHashes)
 		if err != nil {
 			return err

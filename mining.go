@@ -444,6 +444,7 @@ func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress rmguti
 	blockTxns := make([]*rmgutil.Tx, 0, len(sourceTxns))
 	blockTxns = append(blockTxns, coinbaseTx)
 	blockUtxos := blockchain.NewUtxoViewpoint()
+	keyView := blockchain.NewKeyViewpoint()
 
 	// dependers is used to track transactions which depend on another
 	// transaction in the source pool.  This, in conjunction with the
@@ -671,7 +672,7 @@ mempoolLoop:
 			logSkippedDeps(tx, deps)
 			continue
 		}
-		err = blockchain.ValidateTransactionScripts(tx, blockUtxos,
+		err = blockchain.ValidateTransactionScripts(tx, blockUtxos, keyView,
 			txscript.StandardVerifyFlags, server.sigCache, server.hashCache)
 		if err != nil {
 			minrLog.Tracef("Skipping tx %s due to error in "+

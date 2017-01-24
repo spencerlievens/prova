@@ -29,6 +29,7 @@ type txValidator struct {
 	quitChan     chan struct{}
 	resultChan   chan error
 	utxoView     *UtxoViewpoint
+	keyView      *KeyViewpoint
 	flags        txscript.ScriptFlags
 	sigCache     *txscript.SigCache
 	hashCache    *txscript.HashCache
@@ -99,7 +100,7 @@ out:
 					v.sendResult(err)
 					break out
 				}
-				keyIdMap := v.utxoView.LookupKeyIDs(keyIDs)
+				keyIdMap := v.keyView.LookupKeyIDs(keyIDs)
 				err = txscript.ReplaceKeyIDs(pops, keyIdMap)
 				if err != nil {
 					str := fmt.Sprintf("failed to replace keyIDs %s", originTxHash)
@@ -125,7 +126,7 @@ out:
 					v.sendResult(err)
 					break out
 				}
-				keyHashes, err := v.utxoView.GetAdminKeyHashes(threadID)
+				keyHashes, err := v.keyView.GetAdminKeyHashes(threadID)
 				if err != nil {
 					str := fmt.Sprintf("failed to get keys for threadID %v: %v", threadID, err)
 					err := ruleError(ErrScriptMalformed, str)
@@ -240,12 +241,13 @@ func (v *txValidator) Validate(items []*txValidateItem) error {
 
 // newTxValidator returns a new instance of txValidator to be used for
 // validating transaction scripts asynchronously.
-func newTxValidator(utxoView *UtxoViewpoint, flags txscript.ScriptFlags, sigCache *txscript.SigCache, hashCache *txscript.HashCache) *txValidator {
+func newTxValidator(utxoView *UtxoViewpoint, keyView *KeyViewpoint, flags txscript.ScriptFlags, sigCache *txscript.SigCache, hashCache *txscript.HashCache) *txValidator {
 	return &txValidator{
 		validateChan: make(chan *txValidateItem),
 		quitChan:     make(chan struct{}),
 		resultChan:   make(chan error),
 		utxoView:     utxoView,
+		keyView:      keyView,
 		sigCache:     sigCache,
 		hashCache:    hashCache,
 		flags:        flags,
@@ -254,7 +256,7 @@ func newTxValidator(utxoView *UtxoViewpoint, flags txscript.ScriptFlags, sigCach
 
 // ValidateTransactionScripts validates the scripts for the passed transaction
 // using multiple goroutines.
-func ValidateTransactionScripts(tx *rmgutil.Tx, utxoView *UtxoViewpoint, flags txscript.ScriptFlags, sigCache *txscript.SigCache, hashCache *txscript.HashCache) error {
+func ValidateTransactionScripts(tx *rmgutil.Tx, utxoView *UtxoViewpoint, keyView *KeyViewpoint, flags txscript.ScriptFlags, sigCache *txscript.SigCache, hashCache *txscript.HashCache) error {
 
 	// If the hashcache doesn't yet has the sighash midstate for this
 	// transaction, then we'll compute them now so we can re-use them
@@ -289,7 +291,7 @@ func ValidateTransactionScripts(tx *rmgutil.Tx, utxoView *UtxoViewpoint, flags t
 	}
 
 	// Validate all of the inputs.
-	validator := newTxValidator(utxoView, flags, sigCache, hashCache)
+	validator := newTxValidator(utxoView, keyView, flags, sigCache, hashCache)
 	if err := validator.Validate(txValItems); err != nil {
 		return err
 	}
@@ -299,7 +301,7 @@ func ValidateTransactionScripts(tx *rmgutil.Tx, utxoView *UtxoViewpoint, flags t
 
 // checkBlockScripts executes and validates the scripts for all transactions in
 // the passed block using multiple goroutines.
-func checkBlockScripts(block *rmgutil.Block, utxoView *UtxoViewpoint, scriptFlags txscript.ScriptFlags, sigCache *txscript.SigCache, hashCache *txscript.HashCache) error {
+func checkBlockScripts(block *rmgutil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint, scriptFlags txscript.ScriptFlags, sigCache *txscript.SigCache, hashCache *txscript.HashCache) error {
 	// Collect all of the transaction inputs and required information for
 	// validation for all transactions in the block into a single slice.
 	numInputs := 0
@@ -342,7 +344,7 @@ func checkBlockScripts(block *rmgutil.Block, utxoView *UtxoViewpoint, scriptFlag
 	}
 
 	// Validate all of the inputs.
-	validator := newTxValidator(utxoView, scriptFlags, sigCache, hashCache)
+	validator := newTxValidator(utxoView, keyView, scriptFlags, sigCache, hashCache)
 	if err := validator.Validate(txValItems); err != nil {
 		return err
 	}

@@ -37,14 +37,14 @@ func CheckBlockScripts(t *testing.T) {
 	}
 
 	storeDataFile := fmt.Sprintf("%d.utxostore.bz2", testBlockNum)
-	view, err := loadUtxoView(storeDataFile)
+	utxoView, err := loadUtxoView(storeDataFile)
 	if err != nil {
 		t.Errorf("Error loading txstore: %v\n", err)
 		return
 	}
 
 	scriptFlags := txscript.ScriptBip16
-	err = blockchain.TstCheckBlockScripts(blocks[0], view, scriptFlags,
+	err = blockchain.TstCheckBlockScripts(blocks[0], utxoView, nil, scriptFlags,
 		nil, nil)
 	if err != nil {
 		t.Errorf("Transaction script validation failed: %v\n", err)

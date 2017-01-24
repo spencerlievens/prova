@@ -870,7 +870,7 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewp
 // checks performed by this function.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, view *UtxoViewpoint, stxos *[]spentTxOut) error {
+func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint, stxos *[]spentTxOut) error {
 	// If the side chain blocks end up in the database, a call to
 	// CheckBlockSanity should be done here in case a previous version
 	// allowed a block that is no longer valid.  However, since the
@@ -885,16 +885,16 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, vi
 	}
 
 	// Ensure the view is for the node being checked.
-	if !view.BestHash().IsEqual(node.parentHash) {
+	if !utxoView.BestHash().IsEqual(node.parentHash) {
 		return AssertError(fmt.Sprintf("inconsistent view when "+
 			"checking block connection: best hash is %v instead "+
-			"of expected %v", view.BestHash(), node.hash))
+			"of expected %v", utxoView.BestHash(), node.hash))
 	}
 
 	// BIP0030 added a rule to prevent blocks which contain duplicate
 	// transactions that 'overwrite' older transactions which are not fully
 	// spent.  See the documentation for checkBIP0030 for more details.
-	err := b.checkBIP0030(node, block, view)
+	err := b.checkBIP0030(node, block, utxoView)
 	if err != nil {
 		return err
 	}
@@ -904,7 +904,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, vi
 	//
 	// These utxo entries are needed for verification of things such as
 	// transaction inputs, counting pay-to-script-hashes, and scripts.
-	err = view.fetchInputUtxos(b.db, block)
+	err = utxoView.fetchInputUtxos(b.db, block)
 	if err != nil {
 		return err
 	}
@@ -932,7 +932,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, vi
 			// countP2SHSigOps for whether or not the transaction is
 			// a coinbase transaction rather than having to do a
 			// full coinbase check again.
-			numP2SHSigOps, err := CountP2SHSigOps(tx, i == 0, view)
+			numP2SHSigOps, err := CountP2SHSigOps(tx, i == 0, utxoView)
 			if err != nil {
 				return err
 			}
@@ -960,7 +960,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, vi
 	// bounds.
 	var totalFees int64
 	for _, tx := range transactions {
-		txFee, err := CheckTransactionInputs(tx, node.height, view,
+		txFee, err := CheckTransactionInputs(tx, node.height, utxoView,
 			b.chainParams)
 		if err != nil {
 			return err
@@ -979,7 +979,11 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, vi
 		// provably unspendable as available utxos.  Also, the passed
 		// spent txos slice is updated to contain an entry for each
 		// spent txout in the order each transaction spends them.
-		err = view.connectTransaction(tx, node.height, stxos)
+		err = utxoView.connectTransaction(tx, node.height, stxos)
+		if err != nil {
+			return err
+		}
+		err = keyView.connectTransaction(tx, node.height)
 		if err != nil {
 			return err
 		}
@@ -1083,15 +1087,16 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, vi
 	// expensive ECDSA signature check scripts.  Doing this last helps
 	// prevent CPU exhaustion attacks.
 	if runScripts {
-		err := checkBlockScripts(block, view, scriptFlags, b.sigCache, b.hashCache)
+		err := checkBlockScripts(block, utxoView, keyView, scriptFlags, b.sigCache, b.hashCache)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Update the best hash for view to include this block since all of its
+	// Update the best hash for utxoView to include this block since all of its
 	// transactions have been connected.
-	view.SetBestHash(node.hash)
+	utxoView.SetBestHash(node.hash)
+	keyView.SetBestHash(node.hash)
 
 	return nil
 }
@@ -1116,8 +1121,16 @@ func (b *BlockChain) CheckConnectBlock(block *rmgutil.Block) error {
 
 	// Leave the spent txouts entry nil in the state since the information
 	// is not needed and thus extra work can be avoided.
-	view := NewUtxoViewpoint()
-	view.SetIssuingKeys(b.stateSnapshot.IssuingKeys)
-	view.SetBestHash(prevNode.hash)
-	return b.checkConnectBlock(newNode, block, view, nil)
+	utxoView := NewUtxoViewpoint()
+	utxoView.SetBestHash(prevNode.hash)
+	// checkConnectBlock will perform several checks to verify the block can be
+	// connected  to the main chain without violating any rules and without
+	// actually connecting the block.
+	// To perform the verification, KeyViewpoint needs to provide the admin
+	// state of the chain. The block can only be connected if:
+	// - it is mined by provisioned validator key.
+	// - all keyIDs used for outputs are provisioned.
+	keyView := NewKeyViewpoint()
+	keyView.SetKeys(rmgutil.IssueThread, b.stateSnapshot.IssuingKeys)
+	return b.checkConnectBlock(newNode, block, utxoView, keyView, nil)
 }
