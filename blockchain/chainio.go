@@ -38,6 +38,10 @@ var (
 	// unspent transaction output set.
 	utxoSetBucketName = []byte("utxoset")
 
+	// keySetBucketName is the name of the db bucket used to house the
+	// admin key sets.
+	keySetBucketName = []byte("keyset")
+
 	// byteOrder is the preferred byte order used for serializing numeric
 	// fields for storage in the database.
 	byteOrder = binary.LittleEndian
@@ -944,6 +948,182 @@ func dbFetchHashByHeight(dbTx database.Tx, height uint32) (*chainhash.Hash, erro
 }
 
 // -----------------------------------------------------------------------------
+// The key set consists of sets of keys that are used to administrate the chain.
+// The sets are root, provisioning, issuing, WSP, and validator keys.
+//
+//
+// The serialized format is:
+//
+//   <root keys length><root keys>...<validator keys length><validator keys>
+//
+//   Field                 Type        Size
+//   root keys length      uint32      4 bytes
+//   root keys             []byte      root length * 33
+//   provision keys length uint32      4 bytes
+//   provisioning keys     []byte      provisioning length * 33
+//   issuing keys length   uint32      4 bytes
+//   issuing keys          []byte      issuing length * 33
+//   validator keys length uint32      4 bytes
+//   validator keys        []byte      Validator length * 33
+//   WSP keys length       uint32      4 bytes
+//   keyID / WSP keys      []pairs     Pair length * 37
+
+// -----------------------------------------------------------------------------
+
+// KeyIdMap is a structure to keep assigned keyIDs and pubKeys.
+type KeyIdMap map[rmgutil.KeyID]*btcec.PublicKey
+
+// Equal will compare two slices.
+func (keyMap KeyIdMap) Equal(v KeyIdMap) bool {
+	if keyMap == nil && v == nil {
+		return true
+	}
+	if len(keyMap) != len(v) {
+		return false
+	}
+	for keyID, _ := range keyMap {
+		if !keyMap[keyID].IsEqual(v[keyID]) {
+			return false
+		}
+	}
+	return true
+}
+
+const RootKeySet = uint8(0)
+const ProvisioningKeySet = uint8(1)
+const IssuingKeySet = uint8(2)
+const ValidatorKeySet = uint8(3)
+
+// adminKeysOrder is a helper to itterate maps of key sets in order.
+var adminKeysOrder = []uint8{
+	RootKeySet,
+	ProvisioningKeySet,
+	IssuingKeySet,
+	ValidatorKeySet,
+}
+
+// serializeKeySet returns the serialization of the passed key sets.
+// This is data to be stored in the key bucket.
+func serializeKeySet(adminKeys map[uint8]keySlice, wspKeyIdMap KeyIdMap) []byte {
+	// Calculate the full size needed to serialize the chain state.
+	serializedLen := uint32(0)
+	for _, keySet := range adminKeysOrder {
+		serializedLen += 4 //one uint32 for size of key set
+		serializedLen += uint32(len(adminKeys[keySet]) * btcec.PubKeyBytesLenCompressed)
+	}
+	serializedLen += 4 + uint32(len(wspKeyIdMap)*(4+btcec.PubKeyBytesLenCompressed))
+	// Serialize the chain state.
+	serializedData := make([]byte, serializedLen)
+	offset := 0
+
+	// When iterating over a map with a range loop, the iteration order is not
+	// specified and is not guaranteed to be the same from one iteration to the
+	// next. So we use keySetOrder to do a sorted itteration.
+	for _, keySet := range adminKeysOrder {
+		setLength := len(adminKeys[keySet])
+		byteOrder.PutUint32(serializedData[offset:], uint32(setLength))
+		offset += 4
+		for _, key := range adminKeys[keySet] {
+			copy(serializedData[offset:], key.SerializeCompressed())
+			offset += btcec.PubKeyBytesLenCompressed
+		}
+	}
+	// Serialize keyID to WSP Key map
+	byteOrder.PutUint32(serializedData[offset:], uint32(len(wspKeyIdMap)))
+	offset += 4
+
+	// To have a deterministic order of serialization of a map, we take all keys
+	// and sort them by keyID, then serialize in that order.
+	var keyIDs []int
+	for k := range wspKeyIdMap {
+		keyIDs = append(keyIDs, int(k))
+	}
+	sort.Ints(keyIDs)
+	for _, keyID := range keyIDs {
+		pubKey := wspKeyIdMap[rmgutil.KeyID(keyID)]
+		byteOrder.PutUint32(serializedData[offset:], uint32(keyID))
+		offset += 4
+		copy(serializedData[offset:], pubKey.SerializeCompressed())
+		offset += btcec.PubKeyBytesLenCompressed
+	}
+	return serializedData[:]
+}
+
+// deserializeKeySet deserializes the passed serialized best chain
+// state.  This is data stored in the chain state bucket and is updated after
+// every block is connected or disconnected form the main chain.
+// block.
+func deserializeKeySet(serializedData []byte) (map[uint8]keySlice, KeyIdMap, error) {
+	offset := 0
+	adminKeys := make(map[uint8]keySlice)
+	for _, keySet := range adminKeysOrder {
+		// Ensure the serialized data has enough bytes to read length of a set.
+		if len(serializedData[offset:]) < 4 {
+			return nil, nil, database.Error{
+				ErrorCode:   database.ErrCorruption,
+				Description: "corrupt admin state, no keys can be read",
+			}
+		}
+		keySetLength := byteOrder.Uint32(serializedData[offset : offset+4])
+		offset += 4
+		// Ensure the serialized data has enough bytes to deserialize the keys.
+		if uint32(len(serializedData[offset:])) < keySetLength*btcec.PubKeyBytesLenCompressed {
+			return nil, nil, database.Error{
+				ErrorCode:   database.ErrCorruption,
+				Description: "corrupt admin state, not all keys can be read",
+			}
+		}
+		adminKeys[keySet] = make([]btcec.PublicKey, keySetLength)
+		for i := 0; i < int(keySetLength); i++ {
+			pubKey, _ := btcec.ParsePubKey(
+				serializedData[offset:offset+btcec.PubKeyBytesLenCompressed], btcec.S256())
+			adminKeys[keySet][i] = *pubKey
+			offset += btcec.PubKeyBytesLenCompressed
+		}
+	}
+
+	// Ensure the serialized data has enough bytes to read length of the map.
+	if len(serializedData[offset:]) < 4 {
+		return nil, nil, database.Error{
+			ErrorCode:   database.ErrCorruption,
+			Description: "corrupt admin state, no keyIDs can be read",
+		}
+	}
+	// Deserialize keyIDs
+	keyIdMapLen := byteOrder.Uint32(serializedData[offset : offset+4])
+	offset += 4
+	// Ensure the serialized data has enough bytes to deserialize the keys
+	if uint32(len(serializedData[offset:])) < keyIdMapLen*(4+btcec.PubKeyBytesLenCompressed) {
+		return nil, nil, database.Error{
+			ErrorCode:   database.ErrCorruption,
+			Description: "corrupt admin state, not all keyIDs can be read",
+		}
+	}
+	wspKeyIdMap := make(map[rmgutil.KeyID]*btcec.PublicKey)
+	for i := 0; i < int(keyIdMapLen); i++ {
+		keyID := rmgutil.KeyID(byteOrder.Uint32(serializedData[offset : offset+4]))
+		offset += 4
+		pubKey, _ := btcec.ParsePubKey(
+			serializedData[offset:offset+btcec.PubKeyBytesLenCompressed], btcec.S256())
+		offset += btcec.PubKeyBytesLenCompressed
+		wspKeyIdMap[keyID] = pubKey
+	}
+
+	return adminKeys, wspKeyIdMap, nil
+}
+
+// dbPutKeySet uses an existing database transaction to update the admin chain
+// state with the given parameters.
+func dbPutKeySet(dbTx database.Tx, adminKeys map[uint8]keySlice,
+	keyIdMap map[rmgutil.KeyID]*btcec.PublicKey) error {
+	// Serialize the adminKeySets.
+	serializedData := serializeKeySet(adminKeys, keyIdMap)
+
+	// Store the adminKeySets into the database.
+	return dbTx.Metadata().Put(keySetBucketName, serializedData)
+}
+
+// -----------------------------------------------------------------------------
 // The best chain state consists of the best block hash and height, the total
 // number of transactions up to and including those in the best block, and the
 // accumulated work sum up to and including the best block.
@@ -954,7 +1134,7 @@ func dbFetchHashByHeight(dbTx database.Tx, height uint32) (*chainhash.Hash, erro
 //
 // The serialized format is:
 //
-//   <block hash><block height><total txns><work sum length><work sum><issuing length><issuing keys>
+//   <block hash><block height><total txns><work sum length><work sum>
 //
 //   Field             Type             Size
 //   block hash        chainhash.Hash   chainhash.HashSize
@@ -962,8 +1142,6 @@ func dbFetchHashByHeight(dbTx database.Tx, height uint32) (*chainhash.Hash, erro
 //   total txns        uint64           8 bytes
 //   work sum length   uint32           4 bytes
 //   work sum          big.Int          work sum length
-//   issuing length    uint32           4 bytes
-//   issuing keys      []byte           issuing length * 33
 // -----------------------------------------------------------------------------
 
 // bestChainState represents the data to be stored the database for the current
@@ -982,7 +1160,7 @@ func serializeBestChainState(state bestChainState) []byte {
 	// Calculate the full size needed to serialize the chain state.
 	workSumBytes := state.workSum.Bytes()
 	workSumBytesLen := uint32(len(workSumBytes))
-	serializedLen := chainhash.HashSize + 4 + 8 + 4 + workSumBytesLen + 4 + (uint32(len(state.issuingKeys)) * btcec.PubKeyBytesLenCompressed)
+	serializedLen := chainhash.HashSize + 4 + 8 + 4 + workSumBytesLen
 	// Serialize the chain state.
 	serializedData := make([]byte, serializedLen)
 	copy(serializedData[0:chainhash.HashSize], state.hash[:])
@@ -994,14 +1172,6 @@ func serializeBestChainState(state bestChainState) []byte {
 	byteOrder.PutUint32(serializedData[offset:], workSumBytesLen)
 	offset += 4
 	copy(serializedData[offset:], workSumBytes)
-	offset += workSumBytesLen
-
-	byteOrder.PutUint32(serializedData[offset:], uint32(len(state.issuingKeys)))
-	offset += 4
-	for _, v := range state.issuingKeys {
-		copy(serializedData[offset:], v.SerializeCompressed())
-		offset += btcec.PubKeyBytesLenCompressed
-	}
 	return serializedData[:]
 }
 
@@ -1039,25 +1209,6 @@ func deserializeBestChainState(serializedData []byte) (bestChainState, error) {
 	}
 	workSumBytes := serializedData[offset : offset+workSumBytesLen]
 	state.workSum = new(big.Int).SetBytes(workSumBytes)
-	offset += workSumBytesLen
-
-	issuingKeysLen := byteOrder.Uint32(serializedData[offset : offset+4])
-	offset += 4
-
-	// Ensure the serialized data has enough bytes to deserialize the keys
-	if uint32(len(serializedData[offset:])) < issuingKeysLen*btcec.PubKeyBytesLenCompressed {
-		return bestChainState{}, database.Error{
-			ErrorCode:   database.ErrCorruption,
-			Description: "corrupt admin state, not all keys can be read",
-		}
-	}
-	state.issuingKeys = make([]btcec.PublicKey, issuingKeysLen)
-	for i := uint32(0); i < issuingKeysLen; i++ {
-		pubKey, _ := btcec.ParsePubKey(
-			serializedData[offset:offset+btcec.PubKeyBytesLenCompressed], btcec.S256())
-		state.issuingKeys[i] = *pubKey
-		offset += btcec.PubKeyBytesLenCompressed
-	}
 
 	return state, nil
 }
@@ -1132,6 +1283,12 @@ func (b *BlockChain) createChainState() error {
 			return err
 		}
 
+		// Create the bucket that houses the key set.
+		_, err = meta.CreateBucket(keySetBucketName)
+		if err != nil {
+			return err
+		}
+
 		// Add the genesis block hash to height and height to hash
 		// mappings to the index.
 		err = dbPutBlockIndex(dbTx, b.bestNode.hash, b.bestNode.height)
@@ -1172,6 +1329,17 @@ func (b *BlockChain) initChainState() error {
 			return err
 		}
 
+		// Fetch the admin keys from the database.
+		serializedKeys := dbTx.Metadata().Get(keySetBucketName)
+		if serializedKeys == nil {
+			return nil
+		}
+		log.Tracef("Serialized admin state: %x", serializedKeys)
+		adminKeyMap, _, err := deserializeKeySet(serializedKeys)
+		if err != nil {
+			return err
+		}
+
 		// Load the raw block bytes for the best block.
 		blockBytes, err := dbTx.FetchBlock(&state.hash)
 		if err != nil {
@@ -1207,7 +1375,7 @@ func (b *BlockChain) initChainState() error {
 		blockSize := uint64(len(blockBytes))
 		numTxns := uint64(len(block.Transactions))
 		b.stateSnapshot = newBestState(b.bestNode, blockSize, numTxns,
-			state.totalTxns, medianTime, state.issuingKeys)
+			state.totalTxns, medianTime, adminKeyMap[IssuingKeySet])
 
 		isStateInitialized = true
 		return nil

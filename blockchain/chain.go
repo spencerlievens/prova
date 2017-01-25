@@ -158,6 +158,25 @@ func (slice keySlice) remove(pos int) keySlice {
 	return slice[:len(slice)-1]
 }
 
+// Equal will compare two slices.
+func (slice keySlice) Equal(v keySlice) bool {
+	if slice == nil && v == nil {
+		return true
+	}
+	if slice == nil || v == nil {
+		return false
+	}
+	if len(slice) != len(v) {
+		return false
+	}
+	for i := range slice {
+		if !slice[i].IsEqual(&v[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 // BestState houses information about the current best block and other info
 // related to the state of the main chain as it exists from the point of view of
 // the current best block.
@@ -179,7 +198,8 @@ type BestState struct {
 }
 
 // newBestState returns a new best stats instance for the given parameters.
-func newBestState(node *blockNode, blockSize, numTxns, totalTxns uint64, medianTime time.Time, issuingKeys keySlice) *BestState {
+func newBestState(node *blockNode, blockSize, numTxns, totalTxns uint64,
+	medianTime time.Time, issuingKeys keySlice) *BestState {
 	return &BestState{
 		Hash:        node.hash,
 		Height:      node.height,

@@ -10,6 +10,7 @@ import (
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/database"
+	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
 	"math/big"
 	"reflect"
@@ -935,13 +936,8 @@ func TestBestChainStateSerialization(t *testing.T) {
 					workSum.Add(workSum, CalcWork(486604799))
 					return new(big.Int).Set(workSum)
 				}(), // 0x0100010001
-				issuingKeys: func() keySlice {
-					pubKey, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
-					return []btcec.PublicKey{*pubKey}
-				}(),
-				// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
 			},
-			serialized: hexToBytes("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d619000000000000000000010000000000000005000000010001000101000000025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"),
+			serialized: hexToBytes("6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000000000000100000000000000050000000100010001"),
 		},
 		{
 			name: "block 1",
@@ -953,15 +949,8 @@ func TestBestChainStateSerialization(t *testing.T) {
 					workSum.Add(workSum, CalcWork(486604799))
 					return new(big.Int).Set(workSum)
 				}(), // 0x0200020002
-				issuingKeys: func() keySlice {
-					// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
-					pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
-					// priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
-					pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
-					return []btcec.PublicKey{*pubKey1, *pubKey2}
-				}(),
 			},
-			serialized: hexToBytes("4860eb18bf1b1620e37e9490fc8a427514416fd75159ab86688e9a830000000001000000020000000000000005000000020002000202000000025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"),
+			serialized: hexToBytes("4860eb18bf1b1620e37e9490fc8a427514416fd75159ab86688e9a8300000000010000000200000000000000050000000200020002"),
 		},
 	}
 
@@ -989,6 +978,84 @@ func TestBestChainStateSerialization(t *testing.T) {
 				test.name, state, test.state)
 			continue
 
+		}
+	}
+}
+
+// TestKeySetSerialization ensures serializing and deserializing the key set works as expected.
+func TestKeySetSerialization(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		issuingKeys keySlice
+		keyIdMap    KeyIdMap
+		serialized  []byte
+	}{
+		{
+			name: "one key",
+			issuingKeys: func() keySlice {
+				pubKey, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+				return []btcec.PublicKey{*pubKey}
+			}(),
+			// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
+			serialized: hexToBytes("000000000000000001000000025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf10000000000000000"),
+		},
+		{
+			name: "two keys",
+			issuingKeys: func() keySlice {
+				// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
+				pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+				// priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+				pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
+				return []btcec.PublicKey{*pubKey1, *pubKey2}
+			}(),
+			keyIdMap: func() KeyIdMap {
+				keyId1 := rmgutil.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+				pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+				keyId2 := rmgutil.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+				pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
+				return map[rmgutil.KeyID]*btcec.PublicKey{
+					keyId1: pubKey1,
+					keyId2: pubKey2,
+				}
+			}(),
+			serialized: hexToBytes("000000000000000002000000025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202000000000200000001000000038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a820200000100025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"),
+		},
+	}
+
+	for i, test := range tests {
+		// Ensure the state serializes to the expected value.
+		adminKeys := map[uint8]keySlice{
+			IssuingKeySet: test.issuingKeys,
+		}
+		gotBytes := serializeKeySet(adminKeys, test.keyIdMap)
+		if !bytes.Equal(gotBytes, test.serialized) {
+			t.Errorf("serializeKeySet #%d (%s): mismatched "+
+				"bytes - got %x, want %x", i, test.name,
+				gotBytes, test.serialized)
+			continue
+		}
+
+		// Ensure the serialized bytes are decoded back to the expected
+		// state.
+		adminKeyMap, keyIdMap, err := deserializeKeySet(test.serialized)
+		if err != nil {
+			t.Errorf("deserializeKeySet #%d (%s) "+
+				"unexpected error: %v", i, test.name, err)
+			continue
+		}
+		if !adminKeyMap[IssuingKeySet].Equal(test.issuingKeys) {
+			t.Errorf("deserializeKeySet #%d (%s) "+
+				"mismatched state - got %v, want %v", i,
+				test.name, adminKeyMap[IssuingKeySet], test.issuingKeys)
+			continue
+		}
+		if !keyIdMap.Equal(test.keyIdMap) {
+			t.Errorf("deserializeKeySet #%d (%s) "+
+				"mismatched state - got %v, want %v", i,
+				test.name, keyIdMap, test.keyIdMap)
+			continue
 		}
 	}
 }
