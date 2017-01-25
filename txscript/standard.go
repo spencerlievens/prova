@@ -630,8 +630,8 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 
 	case AztecTy:
 		requiredSigs = 2
-		key0, err0 := makeScriptNum(pops[2].data, true, 4)
-		key1, err1 := makeScriptNum(pops[3].data, true, 4)
+		key0, err0 := asInt32(pops[2])
+		key1, err1 := asInt32(pops[3])
 		keyIDs := []rmgutil.KeyID{
 			rmgutil.KeyID(key0),
 			rmgutil.KeyID(key1),
