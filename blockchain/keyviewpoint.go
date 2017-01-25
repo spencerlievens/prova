@@ -18,8 +18,8 @@ import (
 // point of view in the chain. For example, it could be for the end of the main
 // chain, some point in the history of the main chain, or down a side chain.
 type KeyViewpoint struct {
-	entries  map[rmgutil.ThreadID]keySlice
-	bestHash chainhash.Hash
+	adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
+	bestHash     chainhash.Hash
 }
 
 // BestHash returns the hash of the best block in the chain the view currently
@@ -35,13 +35,13 @@ func (view *KeyViewpoint) SetBestHash(hash *chainhash.Hash) {
 }
 
 // IssuingKeys returns the set of valid issuing keys.
-func (view *KeyViewpoint) Keys(keySetID rmgutil.ThreadID) keySlice {
-	return view.entries[keySetID]
+func (view *KeyViewpoint) Keys() map[btcec.KeySetType]btcec.PublicKeySet {
+	return view.adminKeySets
 }
 
 // SetKeys returns the set of valid issuing keys.
-func (view *KeyViewpoint) SetKeys(keySetID rmgutil.ThreadID, keys keySlice) {
-	view.entries[keySetID] = keys
+func (view *KeyViewpoint) SetKeys(keys map[btcec.KeySetType]btcec.PublicKeySet) {
+	view.adminKeySets = keys
 }
 
 // LookupKeyIDs returns pubKeyHashes for all registered KeyIDs
@@ -119,14 +119,14 @@ func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 		case rmgutil.ProvisionThread:
 			op, pubKey, _ := txscript.ExtractAdminData(adminOutputs[i])
 			if op == txscript.OP_ISSUINGKEYADD {
-				if view.entries[rmgutil.IssueThread].Pos(pubKey) < 0 {
-					view.entries[rmgutil.IssueThread] = append(view.entries[rmgutil.IssueThread], *pubKey)
+				if view.adminKeySets[btcec.IssuingKeySet].Pos(pubKey) < 0 {
+					view.adminKeySets[btcec.IssuingKeySet] = append(view.adminKeySets[btcec.IssuingKeySet], *pubKey)
 				}
 			}
 			if op == txscript.OP_ISSUINGKEYREVOKE {
-				pos := view.entries[rmgutil.IssueThread].Pos(pubKey)
+				pos := view.adminKeySets[btcec.IssuingKeySet].Pos(pubKey)
 				if pos >= 0 {
-					view.entries[rmgutil.IssueThread] = view.entries[rmgutil.IssueThread].remove(pos)
+					view.adminKeySets[btcec.IssuingKeySet] = view.adminKeySets[btcec.IssuingKeySet].Remove(pos)
 				}
 			}
 		}
@@ -178,14 +178,14 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 				case rmgutil.ProvisionThread:
 					op, pubKey, _ := txscript.ExtractAdminData(adminOutputs[i])
 					if op == txscript.OP_ISSUINGKEYREVOKE {
-						if view.entries[rmgutil.IssueThread].Pos(pubKey) < 0 {
-							view.entries[rmgutil.IssueThread] = append(view.entries[rmgutil.IssueThread], *pubKey)
+						if view.adminKeySets[btcec.IssuingKeySet].Pos(pubKey) < 0 {
+							view.adminKeySets[btcec.IssuingKeySet] = append(view.adminKeySets[btcec.IssuingKeySet], *pubKey)
 						}
 					}
 					if op == txscript.OP_ISSUINGKEYADD {
-						pos := view.entries[rmgutil.IssueThread].Pos(pubKey)
+						pos := view.adminKeySets[btcec.IssuingKeySet].Pos(pubKey)
 						if pos >= 0 {
-							view.entries[rmgutil.IssueThread] = view.entries[rmgutil.IssueThread].remove(pos)
+							view.adminKeySets[btcec.IssuingKeySet] = view.adminKeySets[btcec.IssuingKeySet].Remove(pos)
 						}
 					}
 				}
@@ -202,6 +202,6 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 // NewKeyViewpoint returns a new empty key view.
 func NewKeyViewpoint() *KeyViewpoint {
 	return &KeyViewpoint{
-		entries: make(map[rmgutil.ThreadID]keySlice),
+		adminKeySets: make(map[btcec.KeySetType]btcec.PublicKeySet),
 	}
 }

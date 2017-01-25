@@ -1316,10 +1316,13 @@ func handleGetAddressTxIds(s *rpcServer, cmd interface{}, closeChan <-chan struc
 // handleGetAdminInfo implements the getadmininfo command.
 func handleGetAdminInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	best := s.chain.BestSnapshot()
+	adminKeySets := s.chain.AdminKeySets()
 	result := &btcjson.GetAdminInfoResult{
-		Hash:        best.Hash.String(),
-		Height:      best.Height,
-		IssuingKeys: best.IssuingKeys.ToStringArray(),
+		Hash:         best.Hash.String(),
+		Height:       best.Height,
+		RootKeys:     adminKeySets[btcec.RootKeySet].ToStringArray(),
+		ValidateKeys: adminKeySets[btcec.ValidatorKeySet].ToStringArray(),
+		IssuingKeys:  adminKeySets[btcec.IssuingKeySet].ToStringArray(),
 	}
 	return result, nil
 }

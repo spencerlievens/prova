@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/blockchain/fullblocktests"
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/rmgutil"
@@ -65,7 +66,7 @@ func TestFullBlocks(t *testing.T) {
 				block.Hash(), blockHeight, isOrphan,
 				item.IsOrphan)
 		}
-		stateKeys := chain.BestSnapshot().IssuingKeys
+		stateKeys := chain.AdminKeySets()[btcec.IssuingKeySet]
 		if item.AdminKey != nil && stateKeys.Pos(item.AdminKey) < 0 {
 			t.Fatalf("block %q (hash %s, height %d) should "+
 				"have admin key %x, got %x", item.Name,

@@ -1131,6 +1131,6 @@ func (b *BlockChain) CheckConnectBlock(block *rmgutil.Block) error {
 	// - it is mined by provisioned validator key.
 	// - all keyIDs used for outputs are provisioned.
 	keyView := NewKeyViewpoint()
-	keyView.SetKeys(rmgutil.IssueThread, b.stateSnapshot.IssuingKeys)
+	keyView.SetKeys(b.adminKeySets)
 	return b.checkConnectBlock(newNode, block, utxoView, keyView, nil)
 }

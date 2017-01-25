@@ -6,7 +6,6 @@ package blockchain
 
 import (
 	"container/list"
-	"encoding/hex"
 	"fmt"
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
@@ -123,60 +122,6 @@ func removeChildNode(children []*blockNode, node *blockNode) []*blockNode {
 	return children
 }
 
-// keySlice is a structure that can keep a list of keys encoded as byte arrays.
-type keySlice []btcec.PublicKey
-
-// Pos returns the position of a public key in keySlice.
-// -1 is returned if element not found.
-// This is a basic collection operation, golang should have it out of the box.
-func (slice keySlice) Pos(key *btcec.PublicKey) int {
-	for p, v := range slice {
-		if v.IsEqual(key) {
-			return p
-		}
-	}
-	return -1
-}
-
-// ToStringArray returns a string array of serialized keys.
-func (slice keySlice) ToStringArray() []string {
-	rv := make([]string, len(slice))
-	for i, v := range slice {
-		rv[i] = hex.EncodeToString(v.SerializeCompressed())
-	}
-	return rv
-}
-
-// remove will remove the element at position i.
-func (slice keySlice) remove(pos int) keySlice {
-	if pos >= len(slice) {
-		return slice
-	}
-	//move element at pos to end of slice through assignment
-	slice[len(slice)-1], slice[pos] = slice[pos], slice[len(slice)-1]
-	//cut last element off
-	return slice[:len(slice)-1]
-}
-
-// Equal will compare two slices.
-func (slice keySlice) Equal(v keySlice) bool {
-	if slice == nil && v == nil {
-		return true
-	}
-	if slice == nil || v == nil {
-		return false
-	}
-	if len(slice) != len(v) {
-		return false
-	}
-	for i := range slice {
-		if !slice[i].IsEqual(&v[i]) {
-			return false
-		}
-	}
-	return true
-}
-
 // BestState houses information about the current best block and other info
 // related to the state of the main chain as it exists from the point of view of
 // the current best block.
@@ -187,28 +132,26 @@ func (slice keySlice) Equal(v keySlice) bool {
 // However, the returned snapshot must be treated as immutable since it is
 // shared by all callers.
 type BestState struct {
-	Hash        *chainhash.Hash // The hash of the block.
-	Height      uint32          // The height of the block.
-	Bits        uint32          // The difficulty bits of the block.
-	BlockSize   uint64          // The size of the block.
-	NumTxns     uint64          // The number of txns in the block.
-	TotalTxns   uint64          // The total number of txns in the chain.
-	MedianTime  time.Time       // Median time as per CalcPastMedianTime.
-	IssuingKeys keySlice        // Set of issuing keys valid in the chain.
+	Hash       *chainhash.Hash // The hash of the block.
+	Height     uint32          // The height of the block.
+	Bits       uint32          // The difficulty bits of the block.
+	BlockSize  uint64          // The size of the block.
+	NumTxns    uint64          // The number of txns in the block.
+	TotalTxns  uint64          // The total number of txns in the chain.
+	MedianTime time.Time       // Median time as per CalcPastMedianTime.
 }
 
 // newBestState returns a new best stats instance for the given parameters.
 func newBestState(node *blockNode, blockSize, numTxns, totalTxns uint64,
-	medianTime time.Time, issuingKeys keySlice) *BestState {
+	medianTime time.Time) *BestState {
 	return &BestState{
-		Hash:        node.hash,
-		Height:      node.height,
-		Bits:        node.bits,
-		BlockSize:   blockSize,
-		NumTxns:     numTxns,
-		TotalTxns:   totalTxns,
-		MedianTime:  medianTime,
-		IssuingKeys: issuingKeys,
+		Hash:       node.hash,
+		Height:     node.height,
+		Bits:       node.bits,
+		BlockSize:  blockSize,
+		NumTxns:    numTxns,
+		TotalTxns:  totalTxns,
+		MedianTime: medianTime,
 	}
 }
 
@@ -257,6 +200,11 @@ type BlockChain struct {
 	bestNode *blockNode
 	index    map[chainhash.Hash]*blockNode
 	depNodes map[chainhash.Hash][]*blockNode
+
+	// These fields are related to the admin state of the chain. They are
+	// protected by the chain lock.
+	adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
+	wspKeyIdMap  KeyIdMap
 
 	// These fields are related to handling of orphan blocks.  They are
 	// protected by a combination of the chain lock and the orphan lock.
@@ -852,7 +800,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, utxoVie
 	numTxns := uint64(len(block.MsgBlock().Transactions))
 	blockSize := uint64(block.MsgBlock().SerializeSize())
 	state := newBestState(node, blockSize, numTxns, curTotalTxns+numTxns,
-		medianTime, keyView.Keys(rmgutil.IssueThread))
+		medianTime)
 	// Atomically insert info into the database.
 	err = b.db.Update(func(dbTx database.Tx) error {
 		// Update best block state.
@@ -983,7 +931,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, utxo
 	blockSize := uint64(prevBlock.MsgBlock().SerializeSize())
 	newTotalTxns := curTotalTxns - uint64(len(block.MsgBlock().Transactions))
 	state := newBestState(prevNode, blockSize, numTxns, newTotalTxns,
-		medianTime, keyView.Keys(rmgutil.IssueThread))
+		medianTime)
 
 	err = b.db.Update(func(dbTx database.Tx) error {
 		// Update best block state.
@@ -1111,7 +1059,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	// entails reverting all admin operations that have happened in these
 	// blocks.
 	keyView := NewKeyViewpoint()
-	keyView.SetKeys(rmgutil.IssueThread, b.stateSnapshot.IssuingKeys)
+	keyView.SetKeys(b.adminKeySets)
 	keyView.SetBestHash(b.bestNode.hash)
 	for e := detachNodes.Front(); e != nil; e = e.Next() {
 		n := e.Value.(*blockNode)
@@ -1305,7 +1253,7 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *rmgutil.Block, fla
 		// - it is mined by provisioned validator key.
 		// - all keyIDs used for outputs are provisioned.
 		keyView := NewKeyViewpoint()
-		keyView.SetKeys(rmgutil.IssueThread, b.stateSnapshot.IssuingKeys)
+		keyView.SetKeys(b.adminKeySets)
 		keyView.SetBestHash(node.parentHash)
 		stxos := make([]spentTxOut, 0, countSpentOutputs(block))
 		if !fastAdd {
@@ -1476,6 +1424,17 @@ func (b *BlockChain) BestSnapshot() *BestState {
 	snapshot := b.stateSnapshot
 	b.stateLock.RUnlock()
 	return snapshot
+}
+
+// AdminKeySets returns all admin key sets that govern the chain state.
+// The returned instance must be treated as immutable since it is shared by all
+// callers.
+// This function is safe for concurrent access.
+func (b *BlockChain) AdminKeySets() map[btcec.KeySetType]btcec.PublicKeySet {
+	b.stateLock.RLock()
+	adminKeySets := b.adminKeySets
+	b.stateLock.RUnlock()
+	return adminKeySets
 }
 
 // IndexManager provides a generic interface that the is called when blocks are

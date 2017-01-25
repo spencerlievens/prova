@@ -987,28 +987,34 @@ func TestKeySetSerialization(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		issuingKeys keySlice
-		keyIdMap    KeyIdMap
-		serialized  []byte
+		name         string
+		adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
+		keyIdMap     KeyIdMap
+		serialized   []byte
 	}{
 		{
 			name: "one key",
-			issuingKeys: func() keySlice {
-				pubKey, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
-				return []btcec.PublicKey{*pubKey}
+			adminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
+				keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
+				//validator keys
+				keySets[btcec.IssuingKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+					"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1", // priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
+				)
+				return keySets
 			}(),
 			// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
 			serialized: hexToBytes("000000000000000001000000025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf10000000000000000"),
 		},
 		{
 			name: "two keys",
-			issuingKeys: func() keySlice {
-				// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
-				pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
-				// priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
-				pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
-				return []btcec.PublicKey{*pubKey1, *pubKey2}
+			adminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
+				keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
+				//validator keys
+				keySets[btcec.IssuingKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+					"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1", // priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
+					"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+				)
+				return keySets
 			}(),
 			keyIdMap: func() KeyIdMap {
 				keyId1 := rmgutil.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
@@ -1026,10 +1032,7 @@ func TestKeySetSerialization(t *testing.T) {
 
 	for i, test := range tests {
 		// Ensure the state serializes to the expected value.
-		adminKeys := map[uint8]keySlice{
-			IssuingKeySet: test.issuingKeys,
-		}
-		gotBytes := serializeKeySet(adminKeys, test.keyIdMap)
+		gotBytes := serializeKeySet(test.adminKeySets, test.keyIdMap)
 		if !bytes.Equal(gotBytes, test.serialized) {
 			t.Errorf("serializeKeySet #%d (%s): mismatched "+
 				"bytes - got %x, want %x", i, test.name,
@@ -1039,16 +1042,16 @@ func TestKeySetSerialization(t *testing.T) {
 
 		// Ensure the serialized bytes are decoded back to the expected
 		// state.
-		adminKeyMap, keyIdMap, err := deserializeKeySet(test.serialized)
+		adminKeySets, keyIdMap, err := deserializeKeySet(test.serialized)
 		if err != nil {
 			t.Errorf("deserializeKeySet #%d (%s) "+
 				"unexpected error: %v", i, test.name, err)
 			continue
 		}
-		if !adminKeyMap[IssuingKeySet].Equal(test.issuingKeys) {
+		if !adminKeySets[btcec.IssuingKeySet].Equal(test.adminKeySets[btcec.IssuingKeySet]) {
 			t.Errorf("deserializeKeySet #%d (%s) "+
 				"mismatched state - got %v, want %v", i,
-				test.name, adminKeyMap[IssuingKeySet], test.issuingKeys)
+				test.name, adminKeySets[btcec.IssuingKeySet], test.adminKeySets[btcec.IssuingKeySet])
 			continue
 		}
 		if !keyIdMap.Equal(test.keyIdMap) {

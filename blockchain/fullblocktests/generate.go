@@ -1056,6 +1056,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	adminKeyRevokeTx := createAdminTx(outs[1], 1, txscript.OP_ISSUINGKEYREVOKE, pubKey)
 	g.nextBlock("b2", nil, additionalTx(adminKeyRevokeTx))
 
+	// TODO(aztec): this test does not really check for absense, fix.
 	acceptedWithAdminKey(nil)
 
 	// Create a fork from b1.  There should not be a reorg since b2 was seen
