@@ -46,12 +46,29 @@ type txPrioItem struct {
 	fee      int64
 	priority float64
 	feePerKB int64
+	isAdmin  bool
 
 	// dependsOn holds a map of transaction hashes which this one depends
 	// on.  It will only be set when the transaction references other
 	// transactions in the source pool and hence must come after them in
 	// a block.
 	dependsOn map[chainhash.Hash]struct{}
+}
+
+// isAdmin returns whether or not this transaction has an admin txout
+// scriptpub.
+func isAdmin(msgTx *wire.MsgTx) bool {
+	for _, txOut := range msgTx.TxOut {
+		pops, err := txscript.ParseScript(txOut.PkScript)
+		if err != nil {
+			return false
+		}
+		scriptClass := txscript.TypeOfScript(pops)
+		if scriptClass == txscript.AztecAdminTy {
+			return true
+		}
+	}
+	return false
 }
 
 // txPriorityQueueLessFunc describes a function that can be used as a compare
@@ -111,6 +128,10 @@ func (pq *txPriorityQueue) SetLessFunc(lessFunc txPriorityQueueLessFunc) {
 // txPQByPriority sorts a txPriorityQueue by transaction priority and then fees
 // per kilobyte.
 func txPQByPriority(pq *txPriorityQueue, i, j int) bool {
+	// Always prioritize admin transactions.
+	if pq.items[i].isAdmin {
+		return true
+	}
 	// Using > here so that pop gives the highest priority item as opposed
 	// to the lowest.  Sort by priority first, then fee.
 	if pq.items[i].priority == pq.items[j].priority {
@@ -123,6 +144,10 @@ func txPQByPriority(pq *txPriorityQueue, i, j int) bool {
 // txPQByFee sorts a txPriorityQueue by fees per kilobyte and then transaction
 // priority.
 func txPQByFee(pq *txPriorityQueue, i, j int) bool {
+	// Always prioritize admin transactions.
+	if pq.items[i].isAdmin {
+		return true
+	}
 	// Using > here so that pop gives the highest fee item as opposed
 	// to the lowest.  Sort by fee first, then priority.
 	if pq.items[i].feePerKB == pq.items[j].feePerKB {
@@ -535,6 +560,7 @@ mempoolLoop:
 		txSize := tx.MsgTx().SerializeSize()
 		prioItem.feePerKB = (txDesc.Fee * 1000) / int64(txSize)
 		prioItem.fee = txDesc.Fee
+		prioItem.isAdmin = isAdmin(tx.MsgTx())
 
 		// Add the transaction to the priority queue to mark it ready
 		// for inclusion in the block unless it has dependencies.
