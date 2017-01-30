@@ -59,7 +59,7 @@ func findCandidates(chain *blockchain.BlockChain, latestHash *chainhash.Hash) ([
 
 	// The latest known block must be at least the last known checkpoint
 	// plus required checkpoint confirmations.
-	checkpointConfirmations := int32(blockchain.CheckpointConfirmations)
+	checkpointConfirmations := uint32(blockchain.CheckpointConfirmations)
 	requiredHeight := latestCheckpoint.Height + checkpointConfirmations
 	if block.Height() < requiredHeight {
 		return nil, fmt.Errorf("the block database is only at height "+
@@ -84,7 +84,7 @@ func findCandidates(chain *blockchain.BlockChain, latestHash *chainhash.Hash) ([
 
 	// Loop backwards through the chain to find checkpoint candidates.
 	candidates := make([]*chaincfg.Checkpoint, 0, cfg.NumCandidates)
-	numTested := int32(0)
+	numTested := uint32(0)
 	for len(candidates) < cfg.NumCandidates && block.Height() > requiredHeight {
 		// Display progress.
 		if numTested%progressInterval == 0 {
