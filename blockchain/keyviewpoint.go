@@ -34,6 +34,13 @@ func (view *KeyViewpoint) SetBestHash(hash *chainhash.Hash) {
 	view.bestHash = *hash
 }
 
+// KeyIDs returns a mapping of keyIDs to WSP keys at the position in the chain
+// the view currently represents.
+func (view *KeyViewpoint) KeyIDs() KeyIdMap {
+	return nil
+	// Implemented in D4393
+}
+
 // IssuingKeys returns the set of valid issuing keys.
 func (view *KeyViewpoint) Keys() map[btcec.KeySetType]btcec.PublicKeySet {
 	return view.adminKeySets

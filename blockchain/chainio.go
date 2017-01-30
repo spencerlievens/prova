@@ -1279,12 +1279,6 @@ func (b *BlockChain) createChainState() error {
 			return err
 		}
 
-		// Create the bucket that houses the key set.
-		_, err = meta.CreateBucket(keySetBucketName)
-		if err != nil {
-			return err
-		}
-
 		// Add the genesis block hash to height and height to hash
 		// mappings to the index.
 		err = dbPutBlockIndex(dbTx, b.bestNode.hash, b.bestNode.height)
@@ -1294,6 +1288,12 @@ func (b *BlockChain) createChainState() error {
 
 		// Store the current best chain state into the database.
 		err = dbPutBestState(dbTx, b.stateSnapshot, b.bestNode.workSum)
+		if err != nil {
+			return err
+		}
+
+		// Store the current admin key sets in the database.
+		err = dbPutKeySet(dbTx, b.adminKeySets, b.wspKeyIdMap)
 		if err != nil {
 			return err
 		}

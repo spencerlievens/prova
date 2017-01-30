@@ -809,6 +809,12 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, utxoVie
 			return err
 		}
 
+		// Update admin key sets.
+		err = dbPutKeySet(dbTx, keyView.Keys(), keyView.KeyIDs())
+		if err != nil {
+			return err
+		}
+
 		// Add the block hash and height to the block index which tracks
 		// the main chain.
 		err = dbPutBlockIndex(dbTx, block.Hash(), node.height)
@@ -936,6 +942,12 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, utxo
 	err = b.db.Update(func(dbTx database.Tx) error {
 		// Update best block state.
 		err := dbPutBestState(dbTx, state, node.workSum)
+		if err != nil {
+			return err
+		}
+
+		// Store the current admin key sets in the database.
+		err = dbPutKeySet(dbTx, keyView.Keys(), keyView.KeyIDs())
 		if err != nil {
 			return err
 		}
