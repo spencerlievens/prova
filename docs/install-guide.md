@@ -60,7 +60,7 @@ If you are on the internal dev VPN you can connect to a testnet node running mas
 
 ```
 rmgd
---addpeer=10.151.51.76:18333
+--addpeer=dev-rmgd-01:17979
 --addrindex
 --datadir=$YOUR_PATH_TO_DATA_DIRECTORY
 --listen=127.0.0.1:6001
@@ -84,10 +84,10 @@ Edit the file to include the contents (commented-out tests are known not passing
 
 ```
 github.com/bitgo/rmgd/addrmgr
-# github.com/bitgo/rmgd/blockchain
+github.com/bitgo/rmgd/blockchain
 github.com/bitgo/rmgd/btcec
 github.com/bitgo/rmgd/btcjson
-# github.com/bitgo/rmgd/chaincfg
+github.com/bitgo/rmgd/chaincfg
 github.com/bitgo/rmgd/database
 github.com/bitgo/rmgd/mempool
 github.com/bitgo/rmgd/peer
