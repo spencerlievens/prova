@@ -406,22 +406,6 @@ func TestRemoveOpcodeByData(t *testing.T) {
 	}
 }
 
-// TestIsPayToScriptHash ensures the IsPayToScriptHash function returns the
-// expected results for all the scripts in scriptClassTests.
-func TestIsPayToScriptHash(t *testing.T) {
-	t.Parallel()
-
-	for _, test := range scriptClassTests {
-		script := mustParseShortForm(test.script)
-		shouldBe := (test.class == txscript.ScriptHashTy)
-		p2sh := txscript.IsPayToScriptHash(script)
-		if p2sh != shouldBe {
-			t.Errorf("%s: epxected p2sh %v, got %v", test.name,
-				shouldBe, p2sh)
-		}
-	}
-}
-
 // TestHasCanonicalPushes ensures the canonicalPush function properly determines
 // what is considered a canonical push for the purposes of removeOpcodeByData.
 func TestHasCanonicalPushes(t *testing.T) {

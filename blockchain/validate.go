@@ -228,6 +228,11 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 
 	// Coinbase script length must be between min and max length.
 	if IsCoinBase(tx) {
+		// Coinbase tx must be a standard aztec tx
+		if !txscript.IsAztecTx(tx) {
+			// TODO(aztec): fix the blockchain tests
+			return ruleError(ErrInvalidCoinbase, "coinbase transaction is not of an allowed form")
+		}
 		slen := len(msgTx.TxIn[0].SignatureScript)
 		if slen < MinCoinbaseScriptLen || slen > MaxCoinbaseScriptLen {
 			str := fmt.Sprintf("coinbase transaction script length "+
@@ -235,16 +240,26 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 				slen, MinCoinbaseScriptLen, MaxCoinbaseScriptLen)
 			return ruleError(ErrBadCoinbaseScriptLen, str)
 		}
-	} else {
-		// Previous transaction outputs referenced by the inputs to this
-		// transaction must not be null.
-		for _, txIn := range msgTx.TxIn {
-			prevOut := &txIn.PreviousOutPoint
-			if isNullOutpoint(prevOut) {
-				return ruleError(ErrBadTxInput, "transaction "+
-					"input refers to previous output that "+
-					"is null")
-			}
+		return nil
+	}
+
+	// Check for admin transaction
+	threadInt, _ := txscript.GetAdminDetails(tx)
+	isAdminTx := (threadInt >= 0)
+
+	if !isAdminTx && !txscript.IsAztecTx(tx) {
+		// TODO(aztec): fix the blockchain tests
+		return ruleError(ErrInvalidTx, "transaction is not of an allowed form")
+	}
+
+	// Previous transaction outputs referenced by the inputs to this
+	// transaction must not be null.
+	for _, txIn := range msgTx.TxIn {
+		prevOut := &txIn.PreviousOutPoint
+		if isNullOutpoint(prevOut) {
+			return ruleError(ErrBadTxInput, "transaction "+
+				"input refers to previous output that "+
+				"is null")
 		}
 	}
 

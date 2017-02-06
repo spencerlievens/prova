@@ -55,6 +55,7 @@ const (
 // scriptClassToName houses the human-readable strings which describe each
 // script class.
 var scriptClassToName = []string{
+	// TODO(aztec): clean up non-used types
 	NonStandardTy:  "nonstandard",
 	PubKeyTy:       "pubkey",
 	PubKeyHashTy:   "pubkeyhash",
@@ -74,27 +75,6 @@ func (t ScriptClass) String() string {
 		return "Invalid"
 	}
 	return scriptClassToName[t]
-}
-
-// isPubkey returns true if the script passed is a pay-to-pubkey transaction,
-// false otherwise.
-func isPubkey(pops []parsedOpcode) bool {
-	// Valid pubkeys are either 33 or 65 bytes.
-	return len(pops) == 2 &&
-		(len(pops[0].data) == 33 || len(pops[0].data) == 65) &&
-		pops[1].opcode.value == OP_CHECKSIG
-}
-
-// isPubkeyHash returns true if the script passed is a pay-to-pubkey-hash
-// transaction, false otherwise.
-func isPubkeyHash(pops []parsedOpcode) bool {
-	return len(pops) == 5 &&
-		pops[0].opcode.value == OP_DUP &&
-		pops[1].opcode.value == OP_HASH160 &&
-		pops[2].opcode.value == OP_DATA_20 &&
-		pops[3].opcode.value == OP_EQUALVERIFY &&
-		pops[4].opcode.value == OP_CHECKSIG
-
 }
 
 // isGeneralAztec returns true if the passed script is an Aztec script (generalized m-of-n)
@@ -181,11 +161,38 @@ func isAztec(pops []parsedOpcode) bool {
 		isGeneralAztec(pops)
 }
 
+// IsAztecTx determines if a transaction is a standard aztec transaction consisting
+// of only outputs to standard aztec scripts and 0-value nulldata scripts.
+func IsAztecTx(tx *rmgutil.Tx) bool {
+	msgTx := tx.MsgTx()
+
+	// An aztec transaction must have at least one output.
+	if len(msgTx.TxOut) == 0 {
+		return false
+	}
+
+	for _, txOut := range msgTx.TxOut {
+		atoms := txOut.Value
+		pops, err := ParseScript(txOut.PkScript)
+		if err != nil {
+			return false
+		}
+		if isNullData(pops) {
+			if atoms != 0 {
+				return false
+			}
+		} else if !isGeneralAztec(pops) {
+			return false
+		}
+	}
+	return true
+}
+
 // GetAdminDetails will read threadID and admin outputs from and admin transaction.
 func GetAdminDetails(tx *rmgutil.Tx) (int, [][]parsedOpcode) {
 	// The first output of the admin transaction is the thread transaction.
 	// Additional outputs modify the chain state. We expect at least one additional.
-	if len(tx.MsgTx().TxOut) <= 1 {
+	if len(tx.MsgTx().TxOut) < 1 {
 		return -1, nil
 	}
 	pops, err := ParseScript(tx.MsgTx().TxOut[0].PkScript)
@@ -226,40 +233,6 @@ func isAztecAdmin(pops []parsedOpcode) bool {
 	return true
 }
 
-// isMultiSig returns true if the passed script is a multisig transaction, false
-// otherwise.
-func isMultiSig(pops []parsedOpcode) bool {
-	// The absolute minimum is 1 pubkey:
-	// OP_0/OP_1-16 <pubkey> OP_1 OP_CHECKMULTISIG
-	l := len(pops)
-	if l < 4 {
-		return false
-	}
-	if !isSmallInt(pops[0].opcode) {
-		return false
-	}
-	if !isSmallInt(pops[l-2].opcode) {
-		return false
-	}
-	if pops[l-1].opcode.value != OP_CHECKMULTISIG {
-		return false
-	}
-
-	// Verify the number of pubkeys specified matches the actual number
-	// of pubkeys provided.
-	if l-2-1 != asSmallInt(pops[l-2].opcode) {
-		return false
-	}
-
-	for _, pop := range pops[1 : l-2] {
-		// Valid pubkeys are either 33 or 65 bytes.
-		if len(pop.data) != 33 && len(pop.data) != 65 {
-			return false
-		}
-	}
-	return true
-}
-
 // isNullData returns true if the passed script is a null data transaction,
 // false otherwise.
 func isNullData(pops []parsedOpcode) bool {
@@ -286,15 +259,7 @@ func TypeOfScript(pops []parsedOpcode) ScriptClass {
 // typeOfScript returns the type of the script being inspected from the known
 // standard types.
 func typeOfScript(pops []parsedOpcode) ScriptClass {
-	if isPubkey(pops) {
-		return PubKeyTy
-	} else if isPubkeyHash(pops) {
-		return PubKeyHashTy
-	} else if isScriptHash(pops) {
-		return ScriptHashTy
-	} else if isMultiSig(pops) {
-		return MultiSigTy
-	} else if isNullData(pops) {
+	if isNullData(pops) {
 		return NullDataTy
 	} else if isAztec(pops) {
 		return AztecTy
@@ -324,26 +289,6 @@ func GetScriptClass(script []byte) ScriptClass {
 // while finding out the type).
 func expectedInputs(pops []parsedOpcode, class ScriptClass) int {
 	switch class {
-	case PubKeyTy:
-		return 1
-
-	case PubKeyHashTy:
-		return 2
-
-	case ScriptHashTy:
-		// Not including script.  That is handled by the caller.
-		return 1
-
-	case MultiSigTy:
-		// Standard multisig has a push a small number for the number
-		// of sigs and number of keys.  Check the first push instruction
-		// to see how many arguments are expected. typeOfScript already
-		// checked this so we know it'll be a small int.  Also, due to
-		// the original bitcoind bug where OP_CHECKMULTISIG pops an
-		// additional item from the stack, add an extra expected input
-		// for the extra push that is required to compensate.
-		return asSmallInt(pops[0].opcode) + 1
-
 	case AztecTy:
 		fallthrough
 	case GeneralAztecTy:
@@ -461,29 +406,6 @@ func CalcMultiSigStats(script []byte) (int, int, error) {
 	return numPubKeys, numSigs, nil
 }
 
-// payToPubKeyHashScript creates a new script to pay a transaction
-// output to a 20-byte pubkey hash. It is expected that the input is a valid
-// hash.
-func payToPubKeyHashScript(pubKeyHash []byte) ([]byte, error) {
-	return NewScriptBuilder().AddOp(OP_DUP).AddOp(OP_HASH160).
-		AddData(pubKeyHash).AddOp(OP_EQUALVERIFY).AddOp(OP_CHECKSIG).
-		Script()
-}
-
-// payToScriptHashScript creates a new script to pay a transaction output to a
-// script hash. It is expected that the input is a valid hash.
-func payToScriptHashScript(scriptHash []byte) ([]byte, error) {
-	return NewScriptBuilder().AddOp(OP_HASH160).AddData(scriptHash).
-		AddOp(OP_EQUAL).Script()
-}
-
-// payToPubkeyScript creates a new script to pay a transaction output to a
-// public key. It is expected that the input is a valid pubkey.
-func payToPubKeyScript(serializedPubKey []byte) ([]byte, error) {
-	return NewScriptBuilder().AddData(serializedPubKey).
-		AddOp(OP_CHECKSIG).Script()
-}
-
 // payToAztecScript creates a new script to pay a transaction output to an
 // Aztec 2-of-3 address.
 func payToAztecScript(pubKeyHash []byte, keyIDs []btcec.KeyID) ([]byte, error) {
@@ -504,24 +426,6 @@ func payToAztecScript(pubKeyHash []byte, keyIDs []btcec.KeyID) ([]byte, error) {
 // specified address.
 func PayToAddrScript(addr rmgutil.Address) ([]byte, error) {
 	switch addr := addr.(type) {
-	case *rmgutil.AddressPubKeyHash:
-		if addr == nil {
-			return nil, ErrUnsupportedAddress
-		}
-		return payToPubKeyHashScript(addr.ScriptAddress())
-
-	case *rmgutil.AddressScriptHash:
-		if addr == nil {
-			return nil, ErrUnsupportedAddress
-		}
-		return payToScriptHashScript(addr.ScriptAddress())
-
-	case *rmgutil.AddressPubKey:
-		if addr == nil {
-			return nil, ErrUnsupportedAddress
-		}
-		return payToPubKeyScript(addr.ScriptAddress())
-
 	case *rmgutil.AddressAztec:
 		if addr == nil {
 			return nil, ErrUnsupportedAddress
@@ -595,39 +499,6 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 
 	scriptClass := typeOfScript(pops)
 	switch scriptClass {
-	case PubKeyHashTy:
-		// A pay-to-pubkey-hash script is of the form:
-		//  OP_DUP OP_HASH160 <hash> OP_EQUALVERIFY OP_CHECKSIG
-		// Therefore the pubkey hash is the 3rd item on the stack.
-		// Skip the pubkey hash if it's invalid for some reason.
-		requiredSigs = 1
-		addr, err := rmgutil.NewAddressPubKeyHash(pops[2].data,
-			chainParams)
-		if err == nil {
-			addrs = append(addrs, addr)
-		}
-
-	case PubKeyTy:
-		// A pay-to-pubkey script is of the form:
-		//  <pubkey> OP_CHECKSIG
-		// Therefore the pubkey is the first item on the stack.
-		// Skip the pubkey if it's invalid for some reason.
-		requiredSigs = 1
-		addr, err := rmgutil.NewAddressPubKey(pops[0].data, chainParams)
-		if err == nil {
-			addrs = append(addrs, addr)
-		}
-
-	case ScriptHashTy:
-		// A pay-to-script-hash script is of the form:
-		//  OP_HASH160 <scripthash> OP_EQUAL
-		// Therefore the script hash is the 2nd item on the stack.
-		// Skip the script hash if it's invalid for some reason.
-		requiredSigs = 1
-		addr, err := rmgutil.NewAddressScriptHashFromHash(pops[1].data, chainParams)
-		if err == nil {
-			addrs = append(addrs, addr)
-		}
 
 	case AztecTy:
 		requiredSigs = 2
@@ -647,25 +518,6 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 
 	case AztecAdminTy:
 		requiredSigs = 2
-
-	case MultiSigTy:
-		// A multi-signature script is of the form:
-		//  <numsigs> <pubkey> <pubkey> <pubkey>... <numpubkeys> OP_CHECKMULTISIG
-		// Therefore the number of required signatures is the 1st item
-		// on the stack and the number of public keys is the 2nd to last
-		// item on the stack.
-		requiredSigs = asSmallInt(pops[0].opcode)
-		numPubKeys := asSmallInt(pops[len(pops)-2].opcode)
-
-		// Extract the public keys while skipping any that are invalid.
-		addrs = make([]rmgutil.Address, 0, numPubKeys)
-		for i := 0; i < numPubKeys; i++ {
-			addr, err := rmgutil.NewAddressPubKey(pops[i+1].data,
-				chainParams)
-			if err == nil {
-				addrs = append(addrs, addr)
-			}
-		}
 
 	case NullDataTy:
 		// Null data transactions have no addresses or required

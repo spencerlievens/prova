@@ -198,6 +198,14 @@ const (
 	// ErrInconsistentBlkSize indicates the block size attested to in the
 	// block header does not match the block size of the actual block.
 	ErrInconsistentBlkSize
+
+	// ErrInvalidCoinbase indicates the coinbase transaction is not
+	// a proper standard Aztec transaction.
+	ErrInvalidCoinbase
+
+	// ErrInvalidTx indicates a transaction is not an allowed Aztec
+	// transaction.
+	ErrInvalidTx
 )
 
 // Map of ErrorCode values back to their constant names for pretty printing.
@@ -243,6 +251,8 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrExcessiveChainShare:  "ErrExcessiveChainShare",
 	ErrExcessiveTrailing:    "ErrExcessiveTrailing",
 	ErrInconsistentBlkSize:  "ErrInconsistentBlkSize",
+	ErrInvalidCoinbase:      "ErrInvalidCoinbase",
+	ErrInvalidTx:            "ErrInvalidTx",
 }
 
 // String returns the ErrorCode as a human-readable name.

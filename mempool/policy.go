@@ -178,6 +178,13 @@ func checkInputsStandard(tx *rmgutil.Tx, utxoView *blockchain.UtxoViewpoint) err
 		entry := utxoView.LookupEntry(&prevOut.Hash)
 		originPkScript := entry.PkScriptByIndex(prevOut.Index)
 		switch txscript.GetScriptClass(originPkScript) {
+		// TODO(aztec): implement
+		case txscript.AztecTy:
+			fallthrough
+		case txscript.GeneralAztecTy:
+			break
+
+		// TODO(aztec): remove
 		case txscript.ScriptHashTy:
 			numSigOps := txscript.GetPreciseSigOpCount(
 				txIn.SignatureScript, originPkScript, true)
@@ -206,6 +213,13 @@ func checkInputsStandard(tx *rmgutil.Tx, utxoView *blockchain.UtxoViewpoint) err
 // public keys.
 func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) error {
 	switch scriptClass {
+	// TODO(aztec): implement
+	case txscript.AztecTy:
+		fallthrough
+	case txscript.GeneralAztecTy:
+		break
+
+	// TODO(aztec): remove
 	case txscript.MultiSigTy:
 		numPubKeys, numSigs, err := txscript.CalcMultiSigStats(pkScript)
 		if err != nil {
