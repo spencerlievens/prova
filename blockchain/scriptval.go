@@ -103,7 +103,7 @@ out:
 				keyIdMap := v.keyView.LookupKeyIDs(keyIDs)
 				err = txscript.ReplaceKeyIDs(pops, keyIdMap)
 				if err != nil {
-					str := fmt.Sprintf("failed to replace keyIDs %s", originTxHash)
+					str := fmt.Sprintf("failed to replace keyIDs %v, %v in %s", keyIDs[0], keyIDs[1], originTxHash)
 					err := ruleError(ErrScriptMalformed, str)
 					v.sendResult(err)
 					break out

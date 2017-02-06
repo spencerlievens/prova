@@ -56,6 +56,18 @@ func (s *fakeChain) FetchUtxoView(tx *rmgutil.Tx) (*blockchain.UtxoViewpoint, er
 	return viewpoint, nil
 }
 
+func (s *fakeChain) AdminKeySets() map[btcec.KeySetType]btcec.PublicKeySet {
+	return make(map[btcec.KeySetType]btcec.PublicKeySet)
+}
+
+// KeyIDs returns all keyID to pub key mapping set on the chain.
+// The returned instance must be treated as immutable since it is shared by all
+// callers.
+// This function is safe for concurrent access.
+func (s *fakeChain) KeyIDs() btcec.KeyIdMap {
+	return make(map[btcec.KeyID]*btcec.PublicKey)
+}
+
 // BestHeight returns the current height associated with the fake chain
 // instance.
 func (s *fakeChain) BestHeight() uint32 {
@@ -281,13 +293,15 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 				MaxSigOpsPerTx:       blockchain.MaxSigOpsPerBlock / 5,
 				MinRelayTxFee:        1000, // 1 Atom per byte
 			},
-			ChainParams:   chainParams,
-			FetchUtxoView: chain.FetchUtxoView,
-			BestHeight:    chain.BestHeight,
-			SigCache:      nil,
-			HashCache:     txscript.NewHashCache(200),
-			TimeSource:    blockchain.NewMedianTime(),
-			AddrIndex:     nil,
+			ChainParams:     chainParams,
+			FetchUtxoView:   chain.FetchUtxoView,
+			GetKeyIDs:       chain.KeyIDs,
+			GetAdminKeySets: chain.AdminKeySets,
+			BestHeight:      chain.BestHeight,
+			SigCache:        nil,
+			HashCache:       txscript.NewHashCache(200),
+			TimeSource:      blockchain.NewMedianTime(),
+			AddrIndex:       nil,
 		}),
 	}
 

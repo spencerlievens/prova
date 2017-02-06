@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/txscript"
@@ -527,8 +528,8 @@ func (b *bogusAddress) String() string {
 	return ""
 }
 
-func (b *bogusAddress) ScriptKeyIDs() []rmgutil.KeyID {
-	return make([]rmgutil.KeyID, 0)
+func (b *bogusAddress) ScriptKeyIDs() []btcec.KeyID {
+	return make([]btcec.KeyID, 0)
 }
 
 // TestPayToAddrScript ensures the PayToAddrScript function generates the

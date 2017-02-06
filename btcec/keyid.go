@@ -1,8 +1,8 @@
-// Copyright (c) 2016 BitGo Inc.
+// Copyright (c) 2017 BitGo Inc.
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package rmgutil
+package btcec
 
 import (
 	"encoding/binary"

@@ -252,14 +252,14 @@ func asInt32(pop parsedOpcode) (int32, error) {
 // We assume a Aztec address structure like this:
 // basic: <2 hash keyID1 keyID2 3 OP_CHECKSAFEMULTISIG>
 // general: <x hash/keyID hash/keyID y OP_CHECKSAFEMULTISIG>
-func ExtractKeyIDs(pkScript []parsedOpcode) ([]rmgutil.KeyID, error) {
+func ExtractKeyIDs(pkScript []parsedOpcode) ([]btcec.KeyID, error) {
 	// the basic structure has 6 elements, as described above
 	if len(pkScript) < 6 || !isSmallInt(pkScript[len(pkScript)-2].opcode) {
 		return nil, fmt.Errorf("unable to extract keyIDs from script, "+
 			"unexpected script structure %v", pkScript)
 	}
 	pkHashCount := asSmallInt(pkScript[len(pkScript)-2].opcode)
-	keyIDs := make([]rmgutil.KeyID, 0, pkHashCount)
+	keyIDs := make([]btcec.KeyID, 0, pkHashCount)
 	for i := 2; i <= pkHashCount; i++ {
 		if !isUint32(pkScript[i].opcode) {
 			return nil, fmt.Errorf("unable to extract keyIDs from script, "+
@@ -269,7 +269,7 @@ func ExtractKeyIDs(pkScript []parsedOpcode) ([]rmgutil.KeyID, error) {
 		if err != nil {
 			return nil, err
 		}
-		keyIDs = append(keyIDs, rmgutil.KeyID(keyID))
+		keyIDs = append(keyIDs, btcec.KeyID(keyID))
 	}
 	return keyIDs, nil
 }
@@ -278,7 +278,7 @@ func ExtractKeyIDs(pkScript []parsedOpcode) ([]rmgutil.KeyID, error) {
 // We assume a Aztec address structure like this:
 // basic: <2 hash keyID1 keyID2 3 OP_CHECKSAFEMULTISIG>
 // general: <x hash/keyID hash/keyID y OP_CHECKSAFEMULTISIG>
-func ReplaceKeyIDs(pkScript []parsedOpcode, keyIdMap map[rmgutil.KeyID][]byte) error {
+func ReplaceKeyIDs(pkScript []parsedOpcode, keyIdMap map[btcec.KeyID][]byte) error {
 	// the basic structure has 6 elements, as described above
 	if len(pkScript) < 6 || !isSmallInt(pkScript[len(pkScript)-2].opcode) {
 		return fmt.Errorf("unable to extract keyIDs from script, "+
@@ -300,7 +300,7 @@ func ReplaceKeyIDs(pkScript []parsedOpcode, keyIdMap map[rmgutil.KeyID][]byte) e
 			return fmt.Errorf("unable to parse keyIDs from opcode %v",
 				pkScript[i])
 		}
-		if val, ok := keyIdMap[rmgutil.KeyID(keyID)]; ok {
+		if val, ok := keyIdMap[btcec.KeyID(keyID)]; ok {
 			pop.data = val
 			pop.opcode = &opcodeArray[OP_DATA_20]
 		}
@@ -344,11 +344,29 @@ func ExtractAdminData(pkScript []parsedOpcode) (byte, *btcec.PublicKey, error) {
 			"unknown script structure %v", pkScript)
 	}
 	op := pkScript[1].data[0]
-	pubKey, err := btcec.ParsePubKey(pkScript[1].data[1:len(pkScript[1].data)], btcec.S256())
+	pubKey, err := btcec.ParsePubKey(pkScript[1].data[1:1+btcec.PubKeyBytesLenCompressed], btcec.S256())
 	if err != nil {
 		return 0, nil, err
 	}
 	return op, pubKey, nil
+}
+
+// ExtractWspData can read OP_WSPKEYADD and OP_WSPKEYREVOKE from admin outputs.
+func ExtractWspData(pkScript []parsedOpcode) (byte, *btcec.PublicKey, btcec.KeyID, error) {
+	// Admin outputs have an expected structure like this:
+	// opReturnByte+adminOpByte+pubKeyBytes
+	if len(pkScript) != 2 || pkScript[0].opcode.value != OP_RETURN {
+		return OP_FALSE, nil, 0, fmt.Errorf("unable to extract admin data from script, "+
+			"unknown script structure %v", pkScript)
+	}
+	op := pkScript[1].data[0]
+	dataLen := len(pkScript[1].data)
+	pubKey, err := btcec.ParsePubKey(pkScript[1].data[1:1+btcec.PubKeyBytesLenCompressed], btcec.S256())
+	if err != nil {
+		return 0, nil, 0, err
+	}
+	keyID := btcec.KeyIDFromAddressBuffer(pkScript[1].data[dataLen-btcec.KeyIDSize : dataLen])
+	return op, pubKey, keyID, nil
 }
 
 // canonicalPush returns true if the object is either not a push instruction

@@ -204,7 +204,7 @@ type BlockChain struct {
 	// These fields are related to the admin state of the chain. They are
 	// protected by the chain lock.
 	adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
-	wspKeyIdMap  KeyIdMap
+	wspKeyIdMap  btcec.KeyIdMap
 
 	// These fields are related to handling of orphan blocks.  They are
 	// protected by a combination of the chain lock and the orphan lock.
@@ -830,6 +830,12 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, utxoVie
 			return err
 		}
 
+		// Update the admin key set using the state of the key view.
+		err = dbPutKeySet(dbTx, keyView.Keys(), keyView.KeyIDs())
+		if err != nil {
+			return err
+		}
+
 		// Update the transaction spend journal by adding a record for
 		// the block that contains all txos spent by it.
 		err = dbPutSpendJournalEntry(dbTx, block.Hash(), stxos)
@@ -871,6 +877,12 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, utxoVie
 
 	// This node is now the end of the best chain.
 	b.bestNode = node
+
+	// This is now the admin state of the best chain.
+	b.stateLock.Lock()
+	b.adminKeySets = keyView.Keys()
+	b.wspKeyIdMap = keyView.KeyIDs()
+	b.stateLock.Unlock()
 
 	// Update the state for the best block.  Notice how this replaces the
 	// entire struct instead of updating the existing one.  This effectively
@@ -1072,6 +1084,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	// blocks.
 	keyView := NewKeyViewpoint()
 	keyView.SetKeys(b.adminKeySets)
+	keyView.SetKeyIDs(b.wspKeyIdMap)
 	keyView.SetBestHash(b.bestNode.hash)
 	for e := detachNodes.Front(); e != nil; e = e.Next() {
 		n := e.Value.(*blockNode)
@@ -1266,6 +1279,7 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *rmgutil.Block, fla
 		// - all keyIDs used for outputs are provisioned.
 		keyView := NewKeyViewpoint()
 		keyView.SetKeys(b.adminKeySets)
+		keyView.SetKeyIDs(b.wspKeyIdMap)
 		keyView.SetBestHash(node.parentHash)
 		stxos := make([]spentTxOut, 0, countSpentOutputs(block))
 		if !fastAdd {
@@ -1449,6 +1463,17 @@ func (b *BlockChain) AdminKeySets() map[btcec.KeySetType]btcec.PublicKeySet {
 	return adminKeySets
 }
 
+// KeyIDs returns all keyID to pub key mapping set on the chain.
+// The returned instance must be treated as immutable since it is shared by all
+// callers.
+// This function is safe for concurrent access.
+func (b *BlockChain) KeyIDs() btcec.KeyIdMap {
+	b.stateLock.RLock()
+	wspKeyIdMap := b.wspKeyIdMap
+	b.stateLock.RUnlock()
+	return wspKeyIdMap
+}
+
 // IndexManager provides a generic interface that the is called when blocks are
 // connected and disconnected to and from the tip of the main chain for the
 // purpose of supporting optional indexes.
@@ -1559,6 +1584,8 @@ func New(config *Config) (*BlockChain, error) {
 		blocksPerRetarget:   int32(targetTimespan / targetTimePerBlock),
 		minMemoryNodes:      int32(targetTimespan / targetTimePerBlock),
 		bestNode:            nil,
+		adminKeySets:        make(map[btcec.KeySetType]btcec.PublicKeySet),
+		wspKeyIdMap:         make(map[btcec.KeyID]*btcec.PublicKey),
 		index:               make(map[chainhash.Hash]*blockNode),
 		depNodes:            make(map[chainhash.Hash][]*blockNode),
 		orphans:             make(map[chainhash.Hash]*orphanBlock),

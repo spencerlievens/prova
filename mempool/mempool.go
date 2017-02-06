@@ -16,6 +16,7 @@ import (
 
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/blockchain/indexers"
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/btcjson"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
@@ -54,6 +55,12 @@ type Config struct {
 	// FetchUtxoView defines the function to use to fetch unspent
 	// transaction output information.
 	FetchUtxoView func(*rmgutil.Tx) (*blockchain.UtxoViewpoint, error)
+
+	// TODO(aztec)
+	GetKeyIDs func() btcec.KeyIdMap
+
+	// TODO(aztec)
+	GetAdminKeySets func() map[btcec.KeySetType]btcec.PublicKeySet
 
 	// BestHeight defines the function to use to access the block height of
 	// the current best chain.
@@ -588,8 +595,10 @@ func (mp *TxPool) maybeAcceptTransaction(tx *rmgutil.Tx, isNew, rateLimit bool) 
 		return nil, err
 	}
 
-	//TODO(aztec): where to get this from?
+	// Set the data for the keyview from chain
 	keyView := blockchain.NewKeyViewpoint()
+	keyView.SetKeyIDs(mp.cfg.GetKeyIDs())
+	keyView.SetKeys(mp.cfg.GetAdminKeySets())
 
 	// Don't allow the transaction if it exists in the main chain and is not
 	// not already fully spent.

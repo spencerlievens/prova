@@ -10,7 +10,6 @@ import (
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/wire"
 	"math/big"
 	"reflect"
@@ -989,7 +988,7 @@ func TestKeySetSerialization(t *testing.T) {
 	tests := []struct {
 		name         string
 		adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
-		keyIdMap     KeyIdMap
+		keyIdMap     btcec.KeyIdMap
 		serialized   []byte
 	}{
 		{
@@ -997,7 +996,7 @@ func TestKeySetSerialization(t *testing.T) {
 			adminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
 				keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
 				//validator keys
-				keySets[btcec.IssuingKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+				keySets[btcec.IssueKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
 					"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1", // priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
 				)
 				return keySets
@@ -1010,18 +1009,18 @@ func TestKeySetSerialization(t *testing.T) {
 			adminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
 				keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
 				//validator keys
-				keySets[btcec.IssuingKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+				keySets[btcec.IssueKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
 					"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1", // priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
 					"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
 				)
 				return keySets
 			}(),
-			keyIdMap: func() KeyIdMap {
-				keyId1 := rmgutil.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+			keyIdMap: func() btcec.KeyIdMap {
+				keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
 				pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
-				keyId2 := rmgutil.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+				keyId2 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 				pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
-				return map[rmgutil.KeyID]*btcec.PublicKey{
+				return map[btcec.KeyID]*btcec.PublicKey{
 					keyId1: pubKey1,
 					keyId2: pubKey2,
 				}
@@ -1048,10 +1047,10 @@ func TestKeySetSerialization(t *testing.T) {
 				"unexpected error: %v", i, test.name, err)
 			continue
 		}
-		if !adminKeySets[btcec.IssuingKeySet].Equal(test.adminKeySets[btcec.IssuingKeySet]) {
+		if !adminKeySets[btcec.IssueKeySet].Equal(test.adminKeySets[btcec.IssueKeySet]) {
 			t.Errorf("deserializeKeySet #%d (%s) "+
 				"mismatched state - got %v, want %v", i,
-				test.name, adminKeySets[btcec.IssuingKeySet], test.adminKeySets[btcec.IssuingKeySet])
+				test.name, adminKeySets[btcec.IssueKeySet], test.adminKeySets[btcec.IssueKeySet])
 			continue
 		}
 		if !keyIdMap.Equal(test.keyIdMap) {

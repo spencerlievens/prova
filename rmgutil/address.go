@@ -45,12 +45,12 @@ func encodeAddress(hash160 []byte, netID byte) string {
 	return base58.CheckEncode(hash160[:ripemd160.Size], netID)
 }
 
-func encodeAztecAddress(keyIDs []KeyID, hash160 []byte, netID byte) string {
-	data := make([]byte, 2*KeyIDSize+ripemd160.Size)
+func encodeAztecAddress(keyIDs []btcec.KeyID, hash160 []byte, netID byte) string {
+	data := make([]byte, 2*btcec.KeyIDSize+ripemd160.Size)
 	copy(data[0:], hash160)
 	offset := ripemd160.Size
 	binary.LittleEndian.PutUint32(data[offset:], uint32(keyIDs[0]))
-	binary.LittleEndian.PutUint32(data[offset+KeyIDSize:], uint32(keyIDs[1]))
+	binary.LittleEndian.PutUint32(data[offset+btcec.KeyIDSize:], uint32(keyIDs[1]))
 	return base58.CheckEncode(data, netID)
 }
 
@@ -84,7 +84,7 @@ type Address interface {
 
 	// ScriptKeyIDs returns the key ids to be used when inserting the
 	// address into a txout's script.
-	ScriptKeyIDs() []KeyID
+	ScriptKeyIDs() []btcec.KeyID
 
 	// IsForNet returns whether or not the address is associated with the
 	// passed bitcoin network.
@@ -118,7 +118,7 @@ func DecodeAddress(addr string, defaultNet *chaincfg.Params) (Address, error) {
 	}
 
 	if chaincfg.IsAztecAddrID(netID) {
-		if len(decoded) != ripemd160.Size+2*KeyIDSize {
+		if len(decoded) != ripemd160.Size+2*btcec.KeyIDSize {
 			return nil, errors.New("decoded address is of unknown size")
 		}
 		return newAddressAztecFromBytes(decoded, netID)
@@ -146,14 +146,14 @@ func DecodeAddress(addr string, defaultNet *chaincfg.Params) (Address, error) {
 
 // AddressAztec is a standard 2-of-3 Aztec address
 type AddressAztec struct {
-	keyIDs [2]KeyID
+	keyIDs [2]btcec.KeyID
 	hash   [ripemd160.Size]byte
 	netID  byte
 }
 
 // NewAddressAztec returns a new AddressAztec.  pkHash mustbe 20
 // bytes.
-func NewAddressAztec(pkHash []byte, keyIDs []KeyID, net *chaincfg.Params) (*AddressAztec, error) {
+func NewAddressAztec(pkHash []byte, keyIDs []btcec.KeyID, net *chaincfg.Params) (*AddressAztec, error) {
 	return newAddressAztec(pkHash, keyIDs, net.AztecAddrID)
 }
 
@@ -162,7 +162,7 @@ func NewAddressAztec(pkHash []byte, keyIDs []KeyID, net *chaincfg.Params) (*Addr
 // it up through its parameters.  This is useful when creating a new address
 // structure from a string encoding where the identifer byte is already
 // known.
-func newAddressAztec(pkHash []byte, keyIDs []KeyID, netID byte) (*AddressAztec, error) {
+func newAddressAztec(pkHash []byte, keyIDs []btcec.KeyID, netID byte) (*AddressAztec, error) {
 	// Check for a valid pubkey hash length.
 	if len(pkHash) != ripemd160.Size {
 		return nil, errors.New("pkHash must be 20 bytes")
@@ -183,9 +183,9 @@ func newAddressAztec(pkHash []byte, keyIDs []KeyID, netID byte) (*AddressAztec, 
 // directly from the encoded bytes
 func newAddressAztecFromBytes(data []byte, netID byte) (*AddressAztec, error) {
 	offset := ripemd160.Size
-	keyIDs := []KeyID{
-		KeyIDFromAddressBuffer(data[offset:]),
-		KeyIDFromAddressBuffer(data[offset+KeyIDSize:]),
+	keyIDs := []btcec.KeyID{
+		btcec.KeyIDFromAddressBuffer(data[offset:]),
+		btcec.KeyIDFromAddressBuffer(data[offset+btcec.KeyIDSize:]),
 	}
 	return newAddressAztec(data[0:offset], keyIDs, netID)
 }
@@ -203,7 +203,7 @@ func (a *AddressAztec) ScriptAddress() []byte {
 }
 
 // ScriptKeyIDs returns the key ids to be included in a txout script for an Aztec address.
-func (a *AddressAztec) ScriptKeyIDs() []KeyID {
+func (a *AddressAztec) ScriptKeyIDs() []btcec.KeyID {
 	return a.keyIDs[:]
 }
 
@@ -262,8 +262,8 @@ func (a *AddressPubKeyHash) ScriptAddress() []byte {
 
 // ScriptKeyIDs returns the key ids to be included in a txout script
 // todo(ben): should this be part of the Address interface?
-func (a *AddressPubKeyHash) ScriptKeyIDs() []KeyID {
-	return make([]KeyID, 0)
+func (a *AddressPubKeyHash) ScriptKeyIDs() []btcec.KeyID {
+	return make([]btcec.KeyID, 0)
 }
 
 // IsForNet returns whether or not the pay-to-pubkey-hash address is associated
@@ -335,8 +335,8 @@ func (a *AddressScriptHash) ScriptAddress() []byte {
 
 // ScriptKeyIDs returns the key ids to be included in a txout script
 // todo(ben): should this be part of the Address interface?
-func (a *AddressScriptHash) ScriptKeyIDs() []KeyID {
-	return make([]KeyID, 0)
+func (a *AddressScriptHash) ScriptKeyIDs() []btcec.KeyID {
+	return make([]btcec.KeyID, 0)
 }
 
 // IsForNet returns whether or not the pay-to-script-hash address is associated
@@ -449,8 +449,8 @@ func (a *AddressPubKey) ScriptAddress() []byte {
 
 // ScriptKeyIDs returns the key ids to be included in a txout script
 // todo(ben): should this be part of the Address interface?
-func (a *AddressPubKey) ScriptKeyIDs() []KeyID {
-	return make([]KeyID, 0)
+func (a *AddressPubKey) ScriptKeyIDs() []btcec.KeyID {
+	return make([]btcec.KeyID, 0)
 }
 
 // IsForNet returns whether or not the pay-to-pubkey address is associated

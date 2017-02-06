@@ -5,6 +5,7 @@
 package txscript
 
 import (
+	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/rmgutil"
 )
@@ -485,7 +486,7 @@ func payToPubKeyScript(serializedPubKey []byte) ([]byte, error) {
 
 // payToAztecScript creates a new script to pay a transaction output to an
 // Aztec 2-of-3 address.
-func payToAztecScript(pubKeyHash []byte, keyIDs []rmgutil.KeyID) ([]byte, error) {
+func payToAztecScript(pubKeyHash []byte, keyIDs []btcec.KeyID) ([]byte, error) {
 	if len(keyIDs) != 2 {
 		return nil, ErrBadNumRequired
 	}
@@ -632,9 +633,9 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 		requiredSigs = 2
 		key0, err0 := asInt32(pops[2])
 		key1, err1 := asInt32(pops[3])
-		keyIDs := []rmgutil.KeyID{
-			rmgutil.KeyID(key0),
-			rmgutil.KeyID(key1),
+		keyIDs := []btcec.KeyID{
+			btcec.KeyID(key0),
+			btcec.KeyID(key1),
 		}
 		addr, err := rmgutil.NewAddressAztec(pops[1].data, keyIDs, chainParams)
 		if err == nil && err0 == nil && err1 == nil {

@@ -5,6 +5,7 @@
 package txscript_test
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/bitgo/rmgd/blockchain"
@@ -16,6 +17,18 @@ import (
 	"github.com/bitgo/rmgd/wire"
 	"testing"
 )
+
+// hexToBytes converts the passed hex string into bytes and will panic if there
+// is an error.  This is only provided for the hard-coded constants so errors in
+// the source code can be detected. It will only (and must only) be called with
+// hard-coded values.
+func hexToBytes(s string) []byte {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		panic("invalid hex in source file: " + s)
+	}
+	return b
+}
 
 type addressToKey struct {
 	key        *btcec.PrivateKey
@@ -63,6 +76,26 @@ func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript
 		return fmt.Errorf("failed to parse script %s: %v", msg, err)
 	}
 	keyView := blockchain.NewKeyViewpoint()
+
+	//key ids
+	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+	pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
+
+	keyView.SetKeyIDs(map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey1, keyId2: pubKey2})
+
+	//admin key sets
+	keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
+	keySet, _ := btcec.ParsePubKeySet(btcec.S256(),
+		"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1", // priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
+		"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+	)
+	keySets[btcec.RootKeySet] = keySet
+	keySets[btcec.ProvisionKeySet] = keySet
+	keySets[btcec.IssueKeySet] = keySet
+
+	keyView.SetKeys(keySets)
 	// If script is Aztec script, we replace all keyIDs with pubKeyHashes.
 	if txscript.TypeOfScript(pops) == txscript.AztecTy {
 		keyIDs, err := txscript.ExtractKeyIDs(pops)
@@ -1196,7 +1229,7 @@ func TestSignTxOutput(t *testing.T) {
 
 	//Aztec Multisig
 	//KeyID #1
-	keyId1 := rmgutil.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
 	key1, _ := btcec.PrivKeyFromBytes(btcec.S256(), []byte{
 		0xea, 0xf0, 0x2c, 0xa3, 0x48, 0xc5, 0x24, 0xe6,
 		0x39, 0x26, 0x55, 0xba, 0x4d, 0x29, 0x60, 0x3c,
@@ -1205,7 +1238,7 @@ func TestSignTxOutput(t *testing.T) {
 	})
 
 	//KeyID #2
-	keyId2 := rmgutil.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 	key2, _ := btcec.PrivKeyFromBytes(btcec.S256(), []byte{
 		0x2b, 0x8c, 0x52, 0xb7, 0x7b, 0x32, 0x7c, 0x75,
 		0x5b, 0x9b, 0x37, 0x55, 0x00, 0xd3, 0xf4, 0xb2,
@@ -1228,7 +1261,7 @@ func TestSignTxOutput(t *testing.T) {
 
 		//Creation of Aztec address
 		addr, err := rmgutil.NewAddressAztec(pkHash,
-			[]rmgutil.KeyID{keyId1, keyId2}, &chaincfg.TestNet3Params)
+			[]btcec.KeyID{keyId1, keyId2}, &chaincfg.TestNet3Params)
 		if err != nil {
 			t.Errorf("failed to make Aztec address for %s: %v",
 				msg, err)
@@ -1274,7 +1307,7 @@ func TestSignTxOutput(t *testing.T) {
 
 		//Creation of Aztec address
 		addr, err := rmgutil.NewAddressAztec(pkHash,
-			[]rmgutil.KeyID{keyId1, keyId2}, &chaincfg.TestNet3Params)
+			[]btcec.KeyID{keyId1, keyId2}, &chaincfg.TestNet3Params)
 		if err != nil {
 			t.Errorf("failed to make Aztec address for %s: %v",
 				msg, err)

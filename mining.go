@@ -462,6 +462,8 @@ func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress rmguti
 	blockTxns = append(blockTxns, coinbaseTx)
 	blockUtxos := blockchain.NewUtxoViewpoint()
 	keyView := blockchain.NewKeyViewpoint()
+	keyView.SetKeys(blockManager.chain.AdminKeySets())
+	keyView.SetKeyIDs(blockManager.chain.KeyIDs())
 
 	// dependers is used to track transactions which depend on another
 	// transaction in the source pool.  This, in conjunction with the

@@ -6,6 +6,7 @@
 package chaincfg
 
 import (
+	"encoding/hex"
 	"errors"
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
@@ -73,7 +74,11 @@ type Params struct {
 	// GenesisHash is the starting block hash.
 	GenesisHash *chainhash.Hash
 
+	// AdminKeySets is the set of keys governing the chain state.
 	AdminKeySets map[btcec.KeySetType]btcec.PublicKeySet
+
+	// WspKeyIdMap are the provisioned keyIDs and respective pubKeys
+	WspKeyIdMap btcec.KeyIdMap
 
 	// PowLimit defines the highest allowed proof of work value for a block
 	// as a uint256.
@@ -246,6 +251,18 @@ var MainNetParams = Params{
 	ChainWindowShareLimit: 25,
 }
 
+// hexToBytes converts the passed hex string into bytes and will panic if there
+// is an error.  This is only provided for the hard-coded constants so errors in
+// the source code can be detected. It will only (and must only) be called with
+// hard-coded values.
+func hexToBytes(s string) []byte {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		panic("invalid hex in source file: " + s)
+	}
+	return b
+}
+
 // RegressionNetParams defines the network parameters for the regression test
 // Bitcoin network.  Not to be confused with the test Bitcoin network (version
 // 3), this network is sometimes simply called "testnet".
@@ -268,7 +285,7 @@ var RegressionNetParams = Params{
 		)
 
 		//validator keys
-		keySets[btcec.ValidatorKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+		keySets[btcec.ValidateKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
 			"035f5103852bd7d9c9c28e44caf1f7188941e16295062ca4c89928a8ccff993cd3", // TODO(aztec) add priv
 			"0265de49399e78020026219492e2a6e1a41e93591b87220ae8a2f3ebf3473dbeef", // TODO(aztec) add priv
 			"039cb94c99c4700918250c40fa35b7fa0a75a967c9366aa19b8fc354373368beef", // TODO(aztec) add priv
@@ -276,6 +293,13 @@ var RegressionNetParams = Params{
 		)
 
 		return keySets
+	}(),
+	WspKeyIdMap: func() btcec.KeyIdMap {
+		keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+		pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+		keyId2 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+		pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
+		return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey1, keyId2: pubKey2}
 	}(),
 	PowLimit:                 regressionPowLimit,
 	PowLimitBits:             0x200f0f0f,
@@ -337,8 +361,34 @@ var TestNet3Params = Params{
 	DNSSeeds:    []string{},
 
 	// Chain parameters
-	GenesisBlock:             &testNet3GenesisBlock,
-	GenesisHash:              &testNet3GenesisHash,
+	GenesisBlock: &testNet3GenesisBlock,
+	GenesisHash:  &testNet3GenesisHash,
+	AdminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
+		keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
+
+		//root keys
+		keySets[btcec.RootKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1", // priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
+			"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+		)
+
+		//validator keys
+		keySets[btcec.ValidateKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			"035f5103852bd7d9c9c28e44caf1f7188941e16295062ca4c89928a8ccff993cd3", // TODO(aztec) add priv
+			"0265de49399e78020026219492e2a6e1a41e93591b87220ae8a2f3ebf3473dbeef", // TODO(aztec) add priv
+			"039cb94c99c4700918250c40fa35b7fa0a75a967c9366aa19b8fc354373368beef", // TODO(aztec) add priv
+			"031337ab09070254638075c7b59643dce2d60c5260bf5841d2f8cc6f75f6790d4e", // TODO(aztec) add priv
+		)
+
+		return keySets
+	}(),
+	WspKeyIdMap: func() btcec.KeyIdMap {
+		keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+		pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+		keyId2 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+		pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
+		return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey1, keyId2: pubKey2}
+	}(),
 	PowLimit:                 testNet3PowLimit,
 	PowLimitBits:             0x2007ffff,
 	CoinbaseMaturity:         100,

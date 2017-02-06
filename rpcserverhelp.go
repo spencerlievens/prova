@@ -186,14 +186,18 @@ var helpDescsEnUS = map[string]string{
 	"getbestblock--synopsis": "Get block height and hash of best block in the main chain.",
 	"getbestblock--result0":  "Get block height and hash of best block in the main chain.",
 
+	// WspKeyIdResult help.
+	"wspkeyidresult-pubkey": "compressed, serialized pubKey of WSP",
+	"wspkeyidresult-keyid":  "uint32 keyID assigned to WSP",
+
 	// GetAdminInfoResult help.
-	"getadmininforesult-hash":             "block hash at which returned admin state is valid.",
-	"getadmininforesult-height":           "Height of the block at which returned admin state is valid.",
-	"getadmininforesult-rootkeys":         "list of compressed, serialized strings of root pubKeys",
-	"getadmininforesult-provisioningkeys": "list of compressed, serialized strings of provisioning pubKeys",
-	"getadmininforesult-issuingkeys":      "list of compressed, serialized strings of issuing pubKeys",
-	"getadmininforesult-validatekeys":     "list of compressed, serialized strings of validate pubKeys",
-	"getadmininforesult-wpskeys":          "list of compressed, serialized strings of wps pubKeys",
+	"getadmininforesult-hash":          "block hash at which returned admin state is valid.",
+	"getadmininforesult-height":        "Height of the block at which returned admin state is valid.",
+	"getadmininforesult-rootkeys":      "list of compressed, serialized strings of root pubKeys",
+	"getadmininforesult-provisionkeys": "list of compressed, serialized strings of provision pubKeys",
+	"getadmininforesult-issuekeys":     "list of compressed, serialized strings of issue pubKeys",
+	"getadmininforesult-validatekeys":  "list of compressed, serialized strings of validate pubKeys",
+	"getadmininforesult-wspkeymap":     "map of keyIDs to wsp pubKeys",
 
 	// GetAdminInfoCmd help.
 	"getadmininfo--synopsis": "Get admin key sets at best block in the main chain.",

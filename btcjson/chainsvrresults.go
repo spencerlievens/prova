@@ -77,15 +77,22 @@ type GetAddedNodeInfoResult struct {
 	Addresses *[]GetAddedNodeInfoResultAddr `json:"addresses,omitempty"`
 }
 
-// GetBestBlockResult models the data from the getbestblock command.
+// WspKeyIdResult models the data of the WpsKeys portion of the
+// GetAdminInfoResult command.
+type WspKeyIdResult struct {
+	PubKey string `json:"pubkey"`
+	KeyID  uint32 `json:"keyid"`
+}
+
+// GetAdminInfoResult models the data from the getadmininfo command.
 type GetAdminInfoResult struct {
-	Hash             string   `json:"hash"`
-	Height           uint32   `json:"height"`
-	RootKeys         []string `json:"rootkeys,omitempty"`
-	ProvisioningKeys []string `json:"provisioningkeys,omitempty"`
-	IssuingKeys      []string `json:"issuingkeys,omitempty"`
-	ValidateKeys     []string `json:"validatekeys,omitempty"`
-	WpsKeys          []string `json:"wpskeys,omitempty"`
+	Hash          string           `json:"hash"`
+	Height        uint32           `json:"height"`
+	RootKeys      []string         `json:"rootkeys,omitempty"`
+	ProvisionKeys []string         `json:"provisionkeys,omitempty"`
+	IssueKeys     []string         `json:"issuekeys,omitempty"`
+	ValidateKeys  []string         `json:"validatekeys,omitempty"`
+	WspKeys       []WspKeyIdResult `json:"wspkeymap,omitempty"`
 }
 
 // GetBlockChainInfoResult models the data returned from the getblockchaininfo

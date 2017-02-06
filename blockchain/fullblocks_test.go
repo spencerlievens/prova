@@ -66,12 +66,19 @@ func TestFullBlocks(t *testing.T) {
 				block.Hash(), blockHeight, isOrphan,
 				item.IsOrphan)
 		}
-		stateKeys := chain.AdminKeySets()[btcec.IssuingKeySet]
-		if item.AdminKey != nil && stateKeys.Pos(item.AdminKey) < 0 {
+		stateKeys := chain.AdminKeySets()[btcec.IssueKeySet]
+		if item.AdminKey != nil && item.KeyID == 0 && stateKeys.Pos(item.AdminKey) < 0 {
 			t.Fatalf("block %q (hash %s, height %d) should "+
 				"have admin key %x, got %x", item.Name,
 				block.Hash(), blockHeight, item.AdminKey,
 				stateKeys)
+		}
+		keyIDs := chain.KeyIDs()
+		if item.KeyID > 0 && !keyIDs[item.KeyID].IsEqual(item.AdminKey) {
+			t.Fatalf("block %q (hash %s, height %d) should "+
+				"have keyID %x, got %v", item.Name,
+				block.Hash(), blockHeight, item.KeyID,
+				keyIDs)
 		}
 	}
 

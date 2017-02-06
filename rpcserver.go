@@ -14,19 +14,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"math/big"
-	"math/rand"
-	"net"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/btcjson"
@@ -40,6 +27,18 @@ import (
 	"github.com/bitgo/rmgd/wire"
 	"github.com/btcsuite/fastsha256"
 	"github.com/btcsuite/websocket"
+	"io"
+	"io/ioutil"
+	"math/big"
+	"math/rand"
+	"net"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 const (
@@ -628,13 +627,13 @@ func handleCreateRawAdminTransaction(s *rpcServer, cmd interface{}, closeChan <-
 	adminStatementDataSize := 1 + btcec.PubKeyBytesLenCompressed
 	if keyType == "wsp" {
 		// WSP adds need an extra appended 4 byte keyid
-		adminStatementDataSize += rmgutil.KeyIDSize
+		adminStatementDataSize += btcec.KeyIDSize
 	}
 	adminStatementData := make([]byte, adminStatementDataSize)
 	adminStatementData[0] = op
 	copy(adminStatementData[1:], pubKey.SerializeCompressed())
 	if keyType == "wsp" {
-		keyIdBytes := make([]byte, rmgutil.KeyIDSize)
+		keyIdBytes := make([]byte, btcec.KeyIDSize)
 		binary.LittleEndian.PutUint32(keyIdBytes, *c.KeyId)
 		keyIdIndex := 1 + btcec.PubKeyBytesLenCompressed
 		copy(adminStatementData[keyIdIndex:], keyIdBytes)
@@ -1454,12 +1453,24 @@ func handleGetAddressTxIds(s *rpcServer, cmd interface{}, closeChan <-chan struc
 func handleGetAdminInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	best := s.chain.BestSnapshot()
 	adminKeySets := s.chain.AdminKeySets()
+	wspKeyIdMap := s.chain.KeyIDs()
+	wspObj := make([]btcjson.WspKeyIdResult, len(wspKeyIdMap))
+	i := 0
+	for k, v := range wspKeyIdMap {
+		wspObj[i] = btcjson.WspKeyIdResult{
+			KeyID:  uint32(k),
+			PubKey: hex.EncodeToString(v.SerializeCompressed()),
+		}
+		i++
+	}
 	result := &btcjson.GetAdminInfoResult{
-		Hash:         best.Hash.String(),
-		Height:       best.Height,
-		RootKeys:     adminKeySets[btcec.RootKeySet].ToStringArray(),
-		ValidateKeys: adminKeySets[btcec.ValidatorKeySet].ToStringArray(),
-		IssuingKeys:  adminKeySets[btcec.IssuingKeySet].ToStringArray(),
+		Hash:          best.Hash.String(),
+		Height:        best.Height,
+		RootKeys:      adminKeySets[btcec.RootKeySet].ToStringArray(),
+		ProvisionKeys: adminKeySets[btcec.ProvisionKeySet].ToStringArray(),
+		IssueKeys:     adminKeySets[btcec.IssueKeySet].ToStringArray(),
+		ValidateKeys:  adminKeySets[btcec.ValidateKeySet].ToStringArray(),
+		WspKeys:       wspObj,
 	}
 	return result, nil
 }

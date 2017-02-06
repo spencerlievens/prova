@@ -81,6 +81,7 @@ type AcceptedBlock struct {
 	IsMainChain bool
 	IsOrphan    bool
 	AdminKey    *btcec.PublicKey
+	KeyID       btcec.KeyID
 }
 
 // Ensure AcceptedBlock implements the TestInstance interface.
@@ -305,9 +306,28 @@ func aztecThreadScript(threadID rmgutil.ThreadID) []byte {
 
 // aztecAdminScript creates a new script that executes and admin op.
 func aztecAdminScript(opcode byte, pubKey *btcec.PublicKey) []byte {
-	data := make([]byte, btcec.PubKeyBytesLenCompressed+1)
+	// size as: <operation (1 byte)> <compressed public key (33 bytes)>
+	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed)
 	data[0] = opcode
 	copy(data[1:], pubKey.SerializeCompressed())
+	builder := txscript.NewScriptBuilder()
+	script, err := builder.
+		AddOp(txscript.OP_RETURN).
+		AddData(data).Script()
+	if err != nil {
+		panic(err)
+	}
+	return script
+}
+
+// aztecAdminWSPScript creates a new script that executes and admin op
+// to provision or deprovision an WSP key.
+func aztecAdminWSPScript(opcode byte, pubKey *btcec.PublicKey, keyID btcec.KeyID) []byte {
+	// size as: <operation (1 byte)> <compressed public key (33 bytes)> <key id : 4 bytes>
+	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
+	data[0] = opcode
+	copy(data[1:], pubKey.SerializeCompressed())
+	keyID.ToAddressFormat(data[1+btcec.PubKeyBytesLenCompressed:])
 	builder := txscript.NewScriptBuilder()
 	script, err := builder.
 		AddOp(txscript.OP_RETURN).
@@ -531,6 +551,26 @@ func createAdminTx(spend *spendableOut, threadID rmgutil.ThreadID, op byte, pubK
 	spendTx.AddTxOut(wire.NewTxOut(txValue, aztecThreadScript(threadID)))
 	spendTx.AddTxOut(wire.NewTxOut(txValue,
 		aztecAdminScript(op, pubKey)))
+	return spendTx
+}
+
+// createWSPAdminTx creates an admin tx that provisions a keyID
+func createWspAdminTx(spend *spendableOut, op byte, pubKey *btcec.PublicKey,
+	keyID btcec.KeyID) *wire.MsgTx {
+	spendTx := wire.NewMsgTx()
+	spendTx.AddTxIn(&wire.TxIn{
+		PreviousOutPoint: spend.prevOut,
+		Sequence:         wire.MaxTxInSequenceNum,
+		SignatureScript:  nil,
+	})
+	txValue := int64(0) // how much the tx is spending. 0 for admin tx.
+	spendTx.AddTxOut(wire.NewTxOut(txValue,
+		aztecThreadScript(rmgutil.ProvisionThread)))
+	spendTx.AddTxOut(wire.NewTxOut(txValue,
+		aztecAdminWSPScript(op, pubKey, keyID)))
+	var buf bytes.Buffer
+	_ = spendTx.SerializeStripped(&buf)
+	fmt.Printf("sc %x \n", buf.Bytes())
 	return spendTx
 }
 
@@ -920,7 +960,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	// block to be the current tip of the block chain.
 	acceptBlock := func(blockName string, block *wire.MsgBlock, isMainChain, isOrphan bool) TestInstance {
 		blockHeight := g.blockHeights[blockName]
-		return AcceptedBlock{blockName, block, blockHeight, isMainChain, isOrphan, nil}
+		return AcceptedBlock{blockName, block, blockHeight, isMainChain, isOrphan, nil, 0}
 	}
 	rejectBlock := func(blockName string, block *wire.MsgBlock, code blockchain.ErrorCode) TestInstance {
 		blockHeight := g.blockHeights[blockName]
@@ -941,7 +981,11 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	}
 	acceptBlockwithAdminKeys := func(blockName string, block *wire.MsgBlock, isMainChain, isOrphan bool, adminKey *btcec.PublicKey) TestInstance {
 		blockHeight := g.blockHeights[blockName]
-		return AcceptedBlock{blockName, block, blockHeight, isMainChain, isOrphan, adminKey}
+		return AcceptedBlock{blockName, block, blockHeight, isMainChain, isOrphan, adminKey, 0}
+	}
+	acceptBlockwithWspKeys := func(blockName string, block *wire.MsgBlock, isMainChain, isOrphan bool, adminKey *btcec.PublicKey, keyID btcec.KeyID) TestInstance {
+		blockHeight := g.blockHeights[blockName]
+		return AcceptedBlock{blockName, block, blockHeight, isMainChain, isOrphan, adminKey, keyID}
 	}
 
 	// Define some convenience helper functions to populate the tests slice
@@ -973,6 +1017,11 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	acceptedWithAdminKey := func(adminKey *btcec.PublicKey) {
 		tests = append(tests, []TestInstance{
 			acceptBlockwithAdminKeys(g.tipName, g.tip, true, false, adminKey),
+		})
+	}
+	acceptedWithWspKey := func(adminKey *btcec.PublicKey, keyID btcec.KeyID) {
+		tests = append(tests, []TestInstance{
+			acceptBlockwithWspKeys(g.tipName, g.tip, true, false, adminKey, keyID),
 		})
 	}
 	acceptedToSideChainWithExpectedTip := func(tipName string) {
@@ -1085,8 +1134,10 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	g.nextBlock("b5", outs[2])
 	acceptedToSideChainWithExpectedTip("b4")
 
-	g.nextBlock("b6", outs[3])
-	accepted()
+	keyId := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	wspKeyIdAddTx := createWspAdminTx(outs[3], txscript.OP_WSPKEYADD, pubKey, keyId)
+	g.nextBlock("b6", nil, additionalTx(wspKeyIdAddTx))
+	acceptedWithWspKey(pubKey, keyId)
 
 	// ---------------------------------------------------------------------
 	// Double spend tests.

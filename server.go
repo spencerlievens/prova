@@ -2528,13 +2528,15 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 			MaxSigOpsPerTx:       blockchain.MaxSigOpsPerBlock / 5,
 			MinRelayTxFee:        cfg.minRelayTxFee,
 		},
-		ChainParams:   chainParams,
-		FetchUtxoView: s.blockManager.chain.FetchUtxoView,
-		BestHeight:    func() uint32 { return bm.chain.BestSnapshot().Height },
-		SigCache:      s.sigCache,
-		HashCache:     s.hashCache,
-		TimeSource:    s.timeSource,
-		AddrIndex:     s.addrIndex,
+		ChainParams:     chainParams,
+		FetchUtxoView:   s.blockManager.chain.FetchUtxoView,
+		GetKeyIDs:       bm.chain.KeyIDs,
+		GetAdminKeySets: bm.chain.AdminKeySets,
+		BestHeight:      func() uint32 { return bm.chain.BestSnapshot().Height },
+		SigCache:        s.sigCache,
+		HashCache:       s.hashCache,
+		TimeSource:      s.timeSource,
+		AddrIndex:       s.addrIndex,
 	}
 	s.txMemPool = mempool.New(&txC)
 

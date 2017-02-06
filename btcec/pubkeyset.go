@@ -11,10 +11,10 @@ import (
 type KeySetType uint8
 
 const (
-	RootKeySet         KeySetType = 0
-	ProvisioningKeySet KeySetType = 1
-	IssuingKeySet      KeySetType = 2
-	ValidatorKeySet    KeySetType = 3
+	RootKeySet      KeySetType = 0
+	ProvisionKeySet KeySetType = 1
+	IssueKeySet     KeySetType = 2
+	ValidateKeySet  KeySetType = 3
 )
 
 // ParsePubKeySet parses a list of ecdsa.Publickey for a koblitz curve from a
@@ -69,9 +69,16 @@ func (set PublicKeySet) ToStringArray() []string {
 	return rv
 }
 
+func (set PublicKeySet) Add(key *PublicKey) PublicKeySet {
+	if set.Pos(key) < 0 {
+		set = append(set, *key)
+	}
+	return set
+}
+
 // remove will remove the element at position i.
 func (set PublicKeySet) Remove(pos int) PublicKeySet {
-	if pos >= len(set) {
+	if pos < 0 || pos >= len(set) {
 		return set
 	}
 	//move element at pos to end of set through assignment

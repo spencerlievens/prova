@@ -1132,5 +1132,7 @@ func (b *BlockChain) CheckConnectBlock(block *rmgutil.Block) error {
 	// - all keyIDs used for outputs are provisioned.
 	keyView := NewKeyViewpoint()
 	keyView.SetKeys(b.adminKeySets)
+	keyView.SetKeyIDs(b.wspKeyIdMap)
+	keyView.SetBestHash(prevNode.hash)
 	return b.checkConnectBlock(newNode, block, utxoView, keyView, nil)
 }
