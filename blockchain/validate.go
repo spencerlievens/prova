@@ -1061,6 +1061,18 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, ut
 		scriptFlags |= txscript.ScriptVerifyDERSignatures
 	}
 
+	// Check that the validate key used to sign the block is represented in
+	// the current admin keyset state.
+	validateKeySet := keyView.Keys()[btcec.ValidateKeySet]
+	pubKey, err := btcec.ParsePubKey(blockHeader.ValidatingPubKey[:], btcec.S256())
+	if err != nil {
+		return err
+	}
+	if len(validateKeySet) > 0 && validateKeySet.Pos(pubKey) == -1 {
+		str := fmt.Sprintf("invalid validate key")
+		return ruleError(ErrExcessiveTrailing, str)
+	}
+
 	// Enforce CHECKLOCKTIMEVERIFY for block versions 4+ once the majority
 	// of the network has upgraded to the enforcement threshold.  This is
 	// part of BIP0065.

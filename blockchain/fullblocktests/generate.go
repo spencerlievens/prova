@@ -47,6 +47,13 @@ var (
 		0x9b, 0xf2, 0x8d, 0x89, 0x65, 0x1a, 0x9e, 0x22,
 		0x0d, 0xbc, 0x2c, 0x0d, 0x11, 0x81, 0xc5, 0xe4,
 	})
+	// The validate key must be part of the initial validate key set.
+	validatePrivKey, _ = btcec.PrivKeyFromBytes(btcec.S256(), []byte{
+		0x40, 0x15, 0x28, 0x9a, 0x22, 0x86, 0x58, 0x04, 0x75, 0x20,
+		0xf0, 0xd0, 0xab, 0xe7, 0xad, 0x49, 0xab, 0xc7, 0x7f, 0x6b,
+		0xe0, 0xbe, 0x63, 0xb3, 0x6b, 0x94, 0xb8, 0x3c, 0x2d, 0x1f,
+		0xd9, 0x77,
+	})
 	// Some keyIDs to make tests easier
 	keyId1 = btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 	keyId2 = btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
@@ -209,7 +216,7 @@ type testGenerator struct {
 // genesis block as the tip.
 func makeTestGenerator(params *chaincfg.Params) (testGenerator, error) {
 	genesis := params.GenesisBlock
-	genesis.Header.Sign(privKey2)
+	genesis.Header.Sign(validatePrivKey)
 	genesisHash := genesis.Header.BlockHash()
 	return testGenerator{
 		params:       params,
@@ -544,7 +551,7 @@ func (g *testGenerator) nextBlock(blockName string, spend *spendableOut, mungers
 		block.Header.MerkleRoot = calcMerkleRoot(block.Transactions)
 	}
 	block.Header.Size = uint32(block.SerializeSize())
-	block.Header.Sign(privKey2)
+	block.Header.Sign(validatePrivKey)
 
 	// Only solve the block if the nonce wasn't manually changed by a munge
 	// function.
