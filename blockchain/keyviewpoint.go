@@ -112,7 +112,6 @@ func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 				pos := view.adminKeySets[btcec.ProvisionKeySet].Pos(pubKey)
 				view.adminKeySets[btcec.ProvisionKeySet] = view.adminKeySets[btcec.ProvisionKeySet].Remove(pos)
 			}
-		case rmgutil.ProvisionThread:
 			if op == txscript.OP_ISSUINGKEYADD {
 				view.adminKeySets[btcec.IssueKeySet] = view.adminKeySets[btcec.IssueKeySet].Add(pubKey)
 			}
@@ -120,6 +119,7 @@ func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 				pos := view.adminKeySets[btcec.IssueKeySet].Pos(pubKey)
 				view.adminKeySets[btcec.IssueKeySet] = view.adminKeySets[btcec.IssueKeySet].Remove(pos)
 			}
+		case rmgutil.ProvisionThread:
 			if op == txscript.OP_VALIDATEKEYADD {
 				view.adminKeySets[btcec.ValidateKeySet] = view.adminKeySets[btcec.ValidateKeySet].Add(pubKey)
 			}
@@ -194,7 +194,6 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 						pos := view.adminKeySets[btcec.ProvisionKeySet].Pos(pubKey)
 						view.adminKeySets[btcec.ProvisionKeySet] = view.adminKeySets[btcec.ProvisionKeySet].Remove(pos)
 					}
-				case rmgutil.ProvisionThread:
 					if op == txscript.OP_ISSUINGKEYREVOKE {
 						view.adminKeySets[btcec.IssueKeySet] = view.adminKeySets[btcec.IssueKeySet].Add(pubKey)
 					}
@@ -202,12 +201,25 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 						pos := view.adminKeySets[btcec.IssueKeySet].Pos(pubKey)
 						view.adminKeySets[btcec.IssueKeySet] = view.adminKeySets[btcec.IssueKeySet].Remove(pos)
 					}
+				case rmgutil.ProvisionThread:
 					if op == txscript.OP_VALIDATEKEYREVOKE {
 						view.adminKeySets[btcec.ValidateKeySet] = view.adminKeySets[btcec.ValidateKeySet].Add(pubKey)
 					}
 					if op == txscript.OP_VALIDATEKEYADD {
 						pos := view.adminKeySets[btcec.ValidateKeySet].Pos(pubKey)
 						view.adminKeySets[btcec.ValidateKeySet] = view.adminKeySets[btcec.ValidateKeySet].Remove(pos)
+					}
+					if op == txscript.OP_WSPKEYREVOKE {
+						_, pubKey, keyID, _ := txscript.ExtractWspData(adminOutputs[i])
+						if view.wspKeyIdMap[keyID] == nil {
+							view.wspKeyIdMap[keyID] = pubKey
+						}
+					}
+					if op == txscript.OP_WSPKEYADD {
+						_, pubKey, keyID, _ := txscript.ExtractWspData(adminOutputs[i])
+						if view.wspKeyIdMap[keyID].IsEqual(pubKey) {
+							delete(view.wspKeyIdMap, keyID)
+						}
 					}
 				}
 			}

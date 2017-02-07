@@ -765,13 +765,13 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	accepted()
 
 	// Provision an ISSUE key in b3 and check its there.
-	issueKeyAddTx := createAdminTx(outs[1], 1, txscript.OP_ISSUINGKEYADD, pubKey1)
+	issueKeyAddTx := createAdminTx(outs[0], 0, txscript.OP_ISSUINGKEYADD, pubKey1)
 	g.nextBlock("b3", nil, additionalTx(issueKeyAddTx))
 	acceptedWithAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1})
 
 	// Provision another one and check both are there.
 	provisionThreadOut := makeSpendableOutForTx(issueKeyAddTx, 0)
-	issueKeyAddTx2 := createAdminTx(&provisionThreadOut, 1, txscript.OP_ISSUINGKEYADD, pubKey2)
+	issueKeyAddTx2 := createAdminTx(&provisionThreadOut, 0, txscript.OP_ISSUINGKEYADD, pubKey2)
 	g.nextBlock("b4", nil, additionalTx(issueKeyAddTx2))
 	acceptedWithAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1, *pubKey2})
 
@@ -782,9 +782,9 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	// Revoke both in one block
 	provisionThreadOut = makeSpendableOutForTx(issueKeyAddTx2, 0)
-	issueKeyRevokeTx1 := createAdminTx(&provisionThreadOut, 1, txscript.OP_ISSUINGKEYREVOKE, pubKey1)
+	issueKeyRevokeTx1 := createAdminTx(&provisionThreadOut, 0, txscript.OP_ISSUINGKEYREVOKE, pubKey1)
 	provisionThreadOut = makeSpendableOutForTx(issueKeyRevokeTx1, 0)
-	issueKeyRevokeTx2 := createAdminTx(&provisionThreadOut, 1, txscript.OP_ISSUINGKEYREVOKE, pubKey2)
+	issueKeyRevokeTx2 := createAdminTx(&provisionThreadOut, 0, txscript.OP_ISSUINGKEYREVOKE, pubKey2)
 	g.nextBlock("b6", nil, additionalTx(issueKeyRevokeTx1), additionalTx(issueKeyRevokeTx2))
 	accepted()
 
@@ -810,7 +810,8 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	g.nextBlock("b9", outs[8])
 	accepted()
 
-	adminKeyAddTx := createAdminTx(outs[9], 1, txscript.OP_ISSUINGKEYADD, pubKey1)
+	provisionThreadOut = makeSpendableOutForTx(issueKeyRevokeTx2, 0)
+	adminKeyAddTx := createAdminTx(&provisionThreadOut, 0, txscript.OP_ISSUINGKEYADD, pubKey1)
 	g.nextBlock("b10", nil, additionalTx(adminKeyAddTx))
 	acceptedWithAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1})
 
