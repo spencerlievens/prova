@@ -14,7 +14,7 @@ import (
 // BenchmarkIsCoinBase performs a simple benchmark against the IsCoinBase
 // function.
 func BenchmarkIsCoinBase(b *testing.B) {
-	tx, _ := rmgutil.NewBlock(&Block100000).Tx(1)
+	tx, _ := rmgutil.NewBlock(&SomeBlock).Tx(1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		blockchain.IsCoinBase(tx)
@@ -24,7 +24,7 @@ func BenchmarkIsCoinBase(b *testing.B) {
 // BenchmarkIsCoinBaseTx performs a simple benchmark against the IsCoinBaseTx
 // function.
 func BenchmarkIsCoinBaseTx(b *testing.B) {
-	tx := Block100000.Transactions[1]
+	tx := SomeBlock.Transactions[1]
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		blockchain.IsCoinBaseTx(tx)

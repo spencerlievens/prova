@@ -66,19 +66,42 @@ func TestFullBlocks(t *testing.T) {
 				block.Hash(), blockHeight, isOrphan,
 				item.IsOrphan)
 		}
-		stateKeys := chain.AdminKeySets()[btcec.IssueKeySet]
-		if item.AdminKey != nil && item.KeyID == 0 && stateKeys.Pos(item.AdminKey) < 0 {
+
+		// Check ROOT KEYS
+		if item.IsMainChain && !item.AdminKeySets[btcec.RootKeySet].Equal(chain.AdminKeySets()[btcec.RootKeySet]) {
 			t.Fatalf("block %q (hash %s, height %d) should "+
-				"have admin key %x, got %x", item.Name,
-				block.Hash(), blockHeight, item.AdminKey,
-				stateKeys)
+				"have ROOT KEYS %x, got %x", item.Name, block.Hash(),
+				blockHeight, item.AdminKeySets[btcec.RootKeySet],
+				chain.AdminKeySets()[btcec.RootKeySet])
 		}
-		keyIDs := chain.KeyIDs()
-		if item.KeyID > 0 && !keyIDs[item.KeyID].IsEqual(item.AdminKey) {
+		// Check PROVISION KEYS
+		provisionKeySet := btcec.PublicKeySet(item.AdminKeySets[btcec.ProvisionKeySet])
+		if item.IsMainChain && !provisionKeySet.Equal(chain.AdminKeySets()[btcec.ProvisionKeySet]) {
 			t.Fatalf("block %q (hash %s, height %d) should "+
-				"have keyID %x, got %v", item.Name,
-				block.Hash(), blockHeight, item.KeyID,
-				keyIDs)
+				"have PROVISION KEYS %x, got %x", item.Name, block.Hash(),
+				blockHeight, provisionKeySet,
+				chain.AdminKeySets()[btcec.ProvisionKeySet])
+		}
+		// Check VALIDATE KEYS
+		if item.IsMainChain && !item.AdminKeySets[btcec.ValidateKeySet].Equal(chain.AdminKeySets()[btcec.ValidateKeySet]) {
+			t.Fatalf("block %q (hash %s, height %d) should "+
+				"have VALIDATE KEYS %x, got %x", item.Name, block.Hash(),
+				blockHeight, item.AdminKeySets[btcec.ValidateKeySet],
+				chain.AdminKeySets()[btcec.ValidateKeySet])
+		}
+		// Check ISSUE KEYS
+
+		if item.IsMainChain && !item.AdminKeySets[btcec.IssueKeySet].Equal(chain.AdminKeySets()[btcec.IssueKeySet]) {
+			t.Fatalf("block %q (hash %s, height %d) should "+
+				"have ISSUE KEYS %v, got %v", item.Name, block.Hash(),
+				blockHeight, item.AdminKeySets[btcec.IssueKeySet].ToStringArray(),
+				chain.AdminKeySets()[btcec.IssueKeySet].ToStringArray())
+		}
+		// Check KeyIDs
+		if item.IsMainChain && !item.WspKeyIdMap.Equal(chain.KeyIDs()) {
+			t.Fatalf("block %q (hash %s, height %d) should "+
+				"have keyID %x, got %v", item.Name, block.Hash(),
+				blockHeight, item.WspKeyIdMap, chain.KeyIDs())
 		}
 	}
 

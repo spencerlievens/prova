@@ -284,7 +284,13 @@ var RegressionNetParams = Params{
 			"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
 		)
 
-		//validator keys
+		//provision keys
+		keySets[btcec.ProvisionKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1", // priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
+			"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+		)
+
+		//validate keys
 		keySets[btcec.ValidateKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
 			"035f5103852bd7d9c9c28e44caf1f7188941e16295062ca4c89928a8ccff993cd3", // TODO(aztec) add priv
 			"0265de49399e78020026219492e2a6e1a41e93591b87220ae8a2f3ebf3473dbeef", // TODO(aztec) add priv

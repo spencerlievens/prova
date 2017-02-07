@@ -14,11 +14,11 @@ import (
 
 // TestMerkle tests the BuildMerkleTreeStore API.
 func TestMerkle(t *testing.T) {
-	block := rmgutil.NewBlock(&Block100000)
+	block := rmgutil.NewBlock(&SomeBlock)
 	merkles := blockchain.BuildMerkleTreeStore(block.Transactions())
 	calculatedMerkleRoot := merkles[len(merkles)-1]
 	// TODO(aztec) clean this up and generate a new block with correct merkle root
-	merkleStr := "229149a594ba8828b0721bc471c74572adcc1f0af7b7ae8b0834fa487bcd2acf"
+	merkleStr := "fe174a6ec736a412d8cc3e02328d1b1d250e24127dd74484dfa257bf983135f8"
 	wantMerkle, _ := chainhash.NewHashFromStr(merkleStr)
 	if !wantMerkle.IsEqual(calculatedMerkleRoot) {
 		t.Errorf("BuildMerkleTreeStore: merkle root mismatch - "+

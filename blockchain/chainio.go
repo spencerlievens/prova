@@ -1226,8 +1226,18 @@ func (b *BlockChain) createChainState() error {
 	b.stateSnapshot = newBestState(b.bestNode, blockSize, numTxns, numTxns,
 		b.bestNode.timestamp)
 
-	b.adminKeySets = b.chainParams.AdminKeySets
+	b.adminKeySets = btcec.DeepCopy(b.chainParams.AdminKeySets)
 	b.wspKeyIdMap = b.chainParams.WspKeyIdMap
+
+	// Initiate the utxo set with the admin thread tips from the genesis
+	// coinbase.
+	// !!! NOTICE:
+	// Unlike in Bitcoin, the genesis coinbase outputs will be spendable
+	// because of these lines of code.
+	utxoView := NewUtxoViewpoint()
+	utxoView.SetBestHash(genesisBlock.Hash())
+	var stxos *[]spentTxOut
+	utxoView.connectTransaction(genesisBlock.Transactions()[0], 0, stxos)
 
 	// Create the initial the database chain state including creating the
 	// necessary index buckets and inserting the genesis block.
@@ -1253,10 +1263,13 @@ func (b *BlockChain) createChainState() error {
 			return err
 		}
 
-		// Create the bucket that houses the utxo set.  Note that the
-		// genesis block coinbase transaction is intentionally not
-		// inserted here since it is not spendable by consensus rules.
+		// Create the bucket that houses the utxo set.
 		_, err = meta.CreateBucket(utxoSetBucketName)
+		if err != nil {
+			return err
+		}
+		// Add the utxos of the genesis block (admin thread tips) to db.
+		err = dbPutUtxoView(dbTx, utxoView)
 		if err != nil {
 			return err
 		}

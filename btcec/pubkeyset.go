@@ -32,6 +32,20 @@ func ParsePubKeySet(curve *KoblitzCurve, pubKeys ...string) (PublicKeySet, error
 	return PublicKeySet(keys), nil
 }
 
+// DeepCopy creates a deep copy of the admin keys.
+func DeepCopy(adminKeySets map[KeySetType]PublicKeySet) map[KeySetType]PublicKeySet {
+	copySets := make(map[KeySetType]PublicKeySet)
+	copySets[RootKeySet] = make([]PublicKey, len(adminKeySets[RootKeySet]))
+	copy(copySets[RootKeySet], adminKeySets[RootKeySet])
+	copySets[ProvisionKeySet] = make([]PublicKey, len(adminKeySets[ProvisionKeySet]))
+	copy(copySets[ProvisionKeySet], adminKeySets[ProvisionKeySet])
+	copySets[IssueKeySet] = make([]PublicKey, len(adminKeySets[IssueKeySet]))
+	copy(copySets[IssueKeySet], adminKeySets[IssueKeySet])
+	copySets[ValidateKeySet] = make([]PublicKey, len(adminKeySets[ValidateKeySet]))
+	copy(copySets[ValidateKeySet], adminKeySets[ValidateKeySet])
+	return copySets
+}
+
 // hexToBytes converts the passed hex string into bytes and will panic if there
 // is an error.  This is only provided for the hard-coded constants so errors in
 // the source code can be detected. It will only (and must only) be called with
@@ -92,7 +106,7 @@ func (set PublicKeySet) Equal(v PublicKeySet) bool {
 	if set == nil && v == nil {
 		return true
 	}
-	if set == nil || v == nil {
+	if set == nil && len(v) != 0 || v == nil && len(set) != 0 {
 		return false
 	}
 	if len(set) != len(v) {

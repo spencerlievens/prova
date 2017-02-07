@@ -63,7 +63,7 @@ func TestHaveBlock(t *testing.T) {
 	}
 
 	// Insert an orphan block.
-	_, isOrphan, err := chain.ProcessBlock(rmgutil.NewBlock(&Block100000),
+	_, isOrphan, err := chain.ProcessBlock(rmgutil.NewBlock(&SomeBlock),
 		blockchain.BFNone)
 	if err != nil {
 		t.Errorf("Unable to process block: %v", err)
@@ -83,11 +83,8 @@ func TestHaveBlock(t *testing.T) {
 		{hash: chaincfg.MainNetParams.GenesisHash.String(), want: true},
 
 		// TODO(aztec): fix tests
-		// Block 3a should be present (on a side chain).
-		// {hash: "00000000474284d20067a4d33f6a02284e6ef70764a3a26d6a5b9df52ef663dd", want: true},
-
-		// Block 100000 should be present (as an orphan).
-		// {hash: "000000000003ba27aa200b1cecaad478d2b00432346c3f1f3986da1afd33e506", want: true},
+		//Some Block should be present (on a side chain).
+		{hash: "2bc306279cb85ff16347e197e2185d9e76a88f1206e23174d5b919391957784f", want: true},
 
 		// Random hashes should not be available.
 		{hash: "123", want: false},
