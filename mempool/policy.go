@@ -48,11 +48,6 @@ const (
 	// considered dust and as a base for calculating minimum required fees
 	// for larger transactions.  This value is in Atoms/1000 bytes.
 	DefaultMinRelayTxFee = rmgutil.Amount(1000)
-
-	// maxStandardMultiSigKeys is the maximum number of public keys allowed
-	// in a multi-signature transaction output script for it to be
-	// considered standard.
-	maxStandardMultiSigKeys = 3
 )
 
 // calcMinRequiredTxRelayFee returns the minimum transaction fee required for a
@@ -158,8 +153,7 @@ func calcInputValueAge(tx *wire.MsgTx, utxoView *blockchain.UtxoViewpoint, nextB
 // checkInputsStandard performs a series of checks on a transaction's inputs
 // to ensure they are "standard".  A standard transaction input within the
 // context of this function is one whose referenced public key script is of a
-// standard form and, for pay-to-script-hash, does not have more than
-// maxStandardP2SHSigOps signature operations.  However, it should also be noted
+// standard form.  However, it should also be noted
 // that standard inputs also are those which have a clean stack after execution
 // and only contain pushed data in their signature scripts.  This function does
 // not perform those checks because the script engine already does this more
@@ -178,24 +172,25 @@ func checkInputsStandard(tx *rmgutil.Tx, utxoView *blockchain.UtxoViewpoint) err
 		entry := utxoView.LookupEntry(&prevOut.Hash)
 		originPkScript := entry.PkScriptByIndex(prevOut.Index)
 		switch txscript.GetScriptClass(originPkScript) {
-		// TODO(aztec): implement
 		case txscript.AztecTy:
 			fallthrough
 		case txscript.GeneralAztecTy:
-			break
-
-		// TODO(aztec): remove
-		case txscript.ScriptHashTy:
-			numSigOps := txscript.GetPreciseSigOpCount(
-				txIn.SignatureScript, originPkScript, true)
-			if numSigOps > maxStandardP2SHSigOps {
+			fallthrough
+		case txscript.AztecAdminTy:
+			sigPops, err := txscript.ParseScript(txIn.SignatureScript)
+			if err != nil {
 				str := fmt.Sprintf("transaction input #%d has "+
-					"%d signature operations which is more "+
-					"than the allowed max amount of %d",
-					i, numSigOps, maxStandardP2SHSigOps)
+					"error %v", err)
 				return txRuleError(wire.RejectNonstandard, str)
 			}
-
+			// we expect pairs of <pub><sig><pub><sig>
+			if len(sigPops)%2 != 0 {
+				str := fmt.Sprintf("transaction input #%d has "+
+					"odd amount of sigPops %d", i, len(sigPops))
+				return txRuleError(wire.RejectNonstandard, str)
+			}
+			// TODO(prova): check 2 or more tuple
+			// TODO(prova): check each tuple to be pubKey + Sig
 		case txscript.NonStandardTy:
 			str := fmt.Sprintf("transaction input #%d has a "+
 				"non-standard script form", i)
@@ -208,53 +203,16 @@ func checkInputsStandard(tx *rmgutil.Tx, utxoView *blockchain.UtxoViewpoint) err
 
 // checkPkScriptStandard performs a series of checks on a transaction output
 // script (public key script) to ensure it is a "standard" public key script.
-// A standard public key script is one that is a recognized form, and for
-// multi-signature scripts, only contains from 1 to maxStandardMultiSigKeys
-// public keys.
+// A standard public key script is one that is a recognized form.
 func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) error {
 	switch scriptClass {
-	// TODO(aztec): implement
 	case txscript.AztecTy:
 		fallthrough
 	case txscript.GeneralAztecTy:
 		break
-
-	// TODO(aztec): remove
-	case txscript.MultiSigTy:
-		numPubKeys, numSigs, err := txscript.CalcMultiSigStats(pkScript)
-		if err != nil {
-			str := fmt.Sprintf("multi-signature script parse "+
-				"failure: %v", err)
-			return txRuleError(wire.RejectNonstandard, str)
-		}
-
-		// A standard multi-signature public key script must contain
-		// from 1 to maxStandardMultiSigKeys public keys.
-		if numPubKeys < 1 {
-			str := "multi-signature script with no pubkeys"
-			return txRuleError(wire.RejectNonstandard, str)
-		}
-		if numPubKeys > maxStandardMultiSigKeys {
-			str := fmt.Sprintf("multi-signature script with %d "+
-				"public keys which is more than the allowed "+
-				"max of %d", numPubKeys, maxStandardMultiSigKeys)
-			return txRuleError(wire.RejectNonstandard, str)
-		}
-
-		// A standard multi-signature public key script must have at
-		// least 1 signature and no more signatures than available
-		// public keys.
-		if numSigs < 1 {
-			return txRuleError(wire.RejectNonstandard,
-				"multi-signature script with no signatures")
-		}
-		if numSigs > numPubKeys {
-			str := fmt.Sprintf("multi-signature script with %d "+
-				"signatures which is more than the available "+
-				"%d public keys", numSigs, numPubKeys)
-			return txRuleError(wire.RejectNonstandard, str)
-		}
-
+	case txscript.AztecAdminTy:
+		// TODO(prova): apply validation rules here
+		break
 	case txscript.NonStandardTy:
 		return txRuleError(wire.RejectNonstandard,
 			"non-standard script form")
@@ -394,8 +352,12 @@ func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockcha
 	// None of the output public key scripts can be a non-standard script or
 	// be "dust" (except when the script is a null data script).
 	numNullDataOutputs := 0
+	isAdminTx := false
 	for i, txOut := range msgTx.TxOut {
 		scriptClass := txscript.GetScriptClass(txOut.PkScript)
+		if i == 0 && scriptClass == txscript.AztecAdminTy {
+			isAdminTx = true
+		}
 		err := checkPkScriptStandard(txOut.PkScript, scriptClass)
 		if err != nil {
 			// Attempt to extract a reject code from the error so
@@ -423,7 +385,7 @@ func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockcha
 
 	// A standard transaction must not have more than one output script that
 	// only carries data.
-	if numNullDataOutputs > 1 {
+	if !isAdminTx && numNullDataOutputs > 1 {
 		str := "more than one transaction output in a nulldata script"
 		return txRuleError(wire.RejectNonstandard, str)
 	}

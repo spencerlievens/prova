@@ -6,10 +6,6 @@ package mempool
 
 import (
 	"encoding/hex"
-	"reflect"
-	"sync"
-	"testing"
-
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
@@ -17,6 +13,9 @@ import (
 	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
+	"reflect"
+	"sync"
+	"testing"
 )
 
 // fakeChain is used by the pool harness to provide generated test utxos and
@@ -60,12 +59,28 @@ func (s *fakeChain) AdminKeySets() map[btcec.KeySetType]btcec.PublicKeySet {
 	return make(map[btcec.KeySetType]btcec.PublicKeySet)
 }
 
+// hexToBytes converts the passed hex string into bytes and will panic if there
+// is an error.  This is only provided for the hard-coded constants so errors in
+// the source code can be detected. It will only (and must only) be called with
+// hard-coded values.
+func hexToBytes(s string) []byte {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		panic("invalid hex in source file: " + s)
+	}
+	return b
+}
+
 // KeyIDs returns all keyID to pub key mapping set on the chain.
 // The returned instance must be treated as immutable since it is shared by all
 // callers.
 // This function is safe for concurrent access.
 func (s *fakeChain) KeyIDs() btcec.KeyIdMap {
-	return make(map[btcec.KeyID]*btcec.PublicKey)
+	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+	pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
+	return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey1, keyId2: pubKey2}
 }
 
 // BestHeight returns the current height associated with the fake chain
@@ -105,12 +120,13 @@ func txOutToSpendableOut(tx *rmgutil.Tx, outputNum uint32) spendableOutput {
 // signing transactions as well as a fake chain that provides utxos for use in
 // generating valid transactions.
 type poolHarness struct {
-	// signKey is the signing key used for creating transactions throughout
+	// privKey1 / 2 are the signing keys used for creating transactions throughout
 	// the tests.
 	//
-	// payAddr is the p2sh address for the signing key and is used for the
+	// payAddr is the Prova address for the signing keys and is used for the
 	// payment address throughout the tests.
-	signKey     *btcec.PrivateKey
+	privKey1    *btcec.PrivateKey
+	privKey2    *btcec.PrivateKey
 	payAddr     rmgutil.Address
 	payScript   []byte
 	chainParams *chaincfg.Params
@@ -195,10 +211,17 @@ func (p *poolHarness) CreateSignedTx(inputs []spendableOutput, numOutputs uint32
 		})
 	}
 
+	lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+		return []txscript.PrivateKey{
+			txscript.PrivateKey{p.privKey1, true},
+			txscript.PrivateKey{p.privKey2, true},
+		}, nil
+	}
+
 	// Sign the new transaction.
 	for i := range tx.TxIn {
-		sigScript, err := txscript.SignatureScript(tx, i, p.payScript,
-			txscript.SigHashAll, p.signKey, true)
+		sigScript, err := txscript.SignTxOutput(p.chainParams, tx,
+			i, tx.TxOut[i].Value, p.payScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -216,6 +239,12 @@ func (p *poolHarness) CreateTxChain(firstOutput spendableOutput, numTxns uint32)
 	txChain := make([]*rmgutil.Tx, 0, numTxns)
 	prevOutPoint := firstOutput.outPoint
 	spendableAmount := firstOutput.amount
+	lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+		return []txscript.PrivateKey{
+			txscript.PrivateKey{p.privKey1, true},
+			txscript.PrivateKey{p.privKey2, true},
+		}, nil
+	}
 	for i := uint32(0); i < numTxns; i++ {
 		// Create the transaction using the previous transaction output
 		// and paying the full amount to the payment address associated
@@ -232,8 +261,8 @@ func (p *poolHarness) CreateTxChain(firstOutput spendableOutput, numTxns uint32)
 		})
 
 		// Sign the new transaction.
-		sigScript, err := txscript.SignatureScript(tx, 0, p.payScript,
-			txscript.SigHashAll, p.signKey, true)
+		sigScript, err := txscript.SignTxOutput(p.chainParams, tx,
+			0, tx.TxOut[0].Value, p.payScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -255,21 +284,27 @@ func (p *poolHarness) CreateTxChain(firstOutput spendableOutput, numTxns uint32)
 // off of it.
 func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutput, error) {
 	// Use a hard coded key pair for deterministic results.
-	keyBytes, err := hex.DecodeString("700868df1838811ffbdf918fb482c1f7e" +
-		"ad62db4b97bd7012c23e726485e577d")
-	if err != nil {
-		return nil, nil, err
-	}
-	signKey, signPub := btcec.PrivKeyFromBytes(btcec.S256(), keyBytes)
+	privKey1, pubKey1 := btcec.PrivKeyFromBytes(btcec.S256(), []byte{
+		0x2b, 0x8c, 0x52, 0xb7, 0x7b, 0x32, 0x7c, 0x75,
+		0x5b, 0x9b, 0x37, 0x55, 0x00, 0xd3, 0xf4, 0xb2,
+		0xda, 0x9b, 0x0a, 0x1f, 0xf6, 0x5f, 0x68, 0x91,
+		0xd3, 0x11, 0xfe, 0x94, 0x29, 0x5b, 0xc2, 0x6a,
+	})
+	privKey2, _ := btcec.PrivKeyFromBytes(btcec.S256(), []byte{
+		0xea, 0xf0, 0x2c, 0xa3, 0x48, 0xc5, 0x24, 0xe6,
+		0x39, 0x26, 0x55, 0xba, 0x4d, 0x29, 0x60, 0x3c,
+		0xd1, 0xa7, 0x34, 0x7d, 0x9d, 0x65, 0xcf, 0xe9,
+		0x3c, 0xe1, 0xeb, 0xff, 0xdc, 0xa2, 0x26, 0x94,
+	})
+	pkHash := rmgutil.Hash160(pubKey1.SerializeCompressed())
+	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
 
-	// Generate associated pay-to-script-hash address and resulting payment
-	// script.
-	pubKeyBytes := signPub.SerializeCompressed()
-	payPubKeyAddr, err := rmgutil.NewAddressPubKey(pubKeyBytes, chainParams)
+	// Generate associated Prova address and resulting payment script.
+	payAddr, err := rmgutil.NewAddressAztec(pkHash, []btcec.KeyID{keyId1, keyId2}, chainParams)
 	if err != nil {
 		return nil, nil, err
 	}
-	payAddr := payPubKeyAddr.AddressPubKeyHash()
 	pkScript, err := txscript.PayToAddrScript(payAddr)
 	if err != nil {
 		return nil, nil, err
@@ -278,7 +313,8 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 	// Create a new fake chain and harness bound to it.
 	chain := &fakeChain{utxos: blockchain.NewUtxoViewpoint()}
 	harness := poolHarness{
-		signKey:     signKey,
+		privKey1:    privKey1,
+		privKey2:    privKey2,
 		payAddr:     payAddr,
 		payScript:   pkScript,
 		chainParams: chainParams,

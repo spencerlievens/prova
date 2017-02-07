@@ -97,6 +97,7 @@ func TestCalcMinRequiredTxRelayFee(t *testing.T) {
 // TestCheckPkScriptStandard tests the checkPkScriptStandard API.
 func TestCheckPkScriptStandard(t *testing.T) {
 	var pubKeys [][]byte
+	var pubKeyHashes [][]byte
 	for i := 0; i < 4; i++ {
 		pk, err := btcec.NewPrivateKey(btcec.S256())
 		if err != nil {
@@ -104,8 +105,11 @@ func TestCheckPkScriptStandard(t *testing.T) {
 				err)
 			return
 		}
+		pubKeyHashes = append(pubKeyHashes, rmgutil.Hash160(pk.PubKey().SerializeCompressed()))
 		pubKeys = append(pubKeys, pk.PubKey().SerializeCompressed())
 	}
+	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 
 	tests := []struct {
 		name       string // test description.
@@ -113,68 +117,66 @@ func TestCheckPkScriptStandard(t *testing.T) {
 		isStandard bool
 	}{
 		{
-			"key1 and key2",
+			"2 of pkHash, keyID1, keyID2",
 			txscript.NewScriptBuilder().AddOp(txscript.OP_2).
-				AddData(pubKeys[0]).AddData(pubKeys[1]).
-				AddOp(txscript.OP_2).AddOp(txscript.OP_CHECKMULTISIG),
+				AddData(pubKeyHashes[0]).AddInt64(int64(keyId1)).AddInt64(int64(keyId2)).
+				AddOp(txscript.OP_3).AddOp(txscript.OP_CHECKSAFEMULTISIG),
 			true,
 		},
 		{
-			"key1 or key2",
-			txscript.NewScriptBuilder().AddOp(txscript.OP_1).
-				AddData(pubKeys[0]).AddData(pubKeys[1]).
-				AddOp(txscript.OP_2).AddOp(txscript.OP_CHECKMULTISIG),
-			true,
-		},
-		{
-			"escrow",
+			"2 of pkHash, keyID1, keyID2",
 			txscript.NewScriptBuilder().AddOp(txscript.OP_2).
-				AddData(pubKeys[0]).AddData(pubKeys[1]).
-				AddData(pubKeys[2]).
-				AddOp(txscript.OP_3).AddOp(txscript.OP_CHECKMULTISIG),
+				AddData(pubKeyHashes[0]).AddInt64(int64(keyId2)).AddInt64(int64(keyId1)).
+				AddOp(txscript.OP_3).AddOp(txscript.OP_CHECKSAFEMULTISIG),
 			true,
 		},
 		{
-			"one of four",
-			txscript.NewScriptBuilder().AddOp(txscript.OP_1).
-				AddData(pubKeys[0]).AddData(pubKeys[1]).
-				AddData(pubKeys[2]).AddData(pubKeys[3]).
-				AddOp(txscript.OP_4).AddOp(txscript.OP_CHECKMULTISIG),
+			"2 of pkHash, keyID1",
+			txscript.NewScriptBuilder().AddOp(txscript.OP_2).
+				AddData(pubKeyHashes[0]).AddInt64(int64(keyId1)).
+				AddOp(txscript.OP_2).AddOp(txscript.OP_CHECKSAFEMULTISIG),
 			false,
 		},
 		{
-			"malformed1",
-			txscript.NewScriptBuilder().AddOp(txscript.OP_3).
-				AddData(pubKeys[0]).AddData(pubKeys[1]).
-				AddOp(txscript.OP_2).AddOp(txscript.OP_CHECKMULTISIG),
+			"keyID1 double",
+			txscript.NewScriptBuilder().AddOp(txscript.OP_2).
+				AddData(pubKeyHashes[0]).AddInt64(int64(keyId1)).AddInt64(int64(keyId1)).
+				AddOp(txscript.OP_3).AddOp(txscript.OP_CHECKSAFEMULTISIG),
+			false,
+		},
+		{
+			"pkHash after KeyIDs",
+			txscript.NewScriptBuilder().AddOp(txscript.OP_2).
+				AddInt64(int64(keyId1)).AddInt64(int64(keyId1)).AddData(pubKeyHashes[0]).
+				AddOp(txscript.OP_3).AddOp(txscript.OP_CHECKSAFEMULTISIG),
 			false,
 		},
 		{
 			"malformed2",
 			txscript.NewScriptBuilder().AddOp(txscript.OP_2).
 				AddData(pubKeys[0]).AddData(pubKeys[1]).
-				AddOp(txscript.OP_3).AddOp(txscript.OP_CHECKMULTISIG),
+				AddOp(txscript.OP_3).AddOp(txscript.OP_CHECKSAFEMULTISIG),
 			false,
 		},
 		{
 			"malformed3",
 			txscript.NewScriptBuilder().AddOp(txscript.OP_0).
 				AddData(pubKeys[0]).AddData(pubKeys[1]).
-				AddOp(txscript.OP_2).AddOp(txscript.OP_CHECKMULTISIG),
+				AddOp(txscript.OP_2).AddOp(txscript.OP_CHECKSAFEMULTISIG),
 			false,
 		},
 		{
 			"malformed4",
 			txscript.NewScriptBuilder().AddOp(txscript.OP_1).
 				AddData(pubKeys[0]).AddData(pubKeys[1]).
-				AddOp(txscript.OP_0).AddOp(txscript.OP_CHECKMULTISIG),
+				AddOp(txscript.OP_0).AddOp(txscript.OP_CHECKSAFEMULTISIG),
 			false,
 		},
 		{
 			"malformed5",
 			txscript.NewScriptBuilder().AddOp(txscript.OP_1).
 				AddData(pubKeys[0]).AddData(pubKeys[1]).
-				AddOp(txscript.OP_CHECKMULTISIG),
+				AddOp(txscript.OP_CHECKSAFEMULTISIG),
 			false,
 		},
 		{
@@ -292,8 +294,10 @@ func TestCheckTransactionStandard(t *testing.T) {
 		Sequence:         wire.MaxTxInSequenceNum,
 	}
 	addrHash := [20]byte{0x01}
-	addr, err := rmgutil.NewAddressPubKeyHash(addrHash[:],
-		&chaincfg.TestNet3Params)
+	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+	addr, err := rmgutil.NewAddressAztec(addrHash[:],
+		[]btcec.KeyID{keyId1, keyId2}, &chaincfg.TestNet3Params)
 	if err != nil {
 		t.Fatalf("NewAddressPubKeyHash: unexpected error: %v", err)
 	}
