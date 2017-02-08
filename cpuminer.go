@@ -314,6 +314,7 @@ out:
 		if err != nil {
 			errStr := fmt.Sprintf("Failed to create new block "+
 				"template: %v", err)
+			time.Sleep(10 * time.Second)
 			minrLog.Errorf(errStr)
 			continue
 		}
