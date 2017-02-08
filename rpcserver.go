@@ -2397,6 +2397,8 @@ func chainErrToGBTErrString(err error) string {
 		return "excessive-trailing"
 	case blockchain.ErrInconsistentBlkSize:
 		return "bad-size-value"
+	case blockchain.ErrInvalidValidateKey:
+		return "invalid-validate-key"
 	}
 
 	return "rejected: " + err.Error()

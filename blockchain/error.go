@@ -206,6 +206,10 @@ const (
 	// ErrInvalidTx indicates a transaction is not an allowed Aztec
 	// transaction.
 	ErrInvalidTx
+
+	// ErrInvalidValidateKey indicates that a validate key was used to sign
+	// a block but the validate key is invalid
+	ErrInvalidValidateKey
 )
 
 // Map of ErrorCode values back to their constant names for pretty printing.
@@ -253,6 +257,7 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrInconsistentBlkSize:  "ErrInconsistentBlkSize",
 	ErrInvalidCoinbase:      "ErrInvalidCoinbase",
 	ErrInvalidTx:            "ErrInvalidTx",
+	ErrInvalidValidateKey:   "ErrInvalidValidateKey",
 }
 
 // String returns the ErrorCode as a human-readable name.

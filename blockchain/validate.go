@@ -1069,8 +1069,8 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, ut
 		return err
 	}
 	if len(validateKeySet) > 0 && validateKeySet.Pos(pubKey) == -1 {
-		str := fmt.Sprintf("invalid validate key")
-		return ruleError(ErrExcessiveTrailing, str)
+		str := fmt.Sprintf("invalid validate key %v", pubKey.SerializeCompressed())
+		return ruleError(ErrInvalidValidateKey, str)
 	}
 
 	// Enforce CHECKLOCKTIMEVERIFY for block versions 4+ once the majority
