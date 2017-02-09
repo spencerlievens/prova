@@ -314,9 +314,36 @@ out:
 			continue
 		}
 
-		// Choose a signing key at random.
-		// TODO(aztec) omit rate limited keys
-		validateKey := m.validateKeys[rand.Intn(len(m.validateKeys))]
+		// Pick a validate key to use, absent rate-limited keys.
+		var nonRateLimitedValidateKeys []*btcec.PrivateKey
+		var validateKey *btcec.PrivateKey
+		var validateKeyErr error
+		for _, privKey := range m.validateKeys {
+			var validatePubKey wire.BlockValidatingPubKey
+			copy(validatePubKey[:wire.BlockValidatingPubKeySize], privKey.PubKey().SerializeCompressed()[:wire.BlockValidatingPubKeySize])
+			validateKeyErr, isRateLimited := m.server.blockManager.chain.IsValidateKeyRateLimited(validatePubKey)
+			if validateKeyErr != nil || isRateLimited {
+				continue
+			}
+			nonRateLimitedValidateKeys = append(nonRateLimitedValidateKeys, privKey)
+		}
+		if validateKeyErr != nil {
+			m.submitBlockLock.Unlock()
+			errStr := fmt.Sprintf("Failed checking validate key %v", validateKeyErr)
+			minrLog.Errorf(errStr)
+			time.Sleep(time.Second)
+			continue
+		}
+		if keysCount := len(nonRateLimitedValidateKeys); keysCount > 0 {
+			// Choose a signing key at random.
+			validateKey = nonRateLimitedValidateKeys[rand.Intn(keysCount)]
+		} else {
+			m.submitBlockLock.Unlock()
+			errStr := fmt.Sprintf("Block generation rate limited.")
+			minrLog.Errorf(errStr)
+			time.Sleep(5 * time.Second)
+			continue
+		}
 
 		// Create a new block template using the available transactions
 		// in the memory pool as a source of transactions to potentially
@@ -327,7 +354,7 @@ out:
 			errStr := fmt.Sprintf("Failed to create new block "+
 				"template: %v", err)
 			minrLog.Errorf(errStr)
-			time.Sleep(10 * time.Second)
+			time.Sleep(time.Second)
 			continue
 		}
 

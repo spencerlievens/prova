@@ -968,6 +968,47 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewp
 	return txFeeInAtoms, nil
 }
 
+// IsValidateKeyRateLimited determines whether using a specific pubkey in a
+// future possible chain extension would create a validate rate limit error.
+func (b *BlockChain) IsValidateKeyRateLimited(validatePubKey wire.BlockValidatingPubKey) (error, bool) {
+	b.chainLock.Lock()
+	defer b.chainLock.Unlock()
+	return b.isValidateKeyRateLimited(b.bestNode, validatePubKey, true)
+}
+
+// isValidateKeyRateLimited determines whether or not a rate limiting violation
+// is present with a given validate key.
+func (b *BlockChain) isValidateKeyRateLimited(node *blockNode, validatePubKey wire.BlockValidatingPubKey, prospectiveInclusion bool) (error, bool) {
+	// Get the previous block generators to check rate limiting rules.
+	iterNode := node
+	prevPubKeys := []wire.BlockValidatingPubKey{}
+	window := b.chainParams.PowAveragingWindow
+	if prospectiveInclusion {
+		prevPubKeys = append(prevPubKeys, validatePubKey)
+		window -= 1
+	}
+	for i := 0; iterNode != nil && i < window; i++ {
+		var err error
+		iterNode, err = b.getPrevNodeFromNode(iterNode)
+		if err != nil {
+			log.Errorf("getPrevNodeFromNode: %v", err)
+			return err, false
+		}
+		if iterNode != nil {
+			prevPubKeys = append(prevPubKeys, iterNode.validatingPubKey)
+		}
+	}
+	// Check if there is a run of too many blocks from a generator.
+	if IsGenerationTrailingRateLimited(validatePubKey, prevPubKeys, b.chainParams.ChainTrailingSigKeyIdLimit) {
+		return nil, true
+	}
+	// Check if there are too many blocks in a window from a generator.
+	if IsGenerationShareRateLimited(validatePubKey, prevPubKeys, b.chainParams.ChainWindowShareLimit) {
+		return nil, true
+	}
+	return nil, false
+}
+
 // checkConnectBlock performs several checks to confirm connecting the passed
 // block to the chain represented by the passed view does not violate any rules.
 // In addition, the passed view is updated to spend all of the referenced
@@ -1182,31 +1223,14 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, ut
 		scriptFlags |= txscript.ScriptVerifyCheckLockTimeVerify
 	}
 
-	// Get the previous block generators to check rate limiting rules.
-	iterNode := node
-	prevPubKeys := make([]wire.BlockValidatingPubKey, 0)
-	for i := 0; iterNode != nil && i < b.chainParams.PowAveragingWindow; i++ {
-		var err error
-		iterNode, err = b.getPrevNodeFromNode(iterNode)
-		if err != nil {
-			log.Errorf("getPrevNodeFromNode: %v", err)
-			return err
-		}
-		if iterNode != nil {
-			prevPubKeys = append(prevPubKeys, iterNode.validatingPubKey)
-		}
+	// Check to see if there is a validate key rate limit breach.
+	err, isRateLimited := b.isValidateKeyRateLimited(node, blockHeader.ValidatingPubKey, false)
+	if err != nil {
+		return err
 	}
-
-	// Check if there is a run of too many blocks from a generator.
-	if IsGenerationTrailingRateLimited(blockHeader.ValidatingPubKey, prevPubKeys, b.chainParams.ChainTrailingSigKeyIdLimit) {
-		str := fmt.Sprintf("validatingPubKey has too many trailing blocks")
+	if isRateLimited {
+		str := fmt.Sprintf("Validate key rate limited %v", blockHeader.ValidatingPubKey)
 		return ruleError(ErrExcessiveTrailing, str)
-	}
-
-	// Check if there is are too many blocks in a window from a generator.
-	if IsGenerationShareRateLimited(blockHeader.ValidatingPubKey, prevPubKeys, b.chainParams.ChainWindowShareLimit) {
-		str := fmt.Sprintf("validatingPubKey has too many cumulative blocks")
-		return ruleError(ErrExcessiveChainShare, str)
 	}
 
 	// Now that the inexpensive checks are done and have passed, verify the
