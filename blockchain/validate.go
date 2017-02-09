@@ -773,6 +773,9 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewp
 
 	txHash := tx.Hash()
 	var totalAtomsIn int64
+	threadInt, _ := txscript.GetAdminDetails(tx)
+	hasAdminOut := (threadInt >= 0)
+	hasAdminIn := false
 	for txInIndex, txIn := range tx.MsgTx().TxIn {
 		// Ensure the referenced input transaction is available.
 		originTxHash := &txIn.PreviousOutPoint.Hash
@@ -782,6 +785,42 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewp
 				"%v referenced from transaction %s:%d",
 				txIn.PreviousOutPoint, tx.Hash(), txInIndex)
 			return 0, ruleError(ErrMissingTx, str)
+		}
+
+		// Ensure admin thread tips are only spendable by same type admin
+		// transactions
+		originPkScript := utxoEntry.PkScriptByIndex(txIn.PreviousOutPoint.Index)
+		thisPkScript := tx.MsgTx().TxOut[0].PkScript
+		if txscript.GetScriptClass(originPkScript) == txscript.AztecAdminTy {
+			if txInIndex != 0 {
+				str := fmt.Sprintf("transaction %v tried to spend admin "+
+					"thread transaction %v with input at position "+
+					"%d. Only input #0 may spend an admin threads.",
+					tx.Hash(), originTxHash, txInIndex)
+				return 0, ruleError(ErrInvalidAdminTx, str)
+			}
+			if !hasAdminOut {
+				str := fmt.Sprintf("transaction %v spends admin output, "+
+					"yet does not continue admin thread. Should have admin "+
+					"output at position 0.", tx.Hash())
+				return 0, ruleError(ErrInvalidAdminTx, str)
+			}
+			hasAdminIn = true
+			if thisPkScript[0] != originPkScript[0] ||
+				thisPkScript[1] != originPkScript[1] {
+				str := fmt.Sprintf("admin transaction input %v is "+
+					"spending wrong thread.", tx.Hash())
+				return 0, ruleError(ErrInvalidAdminTx, str)
+			}
+		}
+
+		// If current transaction has admin output, but doesn't spend
+		// an admin thread, it is not valid
+		if hasAdminOut && !hasAdminIn {
+			str := fmt.Sprintf("tried to issue admin operation "+
+				"at transaction %s:%d without spending valid thread.",
+				tx.Hash(), txInIndex)
+			return 0, ruleError(ErrInvalidAdminTx, str)
 		}
 
 		// Ensure the transaction is not spending coins which have not

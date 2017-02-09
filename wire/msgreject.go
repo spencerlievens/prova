@@ -25,6 +25,7 @@ const (
 	RejectDust            RejectCode = 0x41
 	RejectInsufficientFee RejectCode = 0x42
 	RejectCheckpoint      RejectCode = 0x43
+	RejectInvalidAdmin    RejectCode = 0x44
 )
 
 // Map of reject codes back strings for pretty printing.
@@ -37,6 +38,7 @@ var rejectCodeStrings = map[RejectCode]string{
 	RejectDust:            "REJECT_DUST",
 	RejectInsufficientFee: "REJECT_INSUFFICIENTFEE",
 	RejectCheckpoint:      "REJECT_CHECKPOINT",
+	RejectInvalidAdmin:    "REJECT_INVALID_ADMIN",
 }
 
 // String returns the RejectCode in human-readable form.

@@ -761,18 +761,21 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	// ---------------------------------------------------------------------
 	// Start by building a couple of blocks at current tip.
 	//
-	//    ... -> b1(3) -> b2(4) -> b3() -> b4() -> b5() -> b6() -> b7() -> b8(7)
+	//    ... -> b1(3) -> b3() -> b4() -> b5() -> b6() -> b7() -> b8(7)
 	//
 	// ---------------------------------------------------------------------
 
 	g.nextBlock("b1", outs[3])
 	accepted()
 
-	g.nextBlock("b2", outs[4])
-	accepted()
+	// Try to spend provision thread with root thread
+	issueKeyAddTx := createAdminTx(outs[1], 0, txscript.OP_ISSUINGKEYADD, pubKey1)
+	g.nextBlock("b2", nil, additionalTx(issueKeyAddTx))
+	rejected(blockchain.ErrInvalidAdminTx)
 
 	// Provision an ISSUE key in b3 and check its there.
-	issueKeyAddTx := createAdminTx(outs[0], 0, txscript.OP_ISSUINGKEYADD, pubKey1)
+	g.setTip("b1")
+	issueKeyAddTx = createAdminTx(outs[0], 0, txscript.OP_ISSUINGKEYADD, pubKey1)
 	g.nextBlock("b3", nil, additionalTx(issueKeyAddTx))
 	acceptedWithAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1})
 
@@ -797,7 +800,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	// provision a keyID and check
 	keyId := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
-	wspKeyIdAddTx := createWspAdminTx(outs[6], txscript.OP_WSPKEYADD, pubKey1, keyId)
+	wspKeyIdAddTx := createWspAdminTx(outs[1], txscript.OP_WSPKEYADD, pubKey1, keyId)
 	g.nextBlock("b7", nil, additionalTx(wspKeyIdAddTx))
 	acceptedWithWspKey(pubKey1, keyId)
 

@@ -164,7 +164,11 @@ func checkInputsStandard(tx *rmgutil.Tx, utxoView *blockchain.UtxoViewpoint) err
 	// but coinbases have already been rejected prior to calling this
 	// function so no need to recheck.
 
-	for i, txIn := range tx.MsgTx().TxIn {
+	threadInt, _ := txscript.GetAdminDetails(tx)
+	hasAdminOut := (threadInt >= 0)
+	hasAdminIn := false
+	thisPkScript := tx.MsgTx().TxOut[0].PkScript
+	for txInIndex, txIn := range tx.MsgTx().TxIn {
 		// It is safe to elide existence and index checks here since
 		// they have already been checked prior to calling this
 		// function.
@@ -175,7 +179,7 @@ func checkInputsStandard(tx *rmgutil.Tx, utxoView *blockchain.UtxoViewpoint) err
 		case txscript.AztecTy:
 			fallthrough
 		case txscript.GeneralAztecTy:
-			fallthrough
+			break
 		case txscript.AztecAdminTy:
 			sigPops, err := txscript.ParseScript(txIn.SignatureScript)
 			if err != nil {
@@ -186,16 +190,48 @@ func checkInputsStandard(tx *rmgutil.Tx, utxoView *blockchain.UtxoViewpoint) err
 			// we expect pairs of <pub><sig><pub><sig>
 			if len(sigPops)%2 != 0 {
 				str := fmt.Sprintf("transaction input #%d has "+
-					"odd amount of sigPops %d", i, len(sigPops))
+					"odd amount of sigPops %d", txInIndex, len(sigPops))
 				return txRuleError(wire.RejectNonstandard, str)
 			}
 			// TODO(prova): check 2 or more tuple
 			// TODO(prova): check each tuple to be pubKey + Sig
+			// check input position
+			if txInIndex != 0 {
+				str := fmt.Sprintf("transaction %v tried to spend admin "+
+					"thread transaction %v with input at position "+
+					"%d. Only input #0 may spend an admin threads.",
+					tx.Hash(), prevOut.Hash, txInIndex)
+				return txRuleError(wire.RejectInvalidAdmin, str)
+			}
+			if !hasAdminOut {
+				str := fmt.Sprintf("transaction %v spends admin output, "+
+					"yet does not continue admin thread. Should have admin "+
+					"output at position 0.", tx.Hash())
+				return txRuleError(wire.RejectInvalidAdmin, str)
+			}
+			hasAdminIn = true
+			// check admin thread input is spend to same thread
+			if thisPkScript[0] != originPkScript[0] ||
+				thisPkScript[1] != originPkScript[1] {
+				str := fmt.Sprintf("admin transaction input #%d is "+
+					"spending wrong thread.", txInIndex)
+				return txRuleError(wire.RejectInvalidAdmin, str)
+			}
 		case txscript.NonStandardTy:
 			str := fmt.Sprintf("transaction input #%d has a "+
-				"non-standard script form", i)
+				"non-standard script form", txInIndex)
 			return txRuleError(wire.RejectNonstandard, str)
 		}
+
+		// If current transaction has admin output, but doesn't spend
+		// an admin thread, it is not valid
+		if hasAdminOut && !hasAdminIn {
+			str := fmt.Sprintf("tried to issue admin operation "+
+				"at transaction %s:%d without spending valid thread ",
+				tx.Hash(), txInIndex)
+			return txRuleError(wire.RejectInvalidAdmin, str)
+		}
+
 	}
 
 	return nil
@@ -376,7 +412,7 @@ func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockcha
 		// "dust".
 		if scriptClass == txscript.NullDataTy {
 			numNullDataOutputs++
-		} else if isDust(txOut, minRelayTxFee) {
+		} else if !isAdminTx && isDust(txOut, minRelayTxFee) {
 			str := fmt.Sprintf("transaction output %d: payment "+
 				"of %d is dust", i, txOut.Value)
 			return txRuleError(wire.RejectDust, str)

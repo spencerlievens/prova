@@ -210,6 +210,10 @@ const (
 	// ErrInvalidValidateKey indicates that a validate key was used to sign
 	// a block but the validate key is invalid
 	ErrInvalidValidateKey
+
+	// ErrInvalidAdminTx indicates a transaction is not an allowed admin
+	// transaction.
+	ErrInvalidAdminTx
 )
 
 // Map of ErrorCode values back to their constant names for pretty printing.
@@ -258,6 +262,7 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrInvalidCoinbase:      "ErrInvalidCoinbase",
 	ErrInvalidTx:            "ErrInvalidTx",
 	ErrInvalidValidateKey:   "ErrInvalidValidateKey",
+	ErrInvalidAdminTx:       "ErrInvalidAdminTx",
 }
 
 // String returns the ErrorCode as a human-readable name.

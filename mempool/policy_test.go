@@ -6,8 +6,6 @@ package mempool
 
 import (
 	"bytes"
-	"testing"
-
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
@@ -15,6 +13,7 @@ import (
 	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
+	"testing"
 )
 
 // TestCalcMinRequiredTxRelayFee tests the calcMinRequiredTxRelayFee API.
@@ -475,6 +474,230 @@ func TestCheckTransactionStandard(t *testing.T) {
 		// Ensure standardness is as expected.
 		err := checkTransactionStandard(rmgutil.NewTx(&test.tx),
 			test.height, timeSource, DefaultMinRelayTxFee)
+		if err == nil && test.isStandard {
+			// Test passes since function returned standard for a
+			// transaction which is intended to be standard.
+			continue
+		}
+		if err == nil && !test.isStandard {
+			t.Errorf("checkTransactionStandard (%s): standard when "+
+				"it should not be", test.name)
+			continue
+		}
+		if err != nil && test.isStandard {
+			t.Errorf("checkTransactionStandard (%s): nonstandard "+
+				"when it should not be: %v", test.name, err)
+			continue
+		}
+
+		// Ensure error type is a TxRuleError inside of a RuleError.
+		rerr, ok := err.(RuleError)
+		if !ok {
+			t.Errorf("checkTransactionStandard (%s): unexpected "+
+				"error type - got %T", test.name, err)
+			continue
+		}
+		txrerr, ok := rerr.Err.(TxRuleError)
+		if !ok {
+			t.Errorf("checkTransactionStandard (%s): unexpected "+
+				"error type - got %T", test.name, rerr.Err)
+			continue
+		}
+
+		// Ensure the reject code is the expected one.
+		if txrerr.RejectCode != test.code {
+			t.Errorf("checkTransactionStandard (%s): unexpected "+
+				"error code - got %v, want %v", test.name,
+				txrerr.RejectCode, test.code)
+			continue
+		}
+	}
+}
+
+// TestCheckAdminTransactionStandard tests the checkInputsStandard API
+// with admin transactions.
+func TestCheckAdminTransactionStandard(t *testing.T) {
+	// Create some dummy sig scripts.
+	coinbaseSigScript, _ := txscript.NewScriptBuilder().AddInt64(int64(300000)).
+		AddInt64(int64(0)).Script()
+	coinbaseTxIn := wire.TxIn{
+		PreviousOutPoint: *wire.NewOutPoint(&chainhash.Hash{},
+			wire.MaxPrevOutIndex),
+		SignatureScript: coinbaseSigScript,
+		Sequence:        wire.MaxTxInSequenceNum,
+	}
+	testSigScript := bytes.Repeat([]byte{0x00}, 4)
+	// Create some dummy admin op output.
+	adminOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+		AddData(bytes.Repeat([]byte{0x00}, 4)).Script()
+	adminOpTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: adminOpPkScript,
+	}
+	// create root tip tx
+	rootPkScript, _ := txscript.AztecThreadScript(rmgutil.RootThread)
+	rootTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: rootPkScript,
+	}
+	rootTipTx := rmgutil.NewTx(&wire.MsgTx{
+		Version:  1,
+		TxIn:     []*wire.TxIn{&coinbaseTxIn},
+		TxOut:    []*wire.TxOut{&rootTxOut},
+		LockTime: 0,
+	})
+	rootPrevOut := wire.OutPoint{Hash: *rootTipTx.Hash(), Index: 0}
+	rootTxIn := wire.TxIn{
+		PreviousOutPoint: rootPrevOut,
+		SignatureScript:  testSigScript,
+		Sequence:         wire.MaxTxInSequenceNum,
+	}
+	// create provision tip tx
+	provisionPkScript, _ := txscript.AztecThreadScript(rmgutil.ProvisionThread)
+	provisionTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: provisionPkScript,
+	}
+	provisionTipTx := rmgutil.NewTx(&wire.MsgTx{
+		Version:  1,
+		TxIn:     []*wire.TxIn{&coinbaseTxIn},
+		TxOut:    []*wire.TxOut{&provisionTxOut},
+		LockTime: 0,
+	})
+	provisionPrevOut := wire.OutPoint{Hash: *provisionTipTx.Hash(), Index: 0}
+	provisionTxIn := wire.TxIn{
+		PreviousOutPoint: provisionPrevOut,
+		SignatureScript:  testSigScript,
+		Sequence:         wire.MaxTxInSequenceNum,
+	}
+	// create issue tip tx
+	issuePkScript, _ := txscript.AztecThreadScript(rmgutil.IssueThread)
+	issueTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: issuePkScript,
+	}
+	issueTipTx := rmgutil.NewTx(&wire.MsgTx{
+		Version:  1,
+		TxIn:     []*wire.TxIn{&coinbaseTxIn},
+		TxOut:    []*wire.TxOut{&issueTxOut},
+		LockTime: 0,
+	})
+	issuePrevOut := wire.OutPoint{Hash: *issueTipTx.Hash(), Index: 0}
+	issueTxIn := wire.TxIn{
+		PreviousOutPoint: issuePrevOut,
+		SignatureScript:  testSigScript,
+		Sequence:         wire.MaxTxInSequenceNum,
+	}
+	// Create aztec txout
+	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	payAddr, _ := rmgutil.NewAddressAztec(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	aztecPkScript, _ := txscript.PayToAddrScript(payAddr)
+	aztecTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: aztecPkScript,
+	}
+	aztecTx := rmgutil.NewTx(&wire.MsgTx{
+		Version:  1,
+		TxIn:     []*wire.TxIn{&coinbaseTxIn},
+		TxOut:    []*wire.TxOut{&aztecTxOut},
+		LockTime: 0,
+	})
+	aztecPrevOut := wire.OutPoint{Hash: *aztecTx.Hash(), Index: 0}
+	aztecTxIn := wire.TxIn{
+		PreviousOutPoint: aztecPrevOut,
+		SignatureScript:  testSigScript,
+		Sequence:         wire.MaxTxInSequenceNum,
+	}
+	// add all tips to utxoview
+	utxoView := blockchain.NewUtxoViewpoint()
+	utxoView.AddTxOuts(rootTipTx, 0)
+	utxoView.AddTxOuts(provisionTipTx, 0)
+	utxoView.AddTxOuts(issueTipTx, 0)
+	utxoView.AddTxOuts(aztecTx, 0)
+
+	tests := []struct {
+		name       string
+		tx         wire.MsgTx
+		height     uint32
+		isStandard bool
+		code       wire.RejectCode
+	}{
+		{
+			name: "empty root thread transaction",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&rootTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			isStandard: true,
+		},
+		{
+			name: "standard provision thread transaction",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&provisionTxIn},
+				TxOut:    []*wire.TxOut{&provisionTxOut, &adminOpTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			isStandard: true,
+		},
+		{
+			name: "spend wrong thread",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&rootTxIn},
+				TxOut:    []*wire.TxOut{&provisionTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			code:       wire.RejectInvalidAdmin,
+			isStandard: false,
+		},
+		{
+			name: "spend aztec output with admin thread",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&aztecTxIn},
+				TxOut:    []*wire.TxOut{&provisionTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			code:       wire.RejectInvalidAdmin,
+			isStandard: false,
+		},
+		{
+			name: "spend with second input",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&aztecTxIn, &issueTxIn},
+				TxOut:    []*wire.TxOut{&issueTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			code:       wire.RejectInvalidAdmin,
+			isStandard: false,
+		},
+		{
+			name: "spend admin thread with aztec",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&issueTxIn},
+				TxOut:    []*wire.TxOut{&aztecTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			code:       wire.RejectInvalidAdmin,
+			isStandard: false,
+		},
+	}
+
+	for _, test := range tests {
+		// Ensure standardness is as expected.
+		err := checkInputsStandard(rmgutil.NewTx(&test.tx), utxoView)
 		if err == nil && test.isStandard {
 			// Test passes since function returned standard for a
 			// transaction which is intended to be standard.
