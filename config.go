@@ -44,7 +44,7 @@ const (
 	defaultVerifyEnabled         = false
 	defaultDbType                = "ffldb"
 	defaultFreeTxRelayLimit      = 15.0
-	defaultBlockMinSize          = 0
+	defaultBlockMinSize          = 500000
 	defaultBlockMaxSize          = 750000
 	blockMaxSizeMin              = 1000
 	blockMaxSizeMax              = wire.MaxBlockPayload - 1000
