@@ -302,6 +302,18 @@ out:
 			continue
 		}
 
+		// Check for invalid validate keys and stop generating if there
+		// are any invalid keys detected.
+		invalidValidateKey := m.detectInvalidValidateKey()
+		if invalidValidateKey != nil {
+			str := fmt.Sprintf("invalid validate key %v",
+				invalidValidateKey.SerializeCompressed())
+			minrLog.Errorf(str)
+			m.submitBlockLock.Unlock()
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
 		// Choose a signing key at random.
 		// TODO(aztec) omit rate limited keys
 		validateKey := m.validateKeys[rand.Intn(len(m.validateKeys))]
@@ -314,8 +326,8 @@ out:
 		if err != nil {
 			errStr := fmt.Sprintf("Failed to create new block "+
 				"template: %v", err)
-			time.Sleep(10 * time.Second)
 			minrLog.Errorf(errStr)
+			time.Sleep(10 * time.Second)
 			continue
 		}
 
@@ -331,6 +343,19 @@ out:
 
 	m.workerWg.Done()
 	minrLog.Tracef("Generate blocks worker done")
+}
+
+// detectInvalidValidateKey determines if there is an invalid validate key in
+// the miner's validate key set.  If there is an invalid key, it is returned.
+func (m *CPUMiner) detectInvalidValidateKey() *btcec.PublicKey {
+	adminKeySets := m.server.blockManager.chain.AdminKeySets()
+	validateKeySet := adminKeySets[btcec.ValidateKeySet]
+	for _, validateKey := range m.validateKeys {
+		if validateKeySet.Pos(validateKey.PubKey()) == -1 {
+			return validateKey.PubKey()
+		}
+	}
+	return nil
 }
 
 // miningWorkerController launches the worker goroutines that are used to
