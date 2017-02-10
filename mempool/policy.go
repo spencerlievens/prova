@@ -334,6 +334,9 @@ func isDust(txOut *wire.TxOut, minRelayTxFee rmgutil.Amount) bool {
 // finalized, conforming to more stringent size constraints, having scripts
 // of recognized forms, and not containing "dust" outputs (those that are
 // so small it costs more to process them than they are worth).
+// TODO(prova): Notice that this code is a dupclicate of transaction
+// validation code in CheckTransactionSanity() of validate.go
+// TODO(prova): extract functionality into admin tx validator.
 func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockchain.MedianTimeSource, minRelayTxFee rmgutil.Amount) error {
 	// The transaction must be a currently supported version.
 	msgTx := tx.MsgTx()
@@ -388,12 +391,10 @@ func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockcha
 	// None of the output public key scripts can be a non-standard script or
 	// be "dust" (except when the script is a null data script).
 	numNullDataOutputs := 0
-	isAdminTx := false
-	for i, txOut := range msgTx.TxOut {
+	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
+	hasAdminOut := (threadInt >= 0)
+	for txInIndex, txOut := range msgTx.TxOut {
 		scriptClass := txscript.GetScriptClass(txOut.PkScript)
-		if i == 0 && scriptClass == txscript.AztecAdminTy {
-			isAdminTx = true
-		}
 		err := checkPkScriptStandard(txOut.PkScript, scriptClass)
 		if err != nil {
 			// Attempt to extract a reject code from the error so
@@ -403,8 +404,27 @@ func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockcha
 			if rejCode, found := extractRejectCode(err); found {
 				rejectCode = rejCode
 			}
-			str := fmt.Sprintf("transaction output %d: %v", i, err)
+			str := fmt.Sprintf("transaction output %d: %v", txInIndex, err)
 			return txRuleError(rejectCode, str)
+		}
+
+		// Only first output can be admin output
+		if scriptClass == txscript.AztecAdminTy {
+			if txInIndex != 0 {
+				str := fmt.Sprintf("transaction output %d: admin output "+
+					"only allowed at position 0.", txInIndex)
+				return txRuleError(wire.RejectInvalid, str)
+			}
+		}
+
+		// All Admin tx output values must be 0 value
+		if hasAdminOut {
+			threadId := rmgutil.ThreadID(threadInt)
+			if threadId != rmgutil.IssueThread && txOut.Value != 0 {
+				str := fmt.Sprintf("admin transaction with non-zero value "+
+					"output #%d.", txInIndex)
+				return txRuleError(wire.RejectInvalid, str)
+			}
 		}
 
 		// Accumulate the number of outputs which only carry data.  For
@@ -412,18 +432,57 @@ func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockcha
 		// "dust".
 		if scriptClass == txscript.NullDataTy {
 			numNullDataOutputs++
-		} else if !isAdminTx && isDust(txOut, minRelayTxFee) {
+		} else if !hasAdminOut && isDust(txOut, minRelayTxFee) {
 			str := fmt.Sprintf("transaction output %d: payment "+
-				"of %d is dust", i, txOut.Value)
+				"of %d is dust", txInIndex, txOut.Value)
 			return txRuleError(wire.RejectDust, str)
 		}
 	}
 
 	// A standard transaction must not have more than one output script that
 	// only carries data.
-	if !isAdminTx && numNullDataOutputs > 1 {
+	if !hasAdminOut && numNullDataOutputs > 1 {
 		str := "more than one transaction output in a nulldata script"
 		return txRuleError(wire.RejectNonstandard, str)
+	}
+
+	// Check admin transaction on ROOT and PROVISION thread
+	// TODO(prova): Notice that this code is a dupclicate of transaction
+	// validation code in CheckTransactionSanity() of validate.go
+	// TODO(prova): extract functionality into admin tx validator.
+	if hasAdminOut {
+		threadId := rmgutil.ThreadID(threadInt)
+		if threadId == rmgutil.RootThread || threadId == rmgutil.ProvisionThread {
+			// Admin tx may not have any other inputs
+			if len(msgTx.TxIn) > 1 {
+				str := fmt.Sprintf("admin transaction with more than 1 input.")
+				return txRuleError(wire.RejectInvalid, str)
+			}
+			// Admin tx must have at least 2 outputs
+			if len(msgTx.TxOut) < 2 {
+				str := fmt.Sprintf("admin transaction with no admin operations.")
+				return txRuleError(wire.RejectInvalid, str)
+			}
+
+			// op pkscript
+			for _, adminOpOut := range adminOutputs {
+				// check conditions for admin ops
+				// - Admin tx additional outputs must be nulldata scripts
+				// - Key in nulldata script must be valid
+				// - Data in nulldata scripts must match proper form expected for
+				//   the thread
+				if !txscript.IsValidAdminOp(adminOpOut, threadId) {
+					str := fmt.Sprintf("admin transaction with invalid admin " +
+						"operation found.")
+					return txRuleError(wire.RejectInvalid, str)
+				}
+			}
+		}
+
+		if threadId == rmgutil.IssueThread {
+			// TODO(prova): take care of issue thread
+			// If issuance/destruction tx, any non-nulldata outputs must be valid Aztec scripts
+		}
 	}
 
 	return nil

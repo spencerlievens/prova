@@ -155,6 +155,9 @@ func CalcBlockSubsidy(height uint32, chainParams *chaincfg.Params) int64 {
 
 // CheckTransactionSanity performs some preliminary checks on a transaction to
 // ensure it is sane.  These checks are context free.
+// TODO(prova): Notice that this code is a dupclicate of transaction
+// validation code in checkTransactionStandard() of policy.go
+// TODO(prova): extract functionality into admin tx validator.
 func CheckTransactionSanity(tx *rmgutil.Tx) error {
 	// A transaction must have at least one input.
 	msgTx := tx.MsgTx()
@@ -183,7 +186,9 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 	// as an atom.  One gram is a quantity of atoms as defined by the
 	// AtomsPerGram constant.
 	var totalAtoms int64
-	for _, txOut := range msgTx.TxOut {
+	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
+	hasAdminOut := (threadInt >= 0)
+	for txInIndex, txOut := range msgTx.TxOut {
 		atoms := txOut.Value
 		if atoms < 0 {
 			str := fmt.Sprintf("transaction output has negative "+
@@ -214,6 +219,26 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 				rmgutil.MaxAtoms)
 			return ruleError(ErrBadTxOutValue, str)
 		}
+
+		// Only first output can be admin output
+		scriptClass := txscript.GetScriptClass(txOut.PkScript)
+		if scriptClass == txscript.AztecAdminTy {
+			if txInIndex != 0 {
+				str := fmt.Sprintf("transaction output %d: admin output "+
+					"only allowed at position 0.", txInIndex)
+				return ruleError(ErrInvalidAdminTx, str)
+			}
+		}
+
+		// All Admin tx output values must be 0 value
+		if hasAdminOut {
+			threadId := rmgutil.ThreadID(threadInt)
+			if threadId != rmgutil.IssueThread && txOut.Value != 0 {
+				str := fmt.Sprintf("admin transaction with non-zero value "+
+					"output #%d.", txInIndex)
+				return ruleError(ErrInvalidAdminTx, str)
+			}
+		}
 	}
 
 	// Check for duplicate transaction inputs.
@@ -243,11 +268,47 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 		return nil
 	}
 
-	// Check for admin transaction
-	threadInt, _ := txscript.GetAdminDetails(tx)
-	isAdminTx := (threadInt >= 0)
+	// Check admin transaction on ROOT and PROVISION thread
+	// TODO(prova): Notice that this code is a dupclicate of transaction
+	// validation code in checkTransactionStandard() of policy.go
+	// TODO(prova): extract functionality into admin tx validator.
+	if hasAdminOut {
+		threadId := rmgutil.ThreadID(threadInt)
+		if threadId == rmgutil.RootThread || threadId == rmgutil.ProvisionThread {
+			// Admin tx may not have any other inputs
+			if len(msgTx.TxIn) > 1 {
+				str := fmt.Sprintf("admin transaction with more than 1 input.")
+				return ruleError(ErrInvalidAdminTx, str)
+			}
+			// Admin tx must have at least 2 outputs
+			if len(msgTx.TxOut) < 2 {
+				str := fmt.Sprintf("admin transaction with no admin operations.")
+				return ruleError(ErrInvalidAdminTx, str)
+			}
+			//
 
-	if !isAdminTx && !txscript.IsAztecTx(tx) {
+			// op pkscript
+			for _, adminOpOut := range adminOutputs {
+				// check conditions for admin ops
+				// - Admin tx additional outputs must be nulldata scripts
+				// - Key in nulldata script must be valid
+				// - Data in nulldata scripts must match proper form expected for
+				//   the thread
+				if !txscript.IsValidAdminOp(adminOpOut, threadId) {
+					str := fmt.Sprintf("admin transaction with invalid admin " +
+						"operation found.")
+					return ruleError(ErrInvalidAdminTx, str)
+				}
+			}
+		}
+
+		if threadId == rmgutil.IssueThread {
+			// TODO(prova): take care of issue thread
+			// If issuance/destruction tx, any non-nulldata outputs must be valid Aztec scripts
+		}
+	}
+
+	if !(threadInt >= 0) && !txscript.IsAztecTx(tx) {
 		// TODO(aztec): fix the blockchain tests
 		return ruleError(ErrInvalidTx, "transaction is not of an allowed form")
 	}

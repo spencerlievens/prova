@@ -336,37 +336,31 @@ func ThreadPkScript(keyHashes [][]byte) ([]byte, error) {
 }
 
 // ExtractAdminData can read OP_*KEYADD and OP_*KEYREVOKE from admin outputs.
+// An admin op script of structure <OP_RETURN><OP_DATA> can be assumed from
+// previous validation.
+// This function returns the admin operation type byte, and the parsed
+// public key.
 func ExtractAdminData(pkScript []parsedOpcode) (byte, *btcec.PublicKey, error) {
-	// Admin outputs have an expected structure like this:
-	// opReturnByte+adminOpByte+pubKeyBytes
-	if len(pkScript) != 2 || pkScript[0].opcode.value != OP_RETURN {
-		return OP_FALSE, nil, fmt.Errorf("unable to extract admin data from script, "+
-			"unknown script structure %v", pkScript)
-	}
-	op := pkScript[1].data[0]
 	pubKey, err := btcec.ParsePubKey(pkScript[1].data[1:1+btcec.PubKeyBytesLenCompressed], btcec.S256())
 	if err != nil {
 		return 0, nil, err
 	}
-	return op, pubKey, nil
+	return pkScript[1].data[0], pubKey, nil
 }
 
 // ExtractWspData can read OP_WSPKEYADD and OP_WSPKEYREVOKE from admin outputs.
+// An admin op script of structure <OP_RETURN><OP_DATA> can be assumed from
+// previous validation.
+// This function returns the admin operation type byte, the parsed keyID, and
+// the parsed public key.
 func ExtractWspData(pkScript []parsedOpcode) (byte, *btcec.PublicKey, btcec.KeyID, error) {
-	// Admin outputs have an expected structure like this:
-	// opReturnByte+adminOpByte+pubKeyBytes
-	if len(pkScript) != 2 || pkScript[0].opcode.value != OP_RETURN {
-		return OP_FALSE, nil, 0, fmt.Errorf("unable to extract admin data from script, "+
-			"unknown script structure %v", pkScript)
-	}
-	op := pkScript[1].data[0]
-	dataLen := len(pkScript[1].data)
 	pubKey, err := btcec.ParsePubKey(pkScript[1].data[1:1+btcec.PubKeyBytesLenCompressed], btcec.S256())
 	if err != nil {
 		return 0, nil, 0, err
 	}
+	dataLen := len(pkScript[1].data)
 	keyID := btcec.KeyIDFromAddressBuffer(pkScript[1].data[dataLen-btcec.KeyIDSize : dataLen])
-	return op, pubKey, keyID, nil
+	return pkScript[1].data[0], pubKey, keyID, nil
 }
 
 // canonicalPush returns true if the object is either not a push instruction

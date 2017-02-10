@@ -309,6 +309,35 @@ func TestCheckTransactionStandard(t *testing.T) {
 		PkScript: dummyPkScript,
 	}
 
+	// Create some dummy admin op output.
+	_, pubKey := btcec.PrivKeyFromBytes(btcec.S256(), []byte{
+		0x2b, 0x8c, 0x52, 0xb7, 0x7b, 0x32, 0x7c, 0x75,
+		0x5b, 0x9b, 0x37, 0x55, 0x00, 0xd3, 0xf4, 0xb2,
+		0xda, 0x9b, 0x0a, 0x1f, 0xf6, 0x5f, 0x68, 0x91,
+		0xd3, 0x11, 0xfe, 0x94, 0x29, 0x5b, 0xc2, 0x6a,
+	})
+	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed)
+	data[0] = txscript.OP_PROVISIONINGKEYADD
+	copy(data[1:], pubKey.SerializeCompressed())
+	adminOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+		AddData(data).Script()
+	adminOpTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: adminOpPkScript,
+	}
+	// create root tx out
+	rootPkScript, _ := txscript.AztecThreadScript(rmgutil.RootThread)
+	rootTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: rootPkScript,
+	}
+	// create provision tx out
+	provisionPkScript, _ := txscript.AztecThreadScript(rmgutil.ProvisionThread)
+	provisionTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: provisionPkScript,
+	}
+
 	tests := []struct {
 		name       string
 		tx         wire.MsgTx
@@ -466,6 +495,95 @@ func TestCheckTransactionStandard(t *testing.T) {
 			},
 			height:     300000,
 			isStandard: true,
+		},
+		{
+			name: "Typical admin transaction",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			isStandard: true,
+		},
+		{
+			name: "admin transaction with thread output at pos 1.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&adminOpTxOut, &rootTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			isStandard: false,
+			code:       wire.RejectInvalid,
+		},
+		{
+			name: "admin transaction with non-zero output value.",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn:    []*wire.TxIn{&dummyTxIn},
+				TxOut: []*wire.TxOut{&rootTxOut, {
+					Value:    500,
+					PkScript: adminOpPkScript,
+				}},
+				LockTime: 0,
+			},
+			height:     300000,
+			isStandard: false,
+			code:       wire.RejectInvalid,
+		},
+		{
+			name: "admin transaction with more than 1 input.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn, &dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			isStandard: false,
+			code:       wire.RejectInvalid,
+		},
+		{
+			name: "Empty admin transaction",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			isStandard: false,
+			code:       wire.RejectInvalid,
+		},
+		{
+			name: "Admin transaction with operation on wrong thread",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&provisionTxOut, &adminOpTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			isStandard: false,
+			code:       wire.RejectInvalid,
+		},
+		{
+			name: "Admin transaction with invalid operation",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn:    []*wire.TxIn{&dummyTxIn},
+				TxOut: []*wire.TxOut{&rootTxOut, {
+					Value:    0,
+					PkScript: []byte{txscript.OP_RETURN},
+				}},
+				LockTime: 0,
+			},
+			height:     300000,
+			isStandard: false,
+			code:       wire.RejectInvalid,
 		},
 	}
 

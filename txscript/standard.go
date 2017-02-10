@@ -233,6 +233,53 @@ func isAztecAdmin(pops []parsedOpcode) bool {
 	return true
 }
 
+// IsValidAdminOp returns true if the passed script is a valid admin
+// operation at the given thread.
+func IsValidAdminOp(pops []parsedOpcode, threadID rmgutil.ThreadID) bool {
+	// always expect two ops
+	// <OP_RETURN><OP_DATA>
+	if len(pops) != 2 {
+		return false
+	}
+	if pops[0].opcode.value != OP_RETURN {
+		return false
+	}
+	if pops[1].opcode.value != OP_DATA_34 &&
+		pops[1].opcode.value != OP_DATA_38 {
+		return false
+	}
+	// read op type byte and check valid key
+	op, _, err := ExtractAdminData(pops)
+	if err != nil {
+		return false
+	}
+	// check thread specific operations
+	switch threadID {
+	case rmgutil.RootThread:
+		if op == OP_PROVISIONINGKEYADD ||
+			op == OP_PROVISIONINGKEYREVOKE ||
+			op == OP_ISSUINGKEYADD ||
+			op == OP_ISSUINGKEYREVOKE {
+			return true
+		}
+	case rmgutil.ProvisionThread:
+		if op == OP_VALIDATEKEYADD ||
+			op == OP_VALIDATEKEYREVOKE {
+			return true
+		}
+		if op == OP_WSPKEYADD ||
+			op == OP_WSPKEYREVOKE {
+			// check length of data for WSP ops
+			if len(pops[1].data) == 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize {
+				return true
+			}
+		}
+	case rmgutil.IssueThread:
+		return false
+	}
+	return false
+}
+
 // isNullData returns true if the passed script is a null data transaction,
 // false otherwise.
 func isNullData(pops []parsedOpcode) bool {
