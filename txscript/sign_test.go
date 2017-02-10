@@ -88,8 +88,8 @@ func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript
 	//admin key sets
 	keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
 	keySet, _ := btcec.ParsePubKeySet(btcec.S256(),
-		"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1", // priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
 		"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+		"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1", // priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
 	)
 	keySets[btcec.RootKeySet] = keySet
 	keySets[btcec.ProvisionKeySet] = keySet
@@ -348,8 +348,8 @@ func TestSignTxOutput(t *testing.T) {
 
 		lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
 			return []txscript.PrivateKey{
-				txscript.PrivateKey{key2, true},
 				txscript.PrivateKey{key1, true},
+				txscript.PrivateKey{key2, true},
 			}, nil
 		}
 
