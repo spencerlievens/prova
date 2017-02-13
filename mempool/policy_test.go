@@ -36,13 +36,13 @@ func TestCalcMinRequiredTxRelayFee(t *testing.T) {
 			"100 bytes with default minimum relay fee",
 			100,
 			DefaultMinRelayTxFee,
-			100,
+			0,
 		},
 		{
 			"max standard tx size with default minimum relay fee",
 			maxStandardTxSize,
 			DefaultMinRelayTxFee,
-			100000,
+			0,
 		},
 		{
 			"max standard tx size with max atoms relay fee",
@@ -479,8 +479,7 @@ func TestCheckTransactionStandard(t *testing.T) {
 				LockTime: 0,
 			},
 			height:     300000,
-			isStandard: false,
-			code:       wire.RejectDust,
+			isStandard: true,
 		},
 		{
 			name: "One nulldata output with 0 amount (standard)",

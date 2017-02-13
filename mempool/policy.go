@@ -47,7 +47,7 @@ const (
 	// purposes.  It is also used to help determine if a transaction is
 	// considered dust and as a base for calculating minimum required fees
 	// for larger transactions.  This value is in Atoms/1000 bytes.
-	DefaultMinRelayTxFee = rmgutil.Amount(1000)
+	DefaultMinRelayTxFee = rmgutil.Amount(0)
 )
 
 // calcMinRequiredTxRelayFee returns the minimum transaction fee required for a
