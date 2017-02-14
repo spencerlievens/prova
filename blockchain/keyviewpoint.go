@@ -91,53 +91,31 @@ func (view *KeyViewpoint) LookupKeyIDs(keyIDs []btcec.KeyID) map[btcec.KeyID][]b
 // ProcessAdminOuts finds admin transactions and executes all ops in it.
 // This function is called after the validity of the transaction has been
 // verified.
-// TODO(aztec): add more threads and ops.
 func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
-	if threadInt < int(rmgutil.RootThread) {
-		// Not admin transaction.
-		// Not all transaction that we receive are relevant, so we skip them.
-		return
+	if threadInt < 0 {
+		return // Not admin transaction, so we skip.
 	}
-	threadID := rmgutil.ThreadID(threadInt)
 	for i := 0; i < len(adminOutputs); i++ {
-		op, pubKey, _ := txscript.ExtractAdminData(adminOutputs[i])
-		switch threadID {
-		case rmgutil.RootThread:
-			if op == txscript.OP_PROVISIONINGKEYADD {
-				view.adminKeySets[btcec.ProvisionKeySet] = view.adminKeySets[btcec.ProvisionKeySet].Add(pubKey)
-			}
-			if op == txscript.OP_PROVISIONINGKEYREVOKE {
-				pos := view.adminKeySets[btcec.ProvisionKeySet].Pos(pubKey)
-				view.adminKeySets[btcec.ProvisionKeySet] = view.adminKeySets[btcec.ProvisionKeySet].Remove(pos)
-			}
-			if op == txscript.OP_ISSUINGKEYADD {
-				view.adminKeySets[btcec.IssueKeySet] = view.adminKeySets[btcec.IssueKeySet].Add(pubKey)
-			}
-			if op == txscript.OP_ISSUINGKEYREVOKE {
-				pos := view.adminKeySets[btcec.IssueKeySet].Pos(pubKey)
-				view.adminKeySets[btcec.IssueKeySet] = view.adminKeySets[btcec.IssueKeySet].Remove(pos)
-			}
-		case rmgutil.ProvisionThread:
-			if op == txscript.OP_VALIDATEKEYADD {
-				view.adminKeySets[btcec.ValidateKeySet] = view.adminKeySets[btcec.ValidateKeySet].Add(pubKey)
-			}
-			if op == txscript.OP_VALIDATEKEYREVOKE {
-				pos := view.adminKeySets[btcec.ValidateKeySet].Pos(pubKey)
-				view.adminKeySets[btcec.ValidateKeySet] = view.adminKeySets[btcec.ValidateKeySet].Remove(pos)
-			}
-			if op == txscript.OP_WSPKEYADD {
-				_, pubKey, keyID, _ := txscript.ExtractWspData(adminOutputs[i])
-				if view.wspKeyIdMap[keyID] == nil {
-					view.wspKeyIdMap[keyID] = pubKey
-				}
-			}
-			if op == txscript.OP_WSPKEYREVOKE {
-				_, pubKey, keyID, _ := txscript.ExtractWspData(adminOutputs[i])
-				if view.wspKeyIdMap[keyID].IsEqual(pubKey) {
-					delete(view.wspKeyIdMap, keyID)
-				}
-			}
+		view.applyAdminOp(txscript.ExtractAdminOpData(adminOutputs[i]))
+	}
+}
+
+// applyAdminOp takes a single admin opp and applies it to the view.
+func (view *KeyViewpoint) applyAdminOp(isAddOp bool,
+	keySetType btcec.KeySetType, pubKey *btcec.PublicKey, keyID btcec.KeyID) {
+	if keySetType == btcec.WspKeySet {
+		if isAddOp {
+			view.wspKeyIdMap[keyID] = pubKey
+		} else {
+			delete(view.wspKeyIdMap, keyID)
+		}
+	} else {
+		if isAddOp {
+			view.adminKeySets[keySetType] = view.adminKeySets[keySetType].Add(pubKey)
+		} else {
+			pos := view.adminKeySets[keySetType].Pos(pubKey)
+			view.adminKeySets[keySetType] = view.adminKeySets[keySetType].Remove(pos)
 		}
 	}
 }
@@ -211,46 +189,10 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 		// TODO(aztec): add more threads and ops.
 		threadInt, adminOutputs := txscript.GetAdminDetails(tx)
 		if threadInt >= int(rmgutil.RootThread) {
-			threadID := rmgutil.ThreadID(threadInt)
 			for i := 0; i < len(adminOutputs); i++ {
-				op, pubKey, _ := txscript.ExtractAdminData(adminOutputs[i])
-				switch threadID {
-				case rmgutil.RootThread:
-					if op == txscript.OP_PROVISIONINGKEYREVOKE {
-						view.adminKeySets[btcec.ProvisionKeySet] = view.adminKeySets[btcec.ProvisionKeySet].Add(pubKey)
-					}
-					if op == txscript.OP_PROVISIONINGKEYADD {
-						pos := view.adminKeySets[btcec.ProvisionKeySet].Pos(pubKey)
-						view.adminKeySets[btcec.ProvisionKeySet] = view.adminKeySets[btcec.ProvisionKeySet].Remove(pos)
-					}
-					if op == txscript.OP_ISSUINGKEYREVOKE {
-						view.adminKeySets[btcec.IssueKeySet] = view.adminKeySets[btcec.IssueKeySet].Add(pubKey)
-					}
-					if op == txscript.OP_ISSUINGKEYADD {
-						pos := view.adminKeySets[btcec.IssueKeySet].Pos(pubKey)
-						view.adminKeySets[btcec.IssueKeySet] = view.adminKeySets[btcec.IssueKeySet].Remove(pos)
-					}
-				case rmgutil.ProvisionThread:
-					if op == txscript.OP_VALIDATEKEYREVOKE {
-						view.adminKeySets[btcec.ValidateKeySet] = view.adminKeySets[btcec.ValidateKeySet].Add(pubKey)
-					}
-					if op == txscript.OP_VALIDATEKEYADD {
-						pos := view.adminKeySets[btcec.ValidateKeySet].Pos(pubKey)
-						view.adminKeySets[btcec.ValidateKeySet] = view.adminKeySets[btcec.ValidateKeySet].Remove(pos)
-					}
-					if op == txscript.OP_WSPKEYREVOKE {
-						_, pubKey, keyID, _ := txscript.ExtractWspData(adminOutputs[i])
-						if view.wspKeyIdMap[keyID] == nil {
-							view.wspKeyIdMap[keyID] = pubKey
-						}
-					}
-					if op == txscript.OP_WSPKEYADD {
-						_, pubKey, keyID, _ := txscript.ExtractWspData(adminOutputs[i])
-						if view.wspKeyIdMap[keyID].IsEqual(pubKey) {
-							delete(view.wspKeyIdMap, keyID)
-						}
-					}
-				}
+				isAddOp, keySetType, pubKey, keyID := txscript.ExtractAdminOpData(adminOutputs[i])
+				isAddOp = !isAddOp
+				view.applyAdminOp(isAddOp, keySetType, pubKey, keyID)
 			}
 		}
 	}

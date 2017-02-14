@@ -15,6 +15,7 @@ const (
 	ProvisionKeySet KeySetType = 1
 	IssueKeySet     KeySetType = 2
 	ValidateKeySet  KeySetType = 3
+	WspKeySet       KeySetType = 4
 )
 
 // ParsePubKeySet parses a list of ecdsa.Publickey for a koblitz curve from a
@@ -112,8 +113,8 @@ func (set PublicKeySet) Equal(v PublicKeySet) bool {
 	if len(set) != len(v) {
 		return false
 	}
-	for i := range set {
-		if !set[i].IsEqual(&v[i]) {
+	for i := range v {
+		if set.Pos(&v[i]) == -1 {
 			return false
 		}
 	}

@@ -6,6 +6,7 @@ package blockchain_test
 
 import (
 	"bytes"
+	"encoding/hex"
 	"github.com/bitgo/rmgd/blockchain"
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
@@ -282,6 +283,291 @@ func TestCheckTransactionSanity(t *testing.T) {
 		// Ensure the reject code is the expected one.
 		if rerr.ErrorCode != test.code {
 			t.Errorf("checkTransactionStandard (%s): unexpected "+
+				"error code - got %v, want %v", test.name,
+				rerr.ErrorCode, test.code)
+			continue
+		}
+	}
+}
+
+// hexToBytes converts the passed hex string into bytes and will panic if there
+// is an error.  This is only provided for the hard-coded constants so errors in
+// the source code can be detected. It will only (and must only) be called with
+// hard-coded values.
+func hexToBytes(s string) []byte {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		panic("invalid hex in source file: " + s)
+	}
+	return b
+}
+
+// TestCheckAdminOps tests the CheckAdminOps API.
+func TestCheckAdminOps(t *testing.T) {
+	// Create some dummy, but otherwise standard, data for transactions.
+	prevOutHash, err := chainhash.NewHashFromStr("01")
+	if err != nil {
+		t.Fatalf("NewShaHashFromStr: unexpected error: %v", err)
+	}
+	dummyPrevOut1 := wire.OutPoint{Hash: *prevOutHash, Index: 1}
+	dummySigScript := bytes.Repeat([]byte{0x00}, 65)
+	dummyTxIn := wire.TxIn{
+		PreviousOutPoint: dummyPrevOut1,
+		SignatureScript:  dummySigScript,
+		Sequence:         wire.MaxTxInSequenceNum,
+	}
+
+	// Create admin op to add provision key.
+	_, pubKey := btcec.PrivKeyFromBytes(btcec.S256(), []byte{
+		0x2b, 0x8c, 0x52, 0xb7, 0x7b, 0x32, 0x7c, 0x75,
+		0x5b, 0x9b, 0x37, 0x55, 0x00, 0xd3, 0xf4, 0xb2,
+		0xda, 0x9b, 0x0a, 0x1f, 0xf6, 0x5f, 0x68, 0x91,
+		0xd3, 0x11, 0xfe, 0x94, 0x29, 0x5b, 0xc2, 0x6a,
+	})
+	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed)
+	data[0] = txscript.OP_PROVISIONINGKEYADD
+	copy(data[1:], pubKey.SerializeCompressed())
+	adminOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+		AddData(data).Script()
+	adminOpTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: adminOpPkScript,
+	}
+	// Create admin op to revoke provision key.
+	data = make([]byte, 1+btcec.PubKeyBytesLenCompressed)
+	data[0] = txscript.OP_PROVISIONINGKEYREVOKE
+	copy(data[1:], pubKey.SerializeCompressed())
+	adminOpRevokePkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+		AddData(data).Script()
+	adminOpRevokeTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: adminOpRevokePkScript,
+	}
+	// Create admin op to revoke validate key.
+	data = make([]byte, 1+btcec.PubKeyBytesLenCompressed)
+	data[0] = txscript.OP_VALIDATEKEYREVOKE
+	copy(data[1:], pubKey.SerializeCompressed())
+	adminOpRevProvPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+		AddData(data).Script()
+	adminOpRevProvTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: adminOpRevProvPkScript,
+	}
+	// Create admin op to add keyID.
+	keyID := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	data = make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
+	data[0] = txscript.OP_WSPKEYADD
+	copy(data[1:], pubKey.SerializeCompressed())
+	keyID.ToAddressFormat(data[1+btcec.PubKeyBytesLenCompressed:])
+	adminOpAspPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+		AddData(data).Script()
+	adminOpAspTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: adminOpAspPkScript,
+	}
+	// Create admin op to revoke keyID.
+	data = make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
+	data[0] = txscript.OP_WSPKEYREVOKE
+	copy(data[1:], pubKey.SerializeCompressed())
+	keyID.ToAddressFormat(data[1+btcec.PubKeyBytesLenCompressed:])
+	adminOpAspRevPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+		AddData(data).Script()
+	adminOpAspRevTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: adminOpAspRevPkScript,
+	}
+	// Create some provision admin op.
+	// create root tx out
+	rootPkScript, _ := txscript.AztecThreadScript(rmgutil.RootThread)
+	rootTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: rootPkScript,
+	}
+
+	tests := []struct {
+		name         string
+		tx           wire.MsgTx
+		adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
+		wspKeyIdMap  btcec.KeyIdMap
+		isValid      bool
+		code         blockchain.ErrorCode
+	}{
+		{
+			name: "Add key to empty admin set.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpTxOut},
+				LockTime: 0,
+			},
+			isValid: true,
+		},
+		{
+			name: "Revoking last key from provision set.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpRevokeTxOut},
+				LockTime: 0,
+			},
+			adminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
+				keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
+				keySets[btcec.ProvisionKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+					"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+				)
+				return keySets
+			}(),
+			isValid: true,
+		},
+		{
+			name: "Adding existing key to set.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpTxOut},
+				LockTime: 0,
+			},
+			adminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
+				keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
+				keySets[btcec.ProvisionKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+					"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+				)
+				return keySets
+			}(),
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminOp,
+		},
+		{
+			name: "Adding key to full set.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpTxOut},
+				LockTime: 0,
+			},
+			adminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
+				keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
+				// fill up the provision key set
+				for i := 0; i < blockchain.MaxAdminKeySetSize; i++ {
+					privKey, _ := btcec.NewPrivateKey(btcec.S256())
+					pubKey := (*btcec.PublicKey)(&privKey.PublicKey)
+					keySets[btcec.ProvisionKeySet] = keySets[btcec.ProvisionKeySet].Add(pubKey)
+				}
+				return keySets
+			}(),
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminOp,
+		},
+		{
+			name: "Revoking non-existing key from set.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpRevokeTxOut},
+				LockTime: 0,
+			},
+			adminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
+				keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
+				keySets[btcec.ProvisionKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+					"038364914c537fc6c6a675166aea88abf7a2c83b0955b2e6b0611dacfad6242288",
+					"0353cc1a8e6fcb764349bce68a56a285316bcea950a6f667fee4c95d5ad2f72815",
+					"0324d2903ef1c4f0df2d47cd39184e667bd32d101a319c47ed47a4941f62a1b886",
+				)
+				return keySets
+			}(),
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminOp,
+		},
+		{
+			name: "Revoking too many from validate set.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpRevProvTxOut},
+				LockTime: 0,
+			},
+			adminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
+				keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
+				keySets[btcec.ProvisionKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+					"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1",
+					"0353cc1a8e6fcb764349bce68a56a285316bcea950a6f667fee4c95d5ad2f72815",
+					"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202",
+				)
+				return keySets
+			}(),
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminOp,
+		},
+		{
+			name: "Adding a new keyID.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpAspTxOut},
+				LockTime: 0,
+			},
+			isValid: true,
+		},
+		{
+			name: "Add an existing keyID.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpAspTxOut},
+				LockTime: 0,
+			},
+			wspKeyIdMap: func() btcec.KeyIdMap {
+				keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+				pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+				return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey1}
+			}(),
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminOp,
+		},
+		{
+			name: "Revoke unknown keyID.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpAspRevTxOut},
+				LockTime: 0,
+			},
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminOp,
+		},
+	}
+
+	for _, test := range tests {
+		keyView := blockchain.NewKeyViewpoint()
+		keyView.SetKeys(test.adminKeySets)
+		keyView.SetKeyIDs(test.wspKeyIdMap)
+		err := blockchain.CheckAdminOps(rmgutil.NewTx(&test.tx), keyView)
+		if err == nil && test.isValid {
+			// Test passes since function returned valid for a
+			// transaction which is intended to be valid.
+			continue
+		}
+		if err == nil && !test.isValid {
+			t.Errorf("checkAdminOpValid (%s): valid when "+
+				"it should not be", test.name)
+			continue
+		}
+		if err != nil && test.isValid {
+			t.Errorf("checkAdminOpValid (%s): invalid "+
+				"when it should not be: %v", test.name, err)
+			continue
+		}
+
+		rerr, ok := err.(blockchain.RuleError)
+		if !ok {
+			t.Errorf("checkAdminOpValid (%s): unexpected "+
+				"error type - got %T", test.name, err)
+			continue
+		}
+
+		// Ensure the reject code is the expected one.
+		if rerr.ErrorCode != test.code {
+			t.Errorf("checkAdminOpValid (%s): unexpected "+
 				"error code - got %v, want %v", test.name,
 				rerr.ErrorCode, test.code)
 			continue

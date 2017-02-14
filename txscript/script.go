@@ -363,6 +363,47 @@ func ExtractWspData(pkScript []parsedOpcode) (byte, *btcec.PublicKey, btcec.KeyI
 	return pkScript[1].data[0], pubKey, keyID, nil
 }
 
+// ExtractAdminOpData extract operation type and values from admin operations
+// in admin transactions.
+// The function assumes previous validation of all passed opcodes as admin ops.
+func ExtractAdminOpData(pkScript []parsedOpcode) (bool, btcec.KeySetType, *btcec.PublicKey, btcec.KeyID) {
+	pubKey, _ := btcec.ParsePubKey(pkScript[1].data[1:1+btcec.PubKeyBytesLenCompressed], btcec.S256())
+	dataLen := len(pkScript[1].data)
+	keyID := btcec.KeyID(0)
+	if dataLen > 1+btcec.PubKeyBytesLenCompressed {
+		keyID = btcec.KeyIDFromAddressBuffer(pkScript[1].data[dataLen-btcec.KeyIDSize : dataLen])
+	}
+	var isAddOp bool
+	keySetType := btcec.KeySetType(0)
+	switch pkScript[1].data[0] {
+	case OP_PROVISIONINGKEYADD:
+		isAddOp = true
+		keySetType = btcec.ProvisionKeySet
+	case OP_PROVISIONINGKEYREVOKE:
+		isAddOp = false
+		keySetType = btcec.ProvisionKeySet
+	case OP_ISSUINGKEYADD:
+		isAddOp = true
+		keySetType = btcec.IssueKeySet
+	case OP_ISSUINGKEYREVOKE:
+		isAddOp = false
+		keySetType = btcec.IssueKeySet
+	case OP_VALIDATEKEYADD:
+		isAddOp = true
+		keySetType = btcec.ValidateKeySet
+	case OP_VALIDATEKEYREVOKE:
+		isAddOp = false
+		keySetType = btcec.ValidateKeySet
+	case OP_WSPKEYADD:
+		isAddOp = true
+		keySetType = btcec.WspKeySet
+	case OP_WSPKEYREVOKE:
+		isAddOp = false
+		keySetType = btcec.WspKeySet
+	}
+	return isAddOp, keySetType, pubKey, keyID
+}
+
 // canonicalPush returns true if the object is either not a push instruction
 // or the push instruction contained wherein is matches the canonical form
 // or using the smallest instruction to do the job. False otherwise.

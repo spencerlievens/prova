@@ -45,6 +45,16 @@ const (
 	// baseSubsidy is the starting subsidy amount for mined blocks.  This
 	// value is halved every SubsidyHalvingInterval blocks.
 	baseSubsidy = 5000 * rmgutil.AtomsPerGram
+
+	// MaxAdminKeySetSize sets a limit for the size of admin key sets.
+	// When admin transactions are validated, the pubKeyScript is generated
+	// from all active keys of that thread. The limit is needed to not exceed
+	// pubKeyScript size limits.
+	MaxAdminKeySetSize = 42
+
+	// MinValidateKeySetSize is the least amount of validators needed to run
+	// the chain. Rate Limiting for validators should not conflict with this.
+	MinValidateKeySetSize = 4
 )
 
 var (
@@ -654,7 +664,7 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 			return ruleError(ErrTimeTooOld, str)
 		}
 
-		// Verify the block's signature by an active validator key
+		// Verify the block's signature by an active validate key.
 		// TODO(aztec): confirm that the validating pubkey is valid
 		pubKey, err := btcec.ParsePubKey(header.ValidatingPubKey[:], btcec.S256())
 		if err != nil {
@@ -968,6 +978,79 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewp
 	return txFeeInAtoms, nil
 }
 
+// CheckAdminOps performs a series of checks to admin
+// transaction to ensure they are valid.
+//
+// NOTE: The transaction MUST have already been sanity checked with the
+// CheckTransactionSanity function prior to calling this function.
+func CheckAdminOps(tx *rmgutil.Tx, keyView *KeyViewpoint) error {
+	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
+	hasAdminOut := (threadInt >= 0)
+	if !hasAdminOut {
+		// This is not an admin transaction.
+		return nil
+	}
+	// TODO(prova): how to check that ops within one tx don't violate rules?
+	for i := 0; i < len(adminOutputs); i++ {
+		isAddOp, keySetType, pubKey, keyID := txscript.ExtractAdminOpData(adminOutputs[i])
+		if keySetType == btcec.WspKeySet {
+			// TODO(prova): check pubKey collisions
+			// TODO(prova): check strictly increasing keyID
+			if isAddOp {
+				if keyView.wspKeyIdMap[keyID] != nil {
+					str := fmt.Sprintf("keyID added in transaction %v "+
+						"exists already in admin set. Operation "+
+						"rejected.", tx.Hash())
+					return ruleError(ErrInvalidAdminOp, str)
+				}
+			} else {
+				if keyView.wspKeyIdMap[keyID] == nil {
+					str := fmt.Sprintf("keyID %v can not be revoked in "+
+						"transaction %v. It does not exist in admin set.",
+						keyID, tx.Hash())
+					return ruleError(ErrInvalidAdminOp, str)
+				}
+			}
+		} else {
+			keySet := keyView.adminKeySets[keySetType]
+			pos := keySet.Pos(pubKey)
+			if isAddOp {
+				if pos >= 0 {
+					str := fmt.Sprintf("key added in transaction %v "+
+						"exists already in admin set at position %v. "+
+						"Operation rejected.", tx.Hash(), pos)
+					return ruleError(ErrInvalidAdminOp, str)
+				}
+				if len(keySet) >= MaxAdminKeySetSize {
+					str := fmt.Sprintf("admin transaction %v tries to add "+
+						"key to admin key set. Yet the set has reached max "+
+						"size %v.", tx.Hash(), len(keySet))
+					return ruleError(ErrInvalidAdminOp, str)
+				}
+			} else {
+				if pos == -1 {
+					str := fmt.Sprintf("admin transaction %v tries to remove "+
+						"non-existing key %v. ", tx.Hash(), pubKey)
+					return ruleError(ErrInvalidAdminOp, str)
+				}
+				// minLen describes the min amount of active admin keys
+				// to keep in a set. This seems only critical for root keys,
+				minLen := 0 // but root key set is fixed.
+				if keySetType == btcec.ValidateKeySet {
+					minLen = MinValidateKeySetSize
+				}
+				if len(keySet) <= minLen {
+					str := fmt.Sprintf("admin transaction %v tries to remove "+
+						"key from admin key set with length 2. At least 2 keys "+
+						"have to stay provisioned.", tx.Hash())
+					return ruleError(ErrInvalidAdminOp, str)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // IsValidateKeyRateLimited determines whether using a specific pubkey in a
 // future possible chain extension would create a validate rate limit error.
 func (b *BlockChain) IsValidateKeyRateLimited(validatePubKey wire.BlockValidatingPubKey) (error, bool) {
@@ -1131,15 +1214,18 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, ut
 				"overflows accumulator")
 		}
 
+		// CheckAdminOps checks if no state-dependent admin rules have
+		// been violated.
+		err = CheckAdminOps(tx, keyView)
+		if err != nil {
+			return err
+		}
+
 		// Add all of the outputs for this transaction which are not
 		// provably unspendable as available utxos.  Also, the passed
 		// spent txos slice is updated to contain an entry for each
 		// spent txout in the order each transaction spends them.
 		err = utxoView.connectTransaction(tx, node.height, stxos)
-		if err != nil {
-			return err
-		}
-		err = keyView.connectTransaction(tx, node.height)
 		if err != nil {
 			return err
 		}
@@ -1244,6 +1330,13 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, ut
 		}
 	}
 
+	for _, tx := range transactions {
+		err = keyView.connectTransaction(tx, node.height)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Update the best hash for utxoView to include this block since all of its
 	// transactions have been connected.
 	utxoView.SetBestHash(node.hash)
@@ -1279,7 +1372,7 @@ func (b *BlockChain) CheckConnectBlock(block *rmgutil.Block) error {
 	// actually connecting the block.
 	// To perform the verification, KeyViewpoint needs to provide the admin
 	// state of the chain. The block can only be connected if:
-	// - it is mined by provisioned validator key.
+	// - it is mined by an active validate key.
 	// - all keyIDs used for outputs are provisioned.
 	keyView := NewKeyViewpoint()
 	keyView.SetKeys(b.adminKeySets)

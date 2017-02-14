@@ -1275,7 +1275,7 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *rmgutil.Block, fla
 		// To perform the above verification, KeyViewpoint needs to provide
 		// the admin state of the chain.
 		// The block can only be connected if:
-		// - it is mined by provisioned validator key.
+		// - it is mined by an active validate key.
 		// - all keyIDs used for outputs are provisioned.
 		keyView := NewKeyViewpoint()
 		keyView.SetKeys(b.adminKeySets)

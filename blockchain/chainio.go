@@ -949,7 +949,7 @@ func dbFetchHashByHeight(dbTx database.Tx, height uint32) (*chainhash.Hash, erro
 
 // -----------------------------------------------------------------------------
 // The key set consists of sets of keys that are used to administrate the chain.
-// The sets are root, provisioning, issuing, WSP, and validator keys.
+// The sets are ROOT, PROVISION, ISSUE, WSP, and VALIDATE keys.
 //
 //
 // The serialized format is:

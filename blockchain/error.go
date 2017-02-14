@@ -65,7 +65,7 @@ const (
 	ErrBadHeight
 
 	// ErrBadBlockSignature indicates a block was not properly signed
-	// by a validator key
+	// by a validate key
 	ErrBadBlockSignature
 
 	// ErrHighHash indicates the block does not hash to a value which is
@@ -214,6 +214,10 @@ const (
 	// ErrInvalidAdminTx indicates a transaction is not an allowed admin
 	// transaction.
 	ErrInvalidAdminTx
+
+	// ErrInvalidAdminOp indicates an admin transaction contains an invalid
+	// operation according to current chain state.
+	ErrInvalidAdminOp
 )
 
 // Map of ErrorCode values back to their constant names for pretty printing.
@@ -263,6 +267,7 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrInvalidTx:            "ErrInvalidTx",
 	ErrInvalidValidateKey:   "ErrInvalidValidateKey",
 	ErrInvalidAdminTx:       "ErrInvalidAdminTx",
+	ErrInvalidAdminOp:       "ErrInvalidAdminOp",
 }
 
 // String returns the ErrorCode as a human-readable name.

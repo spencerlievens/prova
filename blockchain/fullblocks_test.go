@@ -70,17 +70,17 @@ func TestFullBlocks(t *testing.T) {
 		// Check ROOT KEYS
 		if item.IsMainChain && !item.AdminKeySets[btcec.RootKeySet].Equal(chain.AdminKeySets()[btcec.RootKeySet]) {
 			t.Fatalf("block %q (hash %s, height %d) should "+
-				"have ROOT KEYS %x, got %x", item.Name, block.Hash(),
-				blockHeight, item.AdminKeySets[btcec.RootKeySet],
-				chain.AdminKeySets()[btcec.RootKeySet])
+				"have ROOT KEYS %v, got %v", item.Name, block.Hash(),
+				blockHeight, item.AdminKeySets[btcec.RootKeySet].ToStringArray(),
+				chain.AdminKeySets()[btcec.RootKeySet].ToStringArray())
 		}
 		// Check PROVISION KEYS
 		provisionKeySet := btcec.PublicKeySet(item.AdminKeySets[btcec.ProvisionKeySet])
 		if item.IsMainChain && !provisionKeySet.Equal(chain.AdminKeySets()[btcec.ProvisionKeySet]) {
 			t.Fatalf("block %q (hash %s, height %d) should "+
-				"have PROVISION KEYS %x, got %x", item.Name, block.Hash(),
-				blockHeight, provisionKeySet,
-				chain.AdminKeySets()[btcec.ProvisionKeySet])
+				"have PROVISION KEYS %v, got %v", item.Name, block.Hash(),
+				blockHeight, provisionKeySet.ToStringArray(),
+				chain.AdminKeySets()[btcec.ProvisionKeySet].ToStringArray())
 		}
 		// Check VALIDATE KEYS
 		if item.IsMainChain && !item.AdminKeySets[btcec.ValidateKeySet].Equal(chain.AdminKeySets()[btcec.ValidateKeySet]) {
