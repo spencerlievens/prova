@@ -408,6 +408,16 @@ func additionalTx(tx *wire.MsgTx) func(*wire.MsgBlock) {
 	}
 }
 
+// changeCoinbaseValue returns a function that itself takes a block and changes
+// it to alter the claim of the coinbase reward.
+func changeCoinbaseValue(delta int64) func(*wire.MsgBlock) {
+	return func(b *wire.MsgBlock) {
+		txns := b.Transactions
+		coinbaseTx := txns[0]
+		coinbaseTx.TxOut[0].Value += delta
+	}
+}
+
 // createSpendTx creates a transaction that spends from the provided spendable
 // output and includes an additional unique OP_RETURN output to ensure the
 // transaction ends up with a unique hash.  The script is a simple OP_TRUE
@@ -430,7 +440,7 @@ func createSpendTx(spend *spendableOut, fee rmgutil.Amount) *wire.MsgTx {
 	rand.Read(pkHash)
 	addr, _ := rmgutil.NewAddressAztec(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	scriptPkScript, _ := txscript.PayToAddrScript(addr)
-	spendTx.AddTxOut(wire.NewTxOut(int64(0), scriptPkScript))
+	spendTx.AddTxOut(wire.NewTxOut(int64(spend.amount-fee), scriptPkScript))
 
 	// Use Account Service Key and Account Recovery Key to sign tx.
 	sigScript, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
@@ -886,6 +896,19 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	g.nextBlock("b16", outs[12])
 	rejected(blockchain.ErrMissingTx) // now doublespend recognized.
+
+	// ---------------------------------------------------------------------
+	// Coinbase reward tests.
+	// ---------------------------------------------------------------------
+
+	// Attempt to progress the chain past b14 with bad coinbase fee blocks.
+	g.setTip("b14")
+	g.nextBlock("b17", outs[12], changeCoinbaseValue(-1))
+	rejected(blockchain.ErrBadCoinbaseValue)
+
+	g.setTip("b14")
+	g.nextBlock("b18", outs[12], changeCoinbaseValue(1))
+	rejected(blockchain.ErrBadCoinbaseValue)
 
 	return tests, nil
 }

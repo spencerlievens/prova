@@ -1242,9 +1242,9 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, ut
 	}
 	expectedAtomsOut := CalcBlockSubsidy(node.height, b.chainParams) +
 		totalFees
-	if totalAtomsOut > expectedAtomsOut {
+	if totalAtomsOut != expectedAtomsOut {
 		str := fmt.Sprintf("coinbase transaction for block pays %v "+
-			"which is more than expected value of %v",
+			"which is not the expected value of %v",
 			totalAtomsOut, expectedAtomsOut)
 		return ruleError(ErrBadCoinbaseValue, str)
 	}
