@@ -35,7 +35,7 @@ const (
 
 	// MinHighPriority is the minimum priority value that allows a
 	// transaction to be considered high priority.
-	MinHighPriority = rmgutil.AtomsPerGram * 144.0 / 250
+	MinHighPriority = 0.0
 
 	// mempoolHeight is the height used for the "block" height field of the
 	// contextual transaction information provided in a transaction view.
