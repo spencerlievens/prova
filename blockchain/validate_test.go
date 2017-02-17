@@ -128,6 +128,16 @@ func TestCheckTransactionSanity(t *testing.T) {
 		Sequence:         wire.MaxTxInSequenceNum,
 	}
 
+	// Create prova txout
+	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	payAddr, _ := rmgutil.NewAddressAztec(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
+	provaTxOut := wire.TxOut{
+		Value:    300,
+		PkScript: provaPkScript,
+	}
+
 	// Create some dummy admin op output.
 	_, pubKey := btcec.PrivKeyFromBytes(btcec.S256(), []byte{
 		0x2b, 0x8c, 0x52, 0xb7, 0x7b, 0x32, 0x7c, 0x75,
@@ -156,12 +166,18 @@ func TestCheckTransactionSanity(t *testing.T) {
 		Value:    0, // 0 RMG
 		PkScript: provisionPkScript,
 	}
+	// create provision tx out
+	issuePkScript, _ := txscript.AztecThreadScript(rmgutil.IssueThread)
+	issueTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: issuePkScript,
+	}
 
 	tests := []struct {
-		name       string
-		tx         wire.MsgTx
-		isStandard bool
-		code       blockchain.ErrorCode
+		name    string
+		tx      wire.MsgTx
+		isValid bool
+		code    blockchain.ErrorCode
 	}{
 		{
 			name: "Typical admin transaction",
@@ -171,7 +187,70 @@ func TestCheckTransactionSanity(t *testing.T) {
 				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpTxOut},
 				LockTime: 0,
 			},
-			isStandard: true,
+			isValid: true,
+		},
+		{
+			name: "Typical issue transaction",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&issueTxOut, &provaTxOut},
+				LockTime: 0,
+			},
+			isValid: true,
+		},
+		{
+			name: "Issue thread with admin op",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&issueTxOut, &adminOpTxOut},
+				LockTime: 0,
+			},
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
+		},
+		{
+			name: "Issue thread with 0 prova output",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn:    []*wire.TxIn{&dummyTxIn},
+				TxOut: []*wire.TxOut{&issueTxOut, {
+					Value:    0,
+					PkScript: provaPkScript,
+				}},
+				LockTime: 0,
+			},
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
+		},
+		{
+			name: "Issue thread with invalid output",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn:    []*wire.TxIn{&dummyTxIn},
+				TxOut: []*wire.TxOut{&issueTxOut, {
+					Value:    0,
+					PkScript: []byte{txscript.OP_TRUE},
+				}},
+				LockTime: 0,
+			},
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
+		},
+		{
+			name: "Issue thread burning 0 coins",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn:    []*wire.TxIn{&dummyTxIn},
+				TxOut: []*wire.TxOut{&issueTxOut, {
+					Value:    0,
+					PkScript: []byte{txscript.OP_RETURN},
+				}},
+				LockTime: 0,
+			},
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
 		},
 		{
 			name: "admin transaction with thread output at pos 1.",
@@ -181,8 +260,8 @@ func TestCheckTransactionSanity(t *testing.T) {
 				TxOut:    []*wire.TxOut{&adminOpTxOut, &rootTxOut},
 				LockTime: 0,
 			},
-			isStandard: false,
-			code:       blockchain.ErrInvalidAdminTx,
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
 		},
 		{
 			name: "admin transaction with non-zero output value.",
@@ -195,8 +274,8 @@ func TestCheckTransactionSanity(t *testing.T) {
 				}},
 				LockTime: 0,
 			},
-			isStandard: false,
-			code:       blockchain.ErrInvalidAdminTx,
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
 		},
 		{
 			name: "admin transaction with more than 1 input.",
@@ -206,8 +285,8 @@ func TestCheckTransactionSanity(t *testing.T) {
 				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpTxOut},
 				LockTime: 0,
 			},
-			isStandard: false,
-			code:       blockchain.ErrInvalidAdminTx,
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
 		},
 		{
 			name: "Empty admin transaction",
@@ -217,8 +296,8 @@ func TestCheckTransactionSanity(t *testing.T) {
 				TxOut:    []*wire.TxOut{&rootTxOut},
 				LockTime: 0,
 			},
-			isStandard: false,
-			code:       blockchain.ErrInvalidAdminTx,
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
 		},
 		{
 			name: "Admin transaction with operation on wrong thread",
@@ -228,8 +307,8 @@ func TestCheckTransactionSanity(t *testing.T) {
 				TxOut:    []*wire.TxOut{&provisionTxOut, &adminOpTxOut},
 				LockTime: 0,
 			},
-			isStandard: false,
-			code:       blockchain.ErrInvalidAdminTx,
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
 		},
 		{
 			name: "Admin transaction with invalid operation",
@@ -242,26 +321,26 @@ func TestCheckTransactionSanity(t *testing.T) {
 				}},
 				LockTime: 0,
 			},
-			isStandard: false,
-			code:       blockchain.ErrInvalidAdminTx,
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
 		},
 	}
 
 	for _, test := range tests {
 		// Ensure standardness is as expected.
 		err := blockchain.CheckTransactionSanity(rmgutil.NewTx(&test.tx))
-		if err == nil && test.isStandard {
+		if err == nil && test.isValid {
 			// Test passes since function returned standard for a
 			// transaction which is intended to be standard.
 			continue
 		}
-		if err == nil && !test.isStandard {
-			t.Errorf("checkTransactionStandard (%s): standard when "+
+		if err == nil && !test.isValid {
+			t.Errorf("CheckTransactionSanity (%s): standard when "+
 				"it should not be", test.name)
 			continue
 		}
-		if err != nil && test.isStandard {
-			t.Errorf("checkTransactionStandard (%s): nonstandard "+
+		if err != nil && test.isValid {
+			t.Errorf("CheckTransactionSanity (%s): nonstandard "+
 				"when it should not be: %v", test.name, err)
 			continue
 		}
@@ -269,20 +348,14 @@ func TestCheckTransactionSanity(t *testing.T) {
 		// Ensure error type is a TxRuleError inside of a RuleError.
 		rerr, ok := err.(blockchain.RuleError)
 		if !ok {
-			t.Errorf("checkTransactionStandard (%s): unexpected "+
+			t.Errorf("CheckTransactionSanity (%s): unexpected "+
 				"error type - got %T", test.name, err)
-			continue
-		}
-		//txrerr, ok := rerr.Err.(TxRuleError)
-		if !ok {
-			t.Errorf("checkTransactionStandard (%s): unexpected "+
-				"error type - got %T", test.name, rerr.ErrorCode)
 			continue
 		}
 
 		// Ensure the reject code is the expected one.
 		if rerr.ErrorCode != test.code {
-			t.Errorf("checkTransactionStandard (%s): unexpected "+
+			t.Errorf("CheckTransactionSanity (%s): unexpected "+
 				"error code - got %v, want %v", test.name,
 				rerr.ErrorCode, test.code)
 			continue
@@ -302,8 +375,8 @@ func hexToBytes(s string) []byte {
 	return b
 }
 
-// TestCheckAdminOps tests the CheckAdminOps API.
-func TestCheckAdminOps(t *testing.T) {
+// TestCheckTransactionOutputs tests the CheckTransactionOutputs API.
+func TestCheckTransactionOutputs(t *testing.T) {
 	// Create some dummy, but otherwise standard, data for transactions.
 	prevOutHash, err := chainhash.NewHashFromStr("01")
 	if err != nil {
@@ -315,6 +388,15 @@ func TestCheckAdminOps(t *testing.T) {
 		PreviousOutPoint: dummyPrevOut1,
 		SignatureScript:  dummySigScript,
 		Sequence:         wire.MaxTxInSequenceNum,
+	}
+	// Create prova txout
+	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	payAddr, _ := rmgutil.NewAddressAztec(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
+	provaTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: provaPkScript,
 	}
 
 	// Create admin op to add provision key.
@@ -376,12 +458,17 @@ func TestCheckAdminOps(t *testing.T) {
 		Value:    0, // 0 RMG
 		PkScript: adminOpAspRevPkScript,
 	}
-	// Create some provision admin op.
 	// create root tx out
 	rootPkScript, _ := txscript.AztecThreadScript(rmgutil.RootThread)
 	rootTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: rootPkScript,
+	}
+	// create issue tx out
+	issuePkScript, _ := txscript.AztecThreadScript(rmgutil.IssueThread)
+	issueTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: issuePkScript,
 	}
 
 	tests := []struct {
@@ -392,6 +479,36 @@ func TestCheckAdminOps(t *testing.T) {
 		isValid      bool
 		code         blockchain.ErrorCode
 	}{
+		{
+			name: "Spend to regular Prova output.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&provaTxOut},
+				LockTime: 0,
+			},
+			wspKeyIdMap: func() btcec.KeyIdMap {
+				keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+				keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+				return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey, keyId2: pubKey}
+			}(),
+			isValid: true,
+		},
+		{
+			name: "Spend to Prova with unknown keyID.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&provaTxOut},
+				LockTime: 0,
+			},
+			wspKeyIdMap: func() btcec.KeyIdMap {
+				keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+				return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey}
+			}(),
+			isValid: false,
+			code:    blockchain.ErrInvalidTx,
+		},
 		{
 			name: "Add key to empty admin set.",
 			tx: wire.MsgTx{
@@ -535,39 +652,194 @@ func TestCheckAdminOps(t *testing.T) {
 			isValid: false,
 			code:    blockchain.ErrInvalidAdminOp,
 		},
+		{
+			name: "Issue to prova output with unknown keyID.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&issueTxOut, &provaTxOut},
+				LockTime: 0,
+			},
+			wspKeyIdMap: func() btcec.KeyIdMap {
+				keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+				return map[btcec.KeyID]*btcec.PublicKey{keyId2: pubKey}
+			}(),
+			isValid: false,
+			code:    blockchain.ErrInvalidTx,
+		},
 	}
 
 	for _, test := range tests {
 		keyView := blockchain.NewKeyViewpoint()
 		keyView.SetKeys(test.adminKeySets)
 		keyView.SetKeyIDs(test.wspKeyIdMap)
-		err := blockchain.CheckAdminOps(rmgutil.NewTx(&test.tx), keyView)
+		err := blockchain.CheckTransactionOutputs(rmgutil.NewTx(&test.tx), keyView)
 		if err == nil && test.isValid {
 			// Test passes since function returned valid for a
 			// transaction which is intended to be valid.
 			continue
 		}
 		if err == nil && !test.isValid {
-			t.Errorf("checkAdminOpValid (%s): valid when "+
+			t.Errorf("CheckTransactionOutputs (%s): valid when "+
 				"it should not be", test.name)
 			continue
 		}
 		if err != nil && test.isValid {
-			t.Errorf("checkAdminOpValid (%s): invalid "+
+			t.Errorf("CheckTransactionOutputs (%s): invalid "+
 				"when it should not be: %v", test.name, err)
 			continue
 		}
 
 		rerr, ok := err.(blockchain.RuleError)
 		if !ok {
-			t.Errorf("checkAdminOpValid (%s): unexpected "+
+			t.Errorf("CheckTransactionOutputs (%s): unexpected "+
 				"error type - got %T", test.name, err)
 			continue
 		}
 
 		// Ensure the reject code is the expected one.
 		if rerr.ErrorCode != test.code {
-			t.Errorf("checkAdminOpValid (%s): unexpected "+
+			t.Errorf("CheckTransactionOutputs (%s): unexpected "+
+				"error code - got %v, want %v", test.name,
+				rerr.ErrorCode, test.code)
+			continue
+		}
+	}
+}
+
+// TestCheckTransactionInputs tests the CheckTransactionInputs API.
+func TestCheckTransactionInputs(t *testing.T) {
+	// Create some dummy, but otherwise standard, data for transactions.
+	prevOut := wire.TxOut{
+		Value:    400,
+		PkScript: make([]byte, 20),
+	}
+	prevMsgTx := wire.MsgTx{
+		Version:  1,
+		TxOut:    []*wire.TxOut{&prevOut},
+		LockTime: 0,
+	}
+	prevTx := rmgutil.NewTx(&prevMsgTx)
+	// Create prova px script
+	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	payAddr, _ := rmgutil.NewAddressAztec(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
+	// spend prevTx
+	dummyPrevOut1 := wire.OutPoint{Hash: *prevTx.Hash(), Index: 0}
+	dummySigScript := bytes.Repeat([]byte{0x00}, 65)
+	dummyTxIn := wire.TxIn{
+		PreviousOutPoint: dummyPrevOut1,
+		SignatureScript:  dummySigScript,
+		Sequence:         wire.MaxTxInSequenceNum,
+	}
+	// create issue tip tx
+	issuePkScript, _ := txscript.AztecThreadScript(rmgutil.IssueThread)
+	issueTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: issuePkScript,
+	}
+	issueTipTx := rmgutil.NewTx(&wire.MsgTx{
+		Version:  1,
+		TxIn:     []*wire.TxIn{&dummyTxIn},
+		TxOut:    []*wire.TxOut{&issueTxOut},
+		LockTime: 0,
+	})
+	issuePrevOut := wire.OutPoint{Hash: *issueTipTx.Hash(), Index: 0}
+	issueTxIn := wire.TxIn{
+		PreviousOutPoint: issuePrevOut,
+		SignatureScript:  dummySigScript,
+		Sequence:         wire.MaxTxInSequenceNum,
+	}
+
+	tests := []struct {
+		name    string
+		tx      wire.MsgTx
+		height  uint32
+		isValid bool
+		code    blockchain.ErrorCode
+	}{
+		{
+			name: "destroy some coins.",
+			tx: wire.MsgTx{
+				Version: 1, // in values: 0      and 400
+				TxIn:    []*wire.TxIn{&issueTxIn, &dummyTxIn},
+				TxOut: []*wire.TxOut{&issueTxOut, {
+					Value:    400,
+					PkScript: []byte{txscript.OP_RETURN},
+				}},
+				LockTime: 0,
+			},
+			height:  200,
+			isValid: true,
+		},
+		{
+			name: "destroy more than input.",
+			tx: wire.MsgTx{
+				Version: 1, // in values: 0      and 400
+				TxIn:    []*wire.TxIn{&issueTxIn, &dummyTxIn},
+				TxOut: []*wire.TxOut{&issueTxOut, {
+					Value:    500,
+					PkScript: []byte{txscript.OP_RETURN},
+				}},
+				LockTime: 0,
+			},
+			height:  200,
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
+		},
+		{
+			name: "destroy and issue in same tx.",
+			tx: wire.MsgTx{
+				Version: 1, // in values: 0      and 400
+				TxIn:    []*wire.TxIn{&issueTxIn, &dummyTxIn},
+				TxOut: []*wire.TxOut{&issueTxOut, {
+					Value:    500, // destroy 500
+					PkScript: []byte{txscript.OP_RETURN},
+				}, {
+					Value:    1000, // issue 1000
+					PkScript: provaPkScript,
+				}},
+				LockTime: 0,
+			},
+			height:  200,
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
+		},
+	}
+
+	for _, test := range tests {
+		utxoView := blockchain.NewUtxoViewpoint()
+		utxoView.AddTxOuts(prevTx, 100)
+		utxoView.AddTxOuts(issueTipTx, 100)
+		_, err := blockchain.CheckTransactionInputs(rmgutil.NewTx(&test.tx),
+			test.height, utxoView, &chaincfg.MainNetParams)
+		if err == nil && test.isValid {
+			// Test passes since function returned valid for a
+			// transaction which is intended to be valid.
+			continue
+		}
+		if err == nil && !test.isValid {
+			t.Errorf("CheckTransactionInputs (%s): valid when "+
+				"it should not be", test.name)
+			continue
+		}
+		if err != nil && test.isValid {
+			t.Errorf("CheckTransactionInputs (%s): invalid "+
+				"when it should not be: %v", test.name, err)
+			continue
+		}
+
+		rerr, ok := err.(blockchain.RuleError)
+		if !ok {
+			t.Errorf("CheckTransactionInputs (%s): unexpected "+
+				"error type - got %T", test.name, err)
+			continue
+		}
+
+		// Ensure the reject code is the expected one.
+		if rerr.ErrorCode != test.code {
+			t.Errorf("CheckTransactionInputs (%s): unexpected "+
 				"error code - got %v, want %v", test.name,
 				rerr.ErrorCode, test.code)
 			continue

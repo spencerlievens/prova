@@ -114,7 +114,7 @@ func (set PublicKeySet) Equal(v PublicKeySet) bool {
 		return false
 	}
 	for i := range v {
-		if set.Pos(&v[i]) == -1 {
+		if &v[i] == nil || set.Pos(&v[i]) == -1 {
 			return false
 		}
 	}

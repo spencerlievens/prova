@@ -198,7 +198,7 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 	var totalAtoms int64
 	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
 	hasAdminOut := (threadInt >= 0)
-	for txInIndex, txOut := range msgTx.TxOut {
+	for txOutIndex, txOut := range msgTx.TxOut {
 		atoms := txOut.Value
 		if atoms < 0 {
 			str := fmt.Sprintf("transaction output has negative "+
@@ -233,20 +233,55 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 		// Only first output can be admin output
 		scriptClass := txscript.GetScriptClass(txOut.PkScript)
 		if scriptClass == txscript.AztecAdminTy {
-			if txInIndex != 0 {
+			if txOutIndex != 0 {
 				str := fmt.Sprintf("transaction output %d: admin output "+
-					"only allowed at position 0.", txInIndex)
+					"only allowed at position 0.", txOutIndex)
 				return ruleError(ErrInvalidAdminTx, str)
 			}
 		}
 
-		// All Admin tx output values must be 0 value
 		if hasAdminOut {
-			threadId := rmgutil.ThreadID(threadInt)
-			if threadId != rmgutil.IssueThread && txOut.Value != 0 {
-				str := fmt.Sprintf("admin transaction with non-zero value "+
-					"output #%d.", txInIndex)
-				return ruleError(ErrInvalidAdminTx, str)
+			if rmgutil.ThreadID(threadInt) != rmgutil.IssueThread {
+				// All Admin tx output values must be 0 value
+				if txOut.Value != 0 {
+					str := fmt.Sprintf("admin transaction with non-zero value "+
+						"output #%d.", txOutIndex)
+					return ruleError(ErrInvalidAdminTx, str)
+				}
+			} else {
+				// take care of issue thread
+				// If issuance/destruction tx, any non-nulldata outputs must be valid Aztec scripts
+				if txOutIndex > 0 {
+					pops := adminOutputs[txOutIndex-1]
+					scriptType := txscript.TypeOfScript(pops)
+					if len(pops) != 1 {
+						if scriptType != txscript.AztecTy {
+							str := fmt.Sprintf("admin issue transaction %v "+
+								"expected to have prova output at %d, "+
+								"but found %x.", tx.Hash, txOutIndex, pops)
+							return ruleError(ErrInvalidAdminTx, str)
+						}
+						if atoms == 0 {
+							str := fmt.Sprintf("admin issue transaction %v "+
+								"trying to issue 0 at output "+
+								"#%d.", tx.Hash, txOutIndex)
+							return ruleError(ErrInvalidAdminTx, str)
+						}
+					} else {
+						if scriptType != txscript.NullDataTy {
+							str := fmt.Sprintf("admin issue transaction %v "+
+								"has invalid output #%d.", tx.Hash, txOutIndex)
+							return ruleError(ErrInvalidAdminTx, str)
+						} else {
+							if atoms == 0 {
+								str := fmt.Sprintf("admin issue transaction %v "+
+									"trying to destroy 0 at output "+
+									"#%d.", tx.Hash, txOutIndex)
+								return ruleError(ErrInvalidAdminTx, str)
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -310,11 +345,6 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 					return ruleError(ErrInvalidAdminTx, str)
 				}
 			}
-		}
-
-		if threadId == rmgutil.IssueThread {
-			// TODO(prova): take care of issue thread
-			// If issuance/destruction tx, any non-nulldata outputs must be valid Aztec scripts
 		}
 	}
 
@@ -963,36 +993,121 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewp
 		totalAtomsOut += txOut.Value
 	}
 
+	isIssueThread := false
+	if hasAdminOut {
+		threadId := rmgutil.ThreadID(threadInt)
+		if threadId == rmgutil.IssueThread {
+			isIssueThread = true // we should make exception for in/out check
+		}
+	}
 	// Ensure the transaction does not spend more than its inputs.
 	if totalAtomsIn < totalAtomsOut {
-		str := fmt.Sprintf("total value of all transaction inputs for "+
-			"transaction %v is %v which is less than the amount "+
-			"spent of %v", txHash, totalAtomsIn, totalAtomsOut)
-		return 0, ruleError(ErrSpendTooHigh, str)
+		if isIssueThread {
+			// To be able to issue tokens, the out <= in rule is lifted for
+			// issue thread transactions.
+
+			// Yet, we need to make sure the transaction doesn't destroy more than
+			// it's inputs, otherwise totalSupply calculation will be faulty.
+
+			// Calculate the total destroyed amount for this transaction.  It is
+			// safe to ignore overflow and out of range errors here because those
+			// error conditions would have already been caught by
+			// checkTransactionSanity.
+			var totalAtomsDestroyed int64
+			for _, txOut := range tx.MsgTx().TxOut {
+				pops, _ := txscript.ParseScript(txOut.PkScript)
+				if txscript.TypeOfScript(pops) == txscript.NullDataTy {
+					totalAtomsDestroyed += txOut.Value
+				}
+			}
+			if totalAtomsIn < totalAtomsDestroyed {
+				str := fmt.Sprintf("admin transaction %v is trying to destroy "+
+					"%v which is more than inputs %v.", txHash,
+					totalAtomsDestroyed, totalAtomsIn)
+				return 0, ruleError(ErrInvalidAdminTx, str)
+			}
+		} else {
+			str := fmt.Sprintf("total value of all transaction inputs for "+
+				"transaction %v is %v which is less than the amount "+
+				"spent of %v", txHash, totalAtomsIn, totalAtomsOut)
+			return 0, ruleError(ErrSpendTooHigh, str)
+		}
 	}
 
 	// NOTE: bitcoind checks if the transaction fees are < 0 here, but that
 	// is an impossible condition because of the check above that ensures
 	// the inputs are >= the outputs.
 	txFeeInAtoms := totalAtomsIn - totalAtomsOut
+	// For issue thread admin transaction txFeeInAtoms can become negative.
+	// We catch here:
+	if isIssueThread && txFeeInAtoms < 0 {
+		txFeeInAtoms = 0
+	}
 	return txFeeInAtoms, nil
 }
 
-// CheckAdminOps performs a series of checks to admin
-// transaction to ensure they are valid.
+// CheckProvaOutput checks that all keyIDs in the pkScript are known in
+// the chain state.
+//
+// NOTE: The passed output MUST have already been sanity checked with the
+// CheckTransactionSanity function prior to calling this function.
+func CheckProvaOutput(tx *rmgutil.Tx, txOutIndex int, keyIDs []btcec.KeyID,
+	keyView *KeyViewpoint) error {
+	for _, keyID := range keyIDs {
+		if keyView.wspKeyIdMap[keyID] == nil {
+			str := fmt.Sprintf("transaction %v output %v has unknown "+
+				"keyID %v.", tx.Hash(), txOutIndex, keyID)
+			return ruleError(ErrInvalidTx, str)
+		}
+	}
+	return nil
+}
+
+// CheckTransactionOutputs performs a series of checks on the outputs to ensure
+// that they are valid in the context of the chain state.
 //
 // NOTE: The transaction MUST have already been sanity checked with the
 // CheckTransactionSanity function prior to calling this function.
-func CheckAdminOps(tx *rmgutil.Tx, keyView *KeyViewpoint) error {
+func CheckTransactionOutputs(tx *rmgutil.Tx, keyView *KeyViewpoint) error {
 	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
 	hasAdminOut := (threadInt >= 0)
 	if !hasAdminOut {
-		// This is not an admin transaction.
+		// This is not an admin transaction, all outputs should be prova type
+		// spending to active keyIDs
+		for i, txOut := range tx.MsgTx().TxOut {
+			output, _ := txscript.ParseScript(txOut.PkScript)
+			keyIDs, err := txscript.ExtractKeyIDs(output)
+			if err != nil {
+				return ruleError(ErrInvalidTx, fmt.Sprintf("%v", err))
+			}
+			err = CheckProvaOutput(tx, i, keyIDs, keyView)
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	}
-	// TODO(prova): how to check that ops within one tx don't violate rules?
+	threadId := rmgutil.ThreadID(threadInt)
+	if threadId == rmgutil.IssueThread {
+		for i, output := range adminOutputs {
+			if len(output) > 1 {
+				keyIDs, err := txscript.ExtractKeyIDs(output)
+				if err != nil {
+					return ruleError(ErrInvalidTx, fmt.Sprintf("%v", err))
+				}
+				// +1 here, because first out was thread output,
+				// which is not contained in adminOutputs.
+				err = CheckProvaOutput(tx, i+1, keyIDs, keyView)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
 	for i := 0; i < len(adminOutputs); i++ {
-		isAddOp, keySetType, pubKey, keyID := txscript.ExtractAdminOpData(adminOutputs[i])
+		isAddOp, keySetType, pubKey,
+			keyID := txscript.ExtractAdminOpData(adminOutputs[i])
 		if keySetType == btcec.WspKeySet {
 			// TODO(prova): check pubKey collisions
 			// TODO(prova): check strictly increasing keyID
@@ -1214,9 +1329,8 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, ut
 				"overflows accumulator")
 		}
 
-		// CheckAdminOps checks if no state-dependent admin rules have
-		// been violated.
-		err = CheckAdminOps(tx, keyView)
+		// CheckTransactionOutputs checks outputs for state violations.
+		err = CheckTransactionOutputs(tx, keyView)
 		if err != nil {
 			return err
 		}

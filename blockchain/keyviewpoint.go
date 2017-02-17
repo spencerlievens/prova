@@ -100,11 +100,15 @@ func (view *KeyViewpoint) LookupKeyIDs(keyIDs []btcec.KeyID) map[btcec.KeyID][]b
 // verified.
 func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
-	if threadInt < 0 {
-		return // Not admin transaction, so we skip.
+	if threadInt < 0 ||
+		rmgutil.ThreadID(threadInt) == rmgutil.IssueThread {
+		// Issue Thread, or not admin transaction
+		return // so we skip.
 	}
 	for i := 0; i < len(adminOutputs); i++ {
-		view.applyAdminOp(txscript.ExtractAdminOpData(adminOutputs[i]))
+		isAddOp, keySetType, pubKey,
+			keyID := txscript.ExtractAdminOpData(adminOutputs[i])
+		view.applyAdminOp(isAddOp, keySetType, pubKey, keyID)
 	}
 }
 
@@ -197,7 +201,8 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 		threadInt, adminOutputs := txscript.GetAdminDetails(tx)
 		if threadInt >= int(rmgutil.RootThread) {
 			for i := 0; i < len(adminOutputs); i++ {
-				isAddOp, keySetType, pubKey, keyID := txscript.ExtractAdminOpData(adminOutputs[i])
+				isAddOp, keySetType, pubKey,
+					keyID := txscript.ExtractAdminOpData(adminOutputs[i])
 				isAddOp = !isAddOp
 				view.applyAdminOp(isAddOp, keySetType, pubKey, keyID)
 			}

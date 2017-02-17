@@ -809,12 +809,6 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, utxoVie
 			return err
 		}
 
-		// Update admin key sets.
-		err = dbPutKeySet(dbTx, keyView.Keys(), keyView.KeyIDs())
-		if err != nil {
-			return err
-		}
-
 		// Add the block hash and height to the block index which tracks
 		// the main chain.
 		err = dbPutBlockIndex(dbTx, block.Hash(), node.height)

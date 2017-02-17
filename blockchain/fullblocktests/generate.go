@@ -286,6 +286,11 @@ func aztecAdminWSPScript(opcode byte, pubKey *btcec.PublicKey, keyID btcec.KeyID
 	return script
 }
 
+// opReturnScript creates an op_return pkScript.
+func opReturnScript() []byte {
+	return []byte{txscript.OP_RETURN}
+}
+
 // createCoinbaseTx returns a coinbase transaction paying an appropriate
 // subsidy based on the passed block height.  The coinbase signature script
 // conforms to the requirements of version 2 blocks.
@@ -492,6 +497,53 @@ func createWspAdminTx(spend *spendableOut, op byte, pubKey *btcec.PublicKey,
 
 	spendTx.TxIn[0].SignatureScript = sigScript
 
+	return spendTx
+}
+
+// createIssueTx creates an issue thread admin tx.
+// If a spend output is passed, a revoke transaction is build.
+// if spend is nil, new tokens of amount in value are issued.
+func createIssueTx(thread *spendableOut, value int64, spend *spendableOut) *wire.MsgTx {
+	spendTx := wire.NewMsgTx()
+	// thread input
+	spendTx.AddTxIn(&wire.TxIn{
+		PreviousOutPoint: thread.prevOut,
+		Sequence:         wire.MaxTxInSequenceNum,
+		SignatureScript:  nil,
+	})
+	// thread output
+	spendTx.AddTxOut(wire.NewTxOut(int64(0), aztecThreadScript(rmgutil.IssueThread)))
+	if spend == nil {
+		// issue some tokens: create a prova output
+		pkHash := make([]byte, 20)
+		rand.Read(pkHash)
+		addr, _ := rmgutil.NewAddressAztec(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+		scriptPkScript, _ := txscript.PayToAddrScript(addr)
+		spendTx.AddTxOut(wire.NewTxOut(value, scriptPkScript))
+	} else {
+		// destroy some tokens:
+		// - spend output of amount x
+		// - bind amount x in opReturn output
+		spendTx.AddTxIn(&wire.TxIn{
+			PreviousOutPoint: spend.prevOut,
+			Sequence:         wire.MaxTxInSequenceNum,
+			SignatureScript:  nil,
+		})
+		spendTx.AddTxOut(wire.NewTxOut(
+			int64(spend.amount),
+			opReturnScript(),
+		))
+	}
+	// sign thread input
+	sigScript, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
+		0, int64(thread.amount), thread.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
+	spendTx.TxIn[0].SignatureScript = sigScript
+	if spend != nil {
+		// sign second input
+		sigScript2, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
+			1, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
+		spendTx.TxIn[1].SignatureScript = sigScript2
+	}
 	return spendTx
 }
 
@@ -786,7 +838,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	acceptedWithAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1})
 	accepted()
 
-	// Provision another two and check three are there.
+	// Provision another two ISSUE keys and check three are there.
 	rootThreadOut := makeSpendableOutForTx(issueKeyAddTx, 0)
 	issueKeyAddTx2 := createAdminTx(&rootThreadOut, 0, txscript.OP_ISSUINGKEYADD, pubKey2)
 	rootThreadOut = makeSpendableOutForTx(issueKeyAddTx2, 0)
@@ -795,15 +847,18 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	acceptedWithAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1, *pubKey2, *pubKey3})
 	accepted()
 
-	// TODO(prova): Issue some tokens here
-	//issueThreadOut := outs[2]
-	g.nextBlock("b5", nil)
+	// Issue some tokens here
+	issueTx := createIssueTx(outs[2], int64(1000000), nil)
+	g.nextBlock("b5", nil, additionalTx(issueTx))
 	accepted()
 
-	// Revoke one again
+	// Revoke one ISSUE key again
 	rootThreadOut = makeSpendableOutForTx(issueKeyAddTx3, 0)
 	issueKeyRevokeTx1 := createAdminTx(&rootThreadOut, 0, txscript.OP_ISSUINGKEYREVOKE, pubKey1)
-	g.nextBlock("b6", nil, additionalTx(issueKeyRevokeTx1))
+	// Also destroy some tokens
+	issueThreadOut := makeSpendableOutForTx(issueTx, 0)
+	issueTx2 := createIssueTx(&issueThreadOut, int64(0), outs[5])
+	g.nextBlock("b6", nil, additionalTx(issueKeyRevokeTx1), additionalTx(issueTx2))
 	acceptedWithAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2})
 	accepted()
 
