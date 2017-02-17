@@ -37,16 +37,9 @@ func (view *KeyViewpoint) SetBestHash(hash *chainhash.Hash) {
 // SetKeys sets the admin key sets at the position in the chain the view
 // curretly represents.
 func (view *KeyViewpoint) SetKeys(keys map[btcec.KeySetType]btcec.PublicKeySet) {
-	if keys == nil {
-		return
+	if keys != nil {
+		view.adminKeySets = btcec.DeepCopy(keys)
 	}
-
-	copiedKeysMap := make(map[btcec.KeySetType]btcec.PublicKeySet)
-	for key, value := range keys {
-		copiedKeysMap[key] = value
-	}
-
-	view.adminKeySets = copiedKeysMap
 }
 
 // Keys returns the set current admin key sets.

@@ -35,16 +35,12 @@ func ParsePubKeySet(curve *KoblitzCurve, pubKeys ...string) (PublicKeySet, error
 
 // DeepCopy creates a deep copy of the admin keys.
 func DeepCopy(adminKeySets map[KeySetType]PublicKeySet) map[KeySetType]PublicKeySet {
-	copySets := make(map[KeySetType]PublicKeySet)
-	copySets[RootKeySet] = make([]PublicKey, len(adminKeySets[RootKeySet]))
-	copy(copySets[RootKeySet], adminKeySets[RootKeySet])
-	copySets[ProvisionKeySet] = make([]PublicKey, len(adminKeySets[ProvisionKeySet]))
-	copy(copySets[ProvisionKeySet], adminKeySets[ProvisionKeySet])
-	copySets[IssueKeySet] = make([]PublicKey, len(adminKeySets[IssueKeySet]))
-	copy(copySets[IssueKeySet], adminKeySets[IssueKeySet])
-	copySets[ValidateKeySet] = make([]PublicKey, len(adminKeySets[ValidateKeySet]))
-	copy(copySets[ValidateKeySet], adminKeySets[ValidateKeySet])
-	return copySets
+	copiedMap := make(map[KeySetType]PublicKeySet)
+	for setType, keySet := range adminKeySets {
+		copiedMap[setType] = make([]PublicKey, len(keySet))
+		copy(copiedMap[setType], keySet)
+	}
+	return copiedMap
 }
 
 // hexToBytes converts the passed hex string into bytes and will panic if there
