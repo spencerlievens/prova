@@ -317,7 +317,7 @@ func TestCheckTransactionStandard(t *testing.T) {
 		0xd3, 0x11, 0xfe, 0x94, 0x29, 0x5b, 0xc2, 0x6a,
 	})
 	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed)
-	data[0] = txscript.OP_PROVISIONINGKEYADD
+	data[0] = txscript.AdminOpProvisionKeyAdd
 	copy(data[1:], pubKey.SerializeCompressed())
 	adminOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
 		AddData(data).Script()

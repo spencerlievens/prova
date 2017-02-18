@@ -545,28 +545,28 @@ func handleCreateRawAdminTransaction(s *rpcServer, cmd interface{}, closeChan <-
 	var threadID rmgutil.ThreadID
 	switch {
 	case keyType == "issuing" && active:
-		op = txscript.OP_ISSUINGKEYADD
+		op = txscript.AdminOpIssueKeyAdd
 		threadID = rmgutil.RootThread
 	case keyType == "issuing" && !active:
-		op = txscript.OP_ISSUINGKEYREVOKE
+		op = txscript.AdminOpIssueKeyRevoke
 		threadID = rmgutil.RootThread
 	case keyType == "provisioning" && active:
-		op = txscript.OP_PROVISIONINGKEYADD
+		op = txscript.AdminOpProvisionKeyAdd
 		threadID = rmgutil.RootThread
 	case keyType == "provisioning" && !active:
-		op = txscript.OP_PROVISIONINGKEYREVOKE
+		op = txscript.AdminOpProvisionKeyRevoke
 		threadID = rmgutil.RootThread
 	case keyType == "wsp" && active:
-		op = txscript.OP_WSPKEYADD
+		op = txscript.AdminOpWSPKeyAdd
 		threadID = rmgutil.ProvisionThread
 	case keyType == "wsp" && !active:
-		op = txscript.OP_WSPKEYREVOKE
+		op = txscript.AdminOpWSPKeyRevoke
 		threadID = rmgutil.ProvisionThread
 	case keyType == "validate" && active:
-		op = txscript.OP_VALIDATEKEYADD
+		op = txscript.AdminOpValidateKeyAdd
 		threadID = rmgutil.ProvisionThread
 	case keyType == "validate" && !active:
-		op = txscript.OP_VALIDATEKEYREVOKE
+		op = txscript.AdminOpValidateKeyRevoke
 		threadID = rmgutil.ProvisionThread
 	default:
 		return nil, &btcjson.RPCError{

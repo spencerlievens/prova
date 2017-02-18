@@ -146,7 +146,7 @@ func TestCheckTransactionSanity(t *testing.T) {
 		0xd3, 0x11, 0xfe, 0x94, 0x29, 0x5b, 0xc2, 0x6a,
 	})
 	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed)
-	data[0] = txscript.OP_PROVISIONINGKEYADD
+	data[0] = txscript.AdminOpProvisionKeyAdd
 	copy(data[1:], pubKey.SerializeCompressed())
 	adminOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
 		AddData(data).Script()
@@ -407,7 +407,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 		0xd3, 0x11, 0xfe, 0x94, 0x29, 0x5b, 0xc2, 0x6a,
 	})
 	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed)
-	data[0] = txscript.OP_PROVISIONINGKEYADD
+	data[0] = txscript.AdminOpProvisionKeyAdd
 	copy(data[1:], pubKey.SerializeCompressed())
 	adminOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
 		AddData(data).Script()
@@ -417,7 +417,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 	}
 	// Create admin op to revoke provision key.
 	data = make([]byte, 1+btcec.PubKeyBytesLenCompressed)
-	data[0] = txscript.OP_PROVISIONINGKEYREVOKE
+	data[0] = txscript.AdminOpProvisionKeyRevoke
 	copy(data[1:], pubKey.SerializeCompressed())
 	adminOpRevokePkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
 		AddData(data).Script()
@@ -427,7 +427,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 	}
 	// Create admin op to revoke validate key.
 	data = make([]byte, 1+btcec.PubKeyBytesLenCompressed)
-	data[0] = txscript.OP_VALIDATEKEYREVOKE
+	data[0] = txscript.AdminOpValidateKeyRevoke
 	copy(data[1:], pubKey.SerializeCompressed())
 	adminOpRevProvPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
 		AddData(data).Script()
@@ -438,7 +438,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 	// Create admin op to add keyID.
 	keyID := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
 	data = make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
-	data[0] = txscript.OP_WSPKEYADD
+	data[0] = txscript.AdminOpWSPKeyAdd
 	copy(data[1:], pubKey.SerializeCompressed())
 	keyID.ToAddressFormat(data[1+btcec.PubKeyBytesLenCompressed:])
 	adminOpAspPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
@@ -449,7 +449,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 	}
 	// Create admin op to revoke keyID.
 	data = make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
-	data[0] = txscript.OP_WSPKEYREVOKE
+	data[0] = txscript.AdminOpWSPKeyRevoke
 	copy(data[1:], pubKey.SerializeCompressed())
 	keyID.ToAddressFormat(data[1+btcec.PubKeyBytesLenCompressed:])
 	adminOpAspRevPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).

@@ -256,19 +256,19 @@ func IsValidAdminOp(pops []parsedOpcode, threadID rmgutil.ThreadID) bool {
 	// check thread specific operations
 	switch threadID {
 	case rmgutil.RootThread:
-		if op == OP_PROVISIONINGKEYADD ||
-			op == OP_PROVISIONINGKEYREVOKE ||
-			op == OP_ISSUINGKEYADD ||
-			op == OP_ISSUINGKEYREVOKE {
+		if op == AdminOpProvisionKeyAdd ||
+			op == AdminOpProvisionKeyRevoke ||
+			op == AdminOpIssueKeyAdd ||
+			op == AdminOpIssueKeyRevoke {
 			return true
 		}
 	case rmgutil.ProvisionThread:
-		if op == OP_VALIDATEKEYADD ||
-			op == OP_VALIDATEKEYREVOKE {
+		if op == AdminOpValidateKeyAdd ||
+			op == AdminOpValidateKeyRevoke {
 			return true
 		}
-		if op == OP_WSPKEYADD ||
-			op == OP_WSPKEYREVOKE {
+		if op == AdminOpWSPKeyAdd ||
+			op == AdminOpWSPKeyRevoke {
 			// check length of data for WSP ops
 			if len(pops[1].data) == 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize {
 				return true

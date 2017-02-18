@@ -348,7 +348,7 @@ func ExtractAdminData(pkScript []parsedOpcode) (byte, *btcec.PublicKey, error) {
 	return pkScript[1].data[0], pubKey, nil
 }
 
-// ExtractWspData can read OP_WSPKEYADD and OP_WSPKEYREVOKE from admin outputs.
+// ExtractWspData can read AdminOpWSPKeyAdd and AdminOpWSPKeyRevoke from admin outputs.
 // An admin op script of structure <OP_RETURN><OP_DATA> can be assumed from
 // previous validation.
 // This function returns the admin operation type byte, the parsed keyID, and
@@ -376,28 +376,28 @@ func ExtractAdminOpData(pkScript []parsedOpcode) (bool, btcec.KeySetType, *btcec
 	var isAddOp bool
 	keySetType := btcec.KeySetType(0)
 	switch pkScript[1].data[0] {
-	case OP_PROVISIONINGKEYADD:
+	case AdminOpProvisionKeyAdd:
 		isAddOp = true
 		keySetType = btcec.ProvisionKeySet
-	case OP_PROVISIONINGKEYREVOKE:
+	case AdminOpProvisionKeyRevoke:
 		isAddOp = false
 		keySetType = btcec.ProvisionKeySet
-	case OP_ISSUINGKEYADD:
+	case AdminOpIssueKeyAdd:
 		isAddOp = true
 		keySetType = btcec.IssueKeySet
-	case OP_ISSUINGKEYREVOKE:
+	case AdminOpIssueKeyRevoke:
 		isAddOp = false
 		keySetType = btcec.IssueKeySet
-	case OP_VALIDATEKEYADD:
+	case AdminOpValidateKeyAdd:
 		isAddOp = true
 		keySetType = btcec.ValidateKeySet
-	case OP_VALIDATEKEYREVOKE:
+	case AdminOpValidateKeyRevoke:
 		isAddOp = false
 		keySetType = btcec.ValidateKeySet
-	case OP_WSPKEYADD:
+	case AdminOpWSPKeyAdd:
 		isAddOp = true
 		keySetType = btcec.WspKeySet
-	case OP_WSPKEYREVOKE:
+	case AdminOpWSPKeyRevoke:
 		isAddOp = false
 		keySetType = btcec.WspKeySet
 	}

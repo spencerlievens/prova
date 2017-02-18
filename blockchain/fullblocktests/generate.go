@@ -827,22 +827,22 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	accepted()
 
 	// Try to spend provision thread with root thread
-	issueKeyAddTx := createAdminTx(outs[1], 0, txscript.OP_ISSUINGKEYADD, pubKey1)
+	issueKeyAddTx := createAdminTx(outs[1], 0, txscript.AdminOpIssueKeyAdd, pubKey1)
 	g.nextBlock("b2", nil, additionalTx(issueKeyAddTx))
 	rejected(blockchain.ErrInvalidAdminTx)
 
 	// Provision an ISSUE key in b3 and check its there.
 	g.setTip("b1")
-	issueKeyAddTx = createAdminTx(outs[0], 0, txscript.OP_ISSUINGKEYADD, pubKey1)
+	issueKeyAddTx = createAdminTx(outs[0], 0, txscript.AdminOpIssueKeyAdd, pubKey1)
 	g.nextBlock("b3", nil, additionalTx(issueKeyAddTx))
 	acceptedWithAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1})
 	accepted()
 
 	// Provision another two ISSUE keys and check three are there.
 	rootThreadOut := makeSpendableOutForTx(issueKeyAddTx, 0)
-	issueKeyAddTx2 := createAdminTx(&rootThreadOut, 0, txscript.OP_ISSUINGKEYADD, pubKey2)
+	issueKeyAddTx2 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey2)
 	rootThreadOut = makeSpendableOutForTx(issueKeyAddTx2, 0)
-	issueKeyAddTx3 := createAdminTx(&rootThreadOut, 0, txscript.OP_ISSUINGKEYADD, pubKey3)
+	issueKeyAddTx3 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey3)
 	g.nextBlock("b4", nil, additionalTx(issueKeyAddTx2), additionalTx(issueKeyAddTx3))
 	acceptedWithAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1, *pubKey2, *pubKey3})
 	accepted()
@@ -854,7 +854,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	// Revoke one ISSUE key again
 	rootThreadOut = makeSpendableOutForTx(issueKeyAddTx3, 0)
-	issueKeyRevokeTx1 := createAdminTx(&rootThreadOut, 0, txscript.OP_ISSUINGKEYREVOKE, pubKey1)
+	issueKeyRevokeTx1 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyRevoke, pubKey1)
 	// Also destroy some tokens
 	issueThreadOut := makeSpendableOutForTx(issueTx, 0)
 	issueTx2 := createIssueTx(&issueThreadOut, int64(0), outs[5])
@@ -864,11 +864,11 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	// provision a keyID and check
 	rootThreadOut = makeSpendableOutForTx(issueKeyRevokeTx1, 0)
-	provisionKeyAddTx1 := createAdminTx(&rootThreadOut, 0, txscript.OP_PROVISIONINGKEYADD, pubKey1)
+	provisionKeyAddTx1 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpProvisionKeyAdd, pubKey1)
 	rootThreadOut = makeSpendableOutForTx(provisionKeyAddTx1, 0)
-	provisionKeyAddTx2 := createAdminTx(&rootThreadOut, 0, txscript.OP_PROVISIONINGKEYADD, pubKey2)
+	provisionKeyAddTx2 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpProvisionKeyAdd, pubKey2)
 	keyId := btcec.KeyIDFromAddressBuffer([]byte{0, 1, 0, 0})
-	wspKeyIdAddTx := createWspAdminTx(outs[1], txscript.OP_WSPKEYADD, pubKey1, keyId)
+	wspKeyIdAddTx := createWspAdminTx(outs[1], txscript.AdminOpWSPKeyAdd, pubKey1, keyId)
 	g.nextBlock("b7", nil, additionalTx(provisionKeyAddTx1), additionalTx(provisionKeyAddTx2))
 	acceptedWithAdminKeys(btcec.ProvisionKeySet, []btcec.PublicKey{*pubKey1, *pubKey2})
 	accepted()
@@ -892,7 +892,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	accepted()
 
 	rootThreadOut = makeSpendableOutForTx(provisionKeyAddTx2, 0)
-	adminKeyAddTx := createAdminTx(&rootThreadOut, 0, txscript.OP_ISSUINGKEYADD, pubKey1)
+	adminKeyAddTx := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey1)
 	g.nextBlock("b10", nil, additionalTx(adminKeyAddTx))
 	acceptedWithAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1})
 	accepted()
