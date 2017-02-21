@@ -68,7 +68,7 @@ When a provisioning transaction adds a WSP public key to the list of authorized 
 
 Key IDs are only relevant for WSP Keys, not Validate Keys.
 
-## Transactions
+## Admin Transactions
 
 ### Threads
 
