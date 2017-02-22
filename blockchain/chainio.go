@@ -954,9 +954,12 @@ func dbFetchHashByHeight(dbTx database.Tx, height uint32) (*chainhash.Hash, erro
 //
 // The serialized format is:
 //
-//   <root keys length><root keys>...<validator keys length><validator keys>
-//
 //   Field                 Type        Size
+//   root thread tip       Hash        chainhash.HashSize
+//   provision thread tip  Hash        chainhash.HashSize
+//   issue thread tip      Hash        chainhash.HashSize
+//   keyID counter		   KeyID       4 bytes
+//   totalSupply           uint64      8 bytes
 //   root keys length      uint32      4 bytes
 //   root keys             []byte      root length * 33
 //   provision keys length uint32      4 bytes
@@ -978,12 +981,22 @@ var adminKeysOrder = []btcec.KeySetType{
 	btcec.ValidateKeySet,
 }
 
+// threadOrder is a helper to iterate maps of thread tips in order.
+var threadOrder = []rmgutil.ThreadID{
+	rmgutil.RootThread,
+	rmgutil.ProvisionThread,
+	rmgutil.IssueThread,
+}
+
 // serializeKeySet returns the serialization of the passed key sets.
 // This is data to be stored in the key bucket.
 func serializeKeySet(adminKeySets map[btcec.KeySetType]btcec.PublicKeySet,
-	wspKeyIdMap btcec.KeyIdMap) []byte {
+	wspKeyIdMap btcec.KeyIdMap, threadTips map[rmgutil.ThreadID]*chainhash.Hash,
+	lastKeyID btcec.KeyID, totalSupply uint64) []byte {
 	// Calculate the full size needed to serialize the chain state.
 	serializedLen := uint32(0)
+	// Add 3 thread tips + last keyID + total supply (uint64)
+	serializedLen += uint32(3*chainhash.HashSize + btcec.KeyIDSize + 8)
 	for _, keySet := range adminKeysOrder {
 		serializedLen += 4 //one uint32 for size of key set
 		serializedLen += uint32(len(adminKeySets[keySet]) * btcec.PubKeyBytesLenCompressed)
@@ -992,6 +1005,18 @@ func serializeKeySet(adminKeySets map[btcec.KeySetType]btcec.PublicKeySet,
 	// Serialize the chain state.
 	serializedData := make([]byte, serializedLen)
 	offset := 0
+
+	// Add thread tips + counters
+	for _, threadId := range threadOrder {
+		if threadTips[threadId] != nil {
+			copy(serializedData[offset:], threadTips[threadId][:])
+		}
+		offset += chainhash.HashSize
+	}
+	byteOrder.PutUint32(serializedData[offset:], uint32(lastKeyID))
+	offset += btcec.KeyIDSize
+	byteOrder.PutUint64(serializedData[offset:], totalSupply)
+	offset += 8
 
 	// When iterating over a map with a range loop, the iteration order is not
 	// specified and is not guaranteed to be the same from one iteration to the
@@ -1030,13 +1055,37 @@ func serializeKeySet(adminKeySets map[btcec.KeySetType]btcec.PublicKeySet,
 // state.  This is data stored in the chain state bucket and is updated after
 // every block is connected or disconnected form the main chain.
 // block.
-func deserializeKeySet(serializedData []byte) (map[btcec.KeySetType]btcec.PublicKeySet, btcec.KeyIdMap, error) {
+func deserializeKeySet(serializedData []byte) (
+	map[btcec.KeySetType]btcec.PublicKeySet, btcec.KeyIdMap,
+	map[rmgutil.ThreadID]*chainhash.Hash, btcec.KeyID, uint64, error) {
+
 	offset := 0
+
+	// thread tips + counters length
+	lenNeeded := 3*chainhash.HashSize + btcec.KeyIDSize + 8
+	if len(serializedData[offset:]) < lenNeeded {
+		return nil, nil, nil, 0, 0, database.Error{
+			ErrorCode:   database.ErrCorruption,
+			Description: "corrupt admin state, thread tips can be read",
+		}
+	}
+
+	threadTips := make(map[rmgutil.ThreadID]*chainhash.Hash)
+	for _, threadId := range threadOrder {
+		hash, _ := chainhash.NewHash(serializedData[offset : offset+chainhash.HashSize])
+		threadTips[threadId] = hash
+		offset += chainhash.HashSize
+	}
+	lastKeyID := btcec.KeyID(byteOrder.Uint32(serializedData[offset : offset+btcec.KeyIDSize]))
+	offset += btcec.KeyIDSize
+	totalSupply := byteOrder.Uint64(serializedData[offset : offset+8])
+	offset += 8
+
 	adminKeys := make(map[btcec.KeySetType]btcec.PublicKeySet)
 	for _, keySet := range adminKeysOrder {
 		// Ensure the serialized data has enough bytes to read length of a set.
 		if len(serializedData[offset:]) < 4 {
-			return nil, nil, database.Error{
+			return nil, nil, nil, 0, 0, database.Error{
 				ErrorCode:   database.ErrCorruption,
 				Description: "corrupt admin state, no keys can be read",
 			}
@@ -1045,7 +1094,7 @@ func deserializeKeySet(serializedData []byte) (map[btcec.KeySetType]btcec.Public
 		offset += 4
 		// Ensure the serialized data has enough bytes to deserialize the keys.
 		if uint32(len(serializedData[offset:])) < keySetLength*btcec.PubKeyBytesLenCompressed {
-			return nil, nil, database.Error{
+			return nil, nil, nil, 0, 0, database.Error{
 				ErrorCode:   database.ErrCorruption,
 				Description: "corrupt admin state, not all keys can be read",
 			}
@@ -1061,7 +1110,7 @@ func deserializeKeySet(serializedData []byte) (map[btcec.KeySetType]btcec.Public
 
 	// Ensure the serialized data has enough bytes to read length of the map.
 	if len(serializedData[offset:]) < 4 {
-		return nil, nil, database.Error{
+		return nil, nil, nil, 0, 0, database.Error{
 			ErrorCode:   database.ErrCorruption,
 			Description: "corrupt admin state, no keyIDs can be read",
 		}
@@ -1071,7 +1120,7 @@ func deserializeKeySet(serializedData []byte) (map[btcec.KeySetType]btcec.Public
 	offset += 4
 	// Ensure the serialized data has enough bytes to deserialize the keys
 	if uint32(len(serializedData[offset:])) < keyIdMapLen*(4+btcec.PubKeyBytesLenCompressed) {
-		return nil, nil, database.Error{
+		return nil, nil, nil, 0, 0, database.Error{
 			ErrorCode:   database.ErrCorruption,
 			Description: "corrupt admin state, not all keyIDs can be read",
 		}
@@ -1086,16 +1135,19 @@ func deserializeKeySet(serializedData []byte) (map[btcec.KeySetType]btcec.Public
 		wspKeyIdMap[keyID] = pubKey
 	}
 
-	return adminKeys, wspKeyIdMap, nil
+	return adminKeys, wspKeyIdMap, threadTips, lastKeyID, totalSupply, nil
 }
 
 // dbPutKeySet uses an existing database transaction to update the admin chain
 // state with the given parameters.
 func dbPutKeySet(dbTx database.Tx,
 	adminKeys map[btcec.KeySetType]btcec.PublicKeySet,
-	keyIdMap map[btcec.KeyID]*btcec.PublicKey) error {
+	keyIdMap map[btcec.KeyID]*btcec.PublicKey,
+	threadTips map[rmgutil.ThreadID]*chainhash.Hash,
+	lastKeyID btcec.KeyID, totalSupply uint64) error {
 	// Serialize the adminKeySets.
-	serializedData := serializeKeySet(adminKeys, keyIdMap)
+	serializedData := serializeKeySet(adminKeys, keyIdMap, threadTips,
+		lastKeyID, totalSupply)
 
 	// Store the adminKeySets into the database.
 	return dbTx.Metadata().Put(keySetBucketName, serializedData)
@@ -1228,6 +1280,9 @@ func (b *BlockChain) createChainState() error {
 
 	b.adminKeySets = btcec.DeepCopy(b.chainParams.AdminKeySets)
 	b.wspKeyIdMap = b.chainParams.WspKeyIdMap
+	b.threadTips = make(map[rmgutil.ThreadID]*chainhash.Hash)
+	b.lastKeyID = btcec.KeyID(0)
+	b.totalSupply = uint64(0)
 
 	// Initiate the utxo set with the admin thread tips from the genesis
 	// coinbase.
@@ -1238,6 +1293,13 @@ func (b *BlockChain) createChainState() error {
 	utxoView.SetBestHash(genesisBlock.Hash())
 	var stxos *[]spentTxOut
 	utxoView.connectTransaction(genesisBlock.Transactions()[0], 0, stxos)
+
+	// Initiate admin thread tips
+	//threadTips := make(map[rmgutil.ThreadID]*chainhash.Hash)
+	b.threadTips[rmgutil.RootThread] = genesisBlock.Transactions()[0].Hash()
+	b.threadTips[rmgutil.ProvisionThread] = genesisBlock.Transactions()[0].Hash()
+	b.threadTips[rmgutil.IssueThread] = genesisBlock.Transactions()[0].Hash()
+	b.lastKeyID = btcec.KeyID(2)
 
 	// Create the initial the database chain state including creating the
 	// necessary index buckets and inserting the genesis block.
@@ -1288,7 +1350,7 @@ func (b *BlockChain) createChainState() error {
 		}
 
 		// Store the current admin key sets in the database.
-		err = dbPutKeySet(dbTx, b.adminKeySets, b.wspKeyIdMap)
+		err = dbPutKeySet(dbTx, b.adminKeySets, b.wspKeyIdMap, b.threadTips, b.lastKeyID, 0)
 		if err != nil {
 			return err
 		}
@@ -1326,7 +1388,8 @@ func (b *BlockChain) initChainState() error {
 			return nil
 		}
 		log.Tracef("Serialized admin state: %x", serializedKeys)
-		adminKeySets, wspKeyIdMap, err := deserializeKeySet(serializedKeys)
+		adminKeySets, wspKeyIdMap, threadTips, lastKeyID, totalSupply,
+			err := deserializeKeySet(serializedKeys)
 		if err != nil {
 			return err
 		}
@@ -1350,6 +1413,11 @@ func (b *BlockChain) initChainState() error {
 		node.inMainChain = true
 		node.workSum = state.workSum
 		b.bestNode = node
+
+		// Set the admin state of the chain
+		b.threadTips = threadTips
+		b.lastKeyID = lastKeyID
+		b.totalSupply = totalSupply
 		b.adminKeySets = adminKeySets
 		b.wspKeyIdMap = wspKeyIdMap
 

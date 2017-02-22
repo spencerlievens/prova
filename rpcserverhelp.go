@@ -190,14 +190,22 @@ var helpDescsEnUS = map[string]string{
 	"wspkeyidresult-pubkey": "compressed, serialized pubKey of WSP",
 	"wspkeyidresult-keyid":  "uint32 keyID assigned to WSP",
 
+	// ThreadTipResult help.
+	"threadtipresult-root":      "Transaction holding latest output for root thread",
+	"threadtipresult-provision": "Transaction holding latest output for provision thread",
+	"threadtipresult-issue":     "Transaction holding latest output for issue thread",
+
 	// GetAdminInfoResult help.
-	"getadmininforesult-hash":          "block hash at which returned admin state is valid.",
-	"getadmininforesult-height":        "Height of the block at which returned admin state is valid.",
-	"getadmininforesult-rootkeys":      "list of compressed, serialized strings of root pubKeys",
-	"getadmininforesult-provisionkeys": "list of compressed, serialized strings of provision pubKeys",
-	"getadmininforesult-issuekeys":     "list of compressed, serialized strings of issue pubKeys",
-	"getadmininforesult-validatekeys":  "list of compressed, serialized strings of validate pubKeys",
-	"getadmininforesult-wspkeymap":     "map of keyIDs to wsp pubKeys",
+	"getadmininforesult-hash":          "Block hash at which returned admin state is valid",
+	"getadmininforesult-height":        "Height of the block at which returned admin state is valid",
+	"getadmininforesult-threadtips":    "Hashes of admin threads",
+	"getadmininforesult-totalsupply":   "Total amount of tokens in circulation",
+	"getadmininforesult-lastkeyid":     "Last provisioned keyID",
+	"getadmininforesult-rootkeys":      "List of compressed, serialized strings of root pubKeys",
+	"getadmininforesult-provisionkeys": "List of compressed, serialized strings of provision pubKeys",
+	"getadmininforesult-issuekeys":     "List of compressed, serialized strings of issue pubKeys",
+	"getadmininforesult-validatekeys":  "List of compressed, serialized strings of validate pubKeys",
+	"getadmininforesult-wspkeymap":     "Map of keyIDs to wsp pubKeys",
 
 	// GetAdminInfoCmd help.
 	"getadmininfo--synopsis": "Get admin key sets at best block in the main chain.",

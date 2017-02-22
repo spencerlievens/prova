@@ -474,6 +474,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 	tests := []struct {
 		name         string
 		tx           wire.MsgTx
+		lastKeyID    btcec.KeyID
 		adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
 		wspKeyIdMap  btcec.KeyIdMap
 		isValid      bool
@@ -623,7 +624,20 @@ func TestCheckTransactionOutputs(t *testing.T) {
 				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpAspTxOut},
 				LockTime: 0,
 			},
-			isValid: true,
+			lastKeyID: btcec.KeyID(65535),
+			isValid:   true,
+		},
+		{
+			name: "provision keyID that is too high.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&provaTxOut, &adminOpAspTxOut},
+				LockTime: 0,
+			},
+			lastKeyID: btcec.KeyID(4),
+			isValid:   false,
+			code:      blockchain.ErrInvalidTx,
 		},
 		{
 			name: "Add an existing keyID.",
@@ -672,6 +686,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 	for _, test := range tests {
 		keyView := blockchain.NewKeyViewpoint()
 		keyView.SetKeys(test.adminKeySets)
+		keyView.SetLastKeyID(test.lastKeyID)
 		keyView.SetKeyIDs(test.wspKeyIdMap)
 		err := blockchain.CheckTransactionOutputs(rmgutil.NewTx(&test.tx), keyView)
 		if err == nil && test.isValid {

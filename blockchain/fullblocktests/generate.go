@@ -56,13 +56,13 @@ var (
 		0xd9, 0x77,
 	})
 	// Some keyIDs to make tests easier
-	keyId1 = btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
-	keyId2 = btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	keyId1 = btcec.KeyID(1)
+	keyId2 = btcec.KeyID(2)
 	// helper function to sign transactions
 	lookupKey = func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
 		return []txscript.PrivateKey{
-			txscript.PrivateKey{privKey1, true},
 			txscript.PrivateKey{privKey2, true},
+			txscript.PrivateKey{privKey1, true},
 		}, nil
 	}
 )
@@ -862,18 +862,18 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	acceptedWithAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2})
 	accepted()
 
-	// provision a keyID and check
+	// add provision keys
 	rootThreadOut = makeSpendableOutForTx(issueKeyRevokeTx1, 0)
 	provisionKeyAddTx1 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpProvisionKeyAdd, pubKey1)
 	rootThreadOut = makeSpendableOutForTx(provisionKeyAddTx1, 0)
 	provisionKeyAddTx2 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpProvisionKeyAdd, pubKey2)
-	keyId := btcec.KeyIDFromAddressBuffer([]byte{0, 1, 0, 0})
-	wspKeyIdAddTx := createWspAdminTx(outs[1], txscript.AdminOpWSPKeyAdd, pubKey1, keyId)
 	g.nextBlock("b7", nil, additionalTx(provisionKeyAddTx1), additionalTx(provisionKeyAddTx2))
 	acceptedWithAdminKeys(btcec.ProvisionKeySet, []btcec.PublicKey{*pubKey1, *pubKey2})
 	accepted()
 
-	// TODO(prova): revoke keyID and check
+	// provision a keyID and check
+	keyId := btcec.KeyIDFromAddressBuffer([]byte{3, 0, 0, 0})
+	wspKeyIdAddTx := createWspAdminTx(outs[1], txscript.AdminOpWSPKeyAdd, pubKey1, keyId)
 	g.nextBlock("b8", nil, additionalTx(wspKeyIdAddTx))
 	acceptedWithAdminKeys(btcec.ProvisionKeySet, []btcec.PublicKey{*pubKey1, *pubKey2})
 	acceptedWithWspKey(pubKey1, keyId)

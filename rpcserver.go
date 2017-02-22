@@ -1454,6 +1454,14 @@ func handleGetAdminInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 	best := s.chain.BestSnapshot()
 	adminKeySets := s.chain.AdminKeySets()
 	wspKeyIdMap := s.chain.KeyIDs()
+	rootTip := s.chain.ThreadTips()[rmgutil.RootThread]
+	provisionTip := s.chain.ThreadTips()[rmgutil.ProvisionThread]
+	issueTip := s.chain.ThreadTips()[rmgutil.IssueThread]
+	threadTipObj := btcjson.ThreadTipResult{
+		Root:      rootTip.String(),
+		Provision: provisionTip.String(),
+		Issue:     issueTip.String(),
+	}
 	wspObj := make([]btcjson.WspKeyIdResult, len(wspKeyIdMap))
 	i := 0
 	for k, v := range wspKeyIdMap {
@@ -1466,6 +1474,9 @@ func handleGetAdminInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 	result := &btcjson.GetAdminInfoResult{
 		Hash:          best.Hash.String(),
 		Height:        best.Height,
+		ThreadTips:    threadTipObj,
+		TotalSupply:   s.chain.TotalSupply(),
+		LastKeyID:     uint32(s.chain.LastKeyID()),
 		RootKeys:      adminKeySets[btcec.RootKeySet].ToStringArray(),
 		ProvisionKeys: adminKeySets[btcec.ProvisionKeySet].ToStringArray(),
 		IssueKeys:     adminKeySets[btcec.IssueKeySet].ToStringArray(),

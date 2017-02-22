@@ -84,10 +84,20 @@ type WspKeyIdResult struct {
 	KeyID  uint32 `json:"keyid"`
 }
 
+// ThreadTipResult
+type ThreadTipResult struct {
+	Root      string `json:"root"`
+	Provision string `json:"provision"`
+	Issue     string `json:"issue"`
+}
+
 // GetAdminInfoResult models the data from the getadmininfo command.
 type GetAdminInfoResult struct {
 	Hash          string           `json:"hash"`
 	Height        uint32           `json:"height"`
+	ThreadTips    ThreadTipResult  `json:"threadtips"`
+	TotalSupply   uint64           `json:"totalsupply"`
+	LastKeyID     uint32           `json:"lastkeyid"`
 	RootKeys      []string         `json:"rootkeys,omitempty"`
 	ProvisionKeys []string         `json:"provisionkeys,omitempty"`
 	IssueKeys     []string         `json:"issuekeys,omitempty"`

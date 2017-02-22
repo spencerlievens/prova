@@ -1118,6 +1118,11 @@ func CheckTransactionOutputs(tx *rmgutil.Tx, keyView *KeyViewpoint) error {
 						"rejected.", tx.Hash())
 					return ruleError(ErrInvalidAdminOp, str)
 				}
+				if keyID != keyView.LastKeyID()+1 {
+					str := fmt.Sprintf("keyID %v added in transaction %v "+
+						"rejected. should be %v ", keyID, tx.Hash(), keyView.LastKeyID()+1)
+					return ruleError(ErrInvalidAdminOp, str)
+				}
 			} else {
 				if keyView.wspKeyIdMap[keyID] == nil {
 					str := fmt.Sprintf("keyID %v can not be revoked in "+
@@ -1454,7 +1459,6 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, ut
 	// Update the best hash for utxoView to include this block since all of its
 	// transactions have been connected.
 	utxoView.SetBestHash(node.hash)
-	keyView.SetBestHash(node.hash)
 
 	return nil
 }
@@ -1489,8 +1493,10 @@ func (b *BlockChain) CheckConnectBlock(block *rmgutil.Block) error {
 	// - it is mined by an active validate key.
 	// - all keyIDs used for outputs are provisioned.
 	keyView := NewKeyViewpoint()
+	keyView.SetThreadTips(b.threadTips)
+	keyView.SetLastKeyID(b.lastKeyID)
+	keyView.SetTotalSupply(b.totalSupply)
 	keyView.SetKeys(b.adminKeySets)
 	keyView.SetKeyIDs(b.wspKeyIdMap)
-	keyView.SetBestHash(prevNode.hash)
 	return b.checkConnectBlock(newNode, block, utxoView, keyView, nil)
 }

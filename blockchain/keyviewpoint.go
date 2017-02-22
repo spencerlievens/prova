@@ -17,21 +17,42 @@ import (
 // point of view in the chain. For example, it could be for the end of the main
 // chain, some point in the history of the main chain, or down a side chain.
 type KeyViewpoint struct {
+	threadTips   map[rmgutil.ThreadID]*chainhash.Hash
+	lastKeyID    btcec.KeyID
+	totalSupply  uint64
 	adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
 	wspKeyIdMap  btcec.KeyIdMap
-	bestHash     chainhash.Hash
 }
 
-// BestHash returns the hash of the best block in the chain the view currently
-// respresents.
-func (view *KeyViewpoint) BestHash() *chainhash.Hash {
-	return &view.bestHash
+// ThreadTips returns
+func (view *KeyViewpoint) ThreadTips() map[rmgutil.ThreadID]*chainhash.Hash {
+	return view.threadTips
 }
 
-// SetBestHash sets the hash of the best block in the chain the view currently
-// respresents.
-func (view *KeyViewpoint) SetBestHash(hash *chainhash.Hash) {
-	view.bestHash = *hash
+// SetThreadTips sets
+func (view *KeyViewpoint) SetThreadTips(
+	threadTips map[rmgutil.ThreadID]*chainhash.Hash) {
+	view.threadTips = threadTips
+}
+
+// LastKeyID returns
+func (view *KeyViewpoint) LastKeyID() btcec.KeyID {
+	return view.lastKeyID
+}
+
+// SetLastKeyID sets
+func (view *KeyViewpoint) SetLastKeyID(lastKeyID btcec.KeyID) {
+	view.lastKeyID = lastKeyID
+}
+
+// TotalSupply returns
+func (view *KeyViewpoint) TotalSupply() uint64 {
+	return view.totalSupply
+}
+
+// SetTotalSupply sets
+func (view *KeyViewpoint) SetTotalSupply(totalSupply uint64) {
+	view.totalSupply = totalSupply
 }
 
 // SetKeys sets the admin key sets at the position in the chain the view
@@ -103,6 +124,9 @@ func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 			keyID := txscript.ExtractAdminOpData(adminOutputs[i])
 		view.applyAdminOp(isAddOp, keySetType, pubKey, keyID)
 	}
+	// this becomes the new tip of the admin thread
+	threadId := rmgutil.ThreadID(threadInt)
+	view.threadTips[threadId] = tx.Hash()
 }
 
 // applyAdminOp takes a single admin opp and applies it to the view.
@@ -111,6 +135,7 @@ func (view *KeyViewpoint) applyAdminOp(isAddOp bool,
 	if keySetType == btcec.WspKeySet {
 		if isAddOp {
 			view.wspKeyIdMap[keyID] = pubKey
+			view.lastKeyID = keyID
 		} else {
 			delete(view.wspKeyIdMap, keyID)
 		}
@@ -171,9 +196,6 @@ func (view *KeyViewpoint) connectTransactions(block *rmgutil.Block) error {
 			return err
 		}
 	}
-	// Update the best hash for view to include this block since all of its
-	// transactions have been connected.
-	view.SetBestHash(block.Hash())
 	return nil
 }
 
@@ -198,19 +220,27 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 					keyID := txscript.ExtractAdminOpData(adminOutputs[i])
 				isAddOp = !isAddOp
 				view.applyAdminOp(isAddOp, keySetType, pubKey, keyID)
+				// decrease lastKeyID counter, is an Add op is disconnected.
+				if keySetType == btcec.WspKeySet && isAddOp {
+					view.lastKeyID = keyID - 1
+				}
 			}
+			// when an admin thread transaction is disconnected
+			// we set the spent tx as new tip.
+			threadId := rmgutil.ThreadID(threadInt)
+			view.threadTips[threadId] = &tx.MsgTx().TxIn[0].PreviousOutPoint.Hash
 		}
 	}
 
-	// Update the best hash for view to the previous block since all of the
-	// transactions for the current block have been disconnected.
-	view.SetBestHash(&block.MsgBlock().Header.PrevBlock)
 	return nil
 }
 
 // NewKeyViewpoint returns a new empty key view.
 func NewKeyViewpoint() *KeyViewpoint {
 	return &KeyViewpoint{
+		threadTips:   make(map[rmgutil.ThreadID]*chainhash.Hash),
+		lastKeyID:    btcec.KeyID(0),
+		totalSupply:  uint64(0),
 		adminKeySets: make(map[btcec.KeySetType]btcec.PublicKeySet),
 		wspKeyIdMap:  make(map[btcec.KeyID]*btcec.PublicKey),
 	}

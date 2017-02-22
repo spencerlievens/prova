@@ -203,8 +203,19 @@ type BlockChain struct {
 
 	// These fields are related to the admin state of the chain. They are
 	// protected by the chain lock.
+
+	// threadTips hold latest transaction hash of the 3 admin threads.
+	threadTips map[rmgutil.ThreadID]*chainhash.Hash
+	// latest keyID is a strictly increasing counter, to avoid reuse of
+	// keyIDs.
+	lastKeyID btcec.KeyID
+	// holds the total amount of issued tokens as in circulation
+	// at best height of the chain.
+	totalSupply uint64
+	// keySets manage permission to modify the chain state.
 	adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
-	wspKeyIdMap  btcec.KeyIdMap
+	// a mapping of all keyIDs and related ASP public keys.
+	wspKeyIdMap btcec.KeyIdMap
 
 	// These fields are related to handling of orphan blocks.  They are
 	// protected by a combination of the chain lock and the orphan lock.
@@ -825,7 +836,8 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, utxoVie
 		}
 
 		// Update the admin key set using the state of the key view.
-		err = dbPutKeySet(dbTx, keyView.Keys(), keyView.KeyIDs())
+		err = dbPutKeySet(dbTx, keyView.Keys(), keyView.KeyIDs(),
+			keyView.ThreadTips(), keyView.LastKeyID(), keyView.TotalSupply())
 		if err != nil {
 			return err
 		}
@@ -874,6 +886,9 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, utxoVie
 
 	// This is now the admin state of the best chain.
 	b.stateLock.Lock()
+	b.threadTips = keyView.ThreadTips()
+	b.totalSupply = keyView.TotalSupply()
+	b.lastKeyID = keyView.LastKeyID()
 	b.adminKeySets = keyView.Keys()
 	b.wspKeyIdMap = keyView.KeyIDs()
 	b.stateLock.Unlock()
@@ -953,7 +968,8 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, utxo
 		}
 
 		// Store the current admin key sets in the database.
-		err = dbPutKeySet(dbTx, keyView.Keys(), keyView.KeyIDs())
+		err = dbPutKeySet(dbTx, keyView.Keys(), keyView.KeyIDs(),
+			keyView.ThreadTips(), keyView.LastKeyID(), keyView.TotalSupply())
 		if err != nil {
 			return err
 		}
@@ -1077,9 +1093,11 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	// entails reverting all admin operations that have happened in these
 	// blocks.
 	keyView := NewKeyViewpoint()
+	keyView.SetThreadTips(b.threadTips)
+	keyView.SetLastKeyID(b.lastKeyID)
+	keyView.SetTotalSupply(b.totalSupply)
 	keyView.SetKeys(b.adminKeySets)
 	keyView.SetKeyIDs(b.wspKeyIdMap)
-	keyView.SetBestHash(b.bestNode.hash)
 	for e := detachNodes.Front(); e != nil; e = e.Next() {
 		n := e.Value.(*blockNode)
 		var block *rmgutil.Block
@@ -1272,9 +1290,11 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *rmgutil.Block, fla
 		// - it is mined by an active validate key.
 		// - all keyIDs used for outputs are provisioned.
 		keyView := NewKeyViewpoint()
+		keyView.SetThreadTips(b.threadTips)
+		keyView.SetLastKeyID(b.lastKeyID)
+		keyView.SetTotalSupply(b.totalSupply)
 		keyView.SetKeys(b.adminKeySets)
 		keyView.SetKeyIDs(b.wspKeyIdMap)
-		keyView.SetBestHash(node.parentHash)
 		stxos := make([]spentTxOut, 0, countSpentOutputs(block))
 		if !fastAdd {
 			err := b.checkConnectBlock(node, block, utxoView, keyView, &stxos)
@@ -1446,6 +1466,33 @@ func (b *BlockChain) BestSnapshot() *BestState {
 	return snapshot
 }
 
+// ThreadTips
+// This function is safe for concurrent access.
+func (b *BlockChain) ThreadTips() map[rmgutil.ThreadID]*chainhash.Hash {
+	b.stateLock.RLock()
+	threadTips := b.threadTips
+	b.stateLock.RUnlock()
+	return threadTips
+}
+
+// TotalSupply
+// This function is safe for concurrent access.
+func (b *BlockChain) TotalSupply() uint64 {
+	b.stateLock.RLock()
+	totalSupply := b.totalSupply
+	b.stateLock.RUnlock()
+	return totalSupply
+}
+
+// LastKeyID
+// This function is safe for concurrent access.
+func (b *BlockChain) LastKeyID() btcec.KeyID {
+	b.stateLock.RLock()
+	lastKeyID := b.lastKeyID
+	b.stateLock.RUnlock()
+	return lastKeyID
+}
+
 // AdminKeySets returns all admin key sets that govern the chain state.
 // The returned instance must be treated as immutable since it is shared by all
 // callers.
@@ -1578,6 +1625,9 @@ func New(config *Config) (*BlockChain, error) {
 		blocksPerRetarget:   int32(targetTimespan / targetTimePerBlock),
 		minMemoryNodes:      int32(targetTimespan / targetTimePerBlock),
 		bestNode:            nil,
+		threadTips:          make(map[rmgutil.ThreadID]*chainhash.Hash),
+		lastKeyID:           btcec.KeyID(0),
+		totalSupply:         uint64(0),
 		adminKeySets:        make(map[btcec.KeySetType]btcec.PublicKeySet),
 		wspKeyIdMap:         make(map[btcec.KeyID]*btcec.PublicKey),
 		index:               make(map[chainhash.Hash]*blockNode),
