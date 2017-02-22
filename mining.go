@@ -5,8 +5,10 @@
 package main
 
 import (
+	"bytes"
 	"container/heap"
 	"container/list"
+	"encoding/hex"
 	"time"
 
 	"github.com/bitgo/rmgd/blockchain"
@@ -277,6 +279,12 @@ func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight uint32, addr rmguti
 	// There is no consensus rule that this must exist, it is just
 	// included as a convenient way to provide uniqueness.
 	tx.LockTime = nextBlockHeight
+
+	var w bytes.Buffer
+	err := tx.Serialize(&w)
+	if err == nil {
+		minrLog.Debugf("Created coinbase tx: %v", hex.EncodeToString(w.Bytes()))
+	}
 
 	return rmgutil.NewTx(tx), nil
 }
