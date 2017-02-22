@@ -12,15 +12,18 @@
 6. [Extension Methods](#ExtensionMethods)<br />
 6.1. [Method Overview](#ExtMethodOverview)<br />
 6.2. [Method Details](#ExtMethodDetails)<br />
-7. [Websocket Extension Methods (Websocket-specific)](#WSExtMethods)<br />
-7.1. [Method Overview](#WSExtMethodOverview)<br />
-7.2. [Method Details](#WSExtMethodDetails)<br />
-8. [Notifications (Websocket-specific)](#Notifications)<br />
-8.1. [Notification Overview](#NotificationOverview)<br />
-8.2. [Notification Details](#NotificationDetails)<br />
-9. [Example Code](#ExampleCode)<br />
-9.1. [Go](#ExampleGoApp)<br />
-9.2. [node.js](#ExampleNodeJsCode)<br />
+7. [Prova Methods](#ProvaMethods)<br />
+7.1. [Method Overview](#ProvaMethodOverview)<br />
+7.2. [Method Details](#ProvaMethodDetails)<br />
+8. [Websocket Extension Methods (Websocket-specific)](#WSExtMethods)<br />
+8.1. [Method Overview](#WSExtMethodOverview)<br />
+8.2. [Method Details](#WSExtMethodDetails)<br />
+9. [Notifications (Websocket-specific)](#Notifications)<br />
+9.1. [Notification Overview](#NotificationOverview)<br />
+9.2. [Notification Details](#NotificationDetails)<br />
+10. [Example Code](#ExampleCode)<br />
+10.1. [Go](#ExampleGoApp)<br />
+10.2. [node.js](#ExampleNodeJsCode)<br />
 
 <a name="Overview" />
 ### 1. Overview
@@ -566,6 +569,31 @@ Example Return|`{`<br />&nbsp;&nbsp;`"bytes": 310768,`<br />&nbsp;&nbsp;`"size":
 |Example Return|`true`|
 [Return to Overview](#MethodOverview)<br />
 
+<a name="ProvaMethods" />
+### 6. Prova Methods
+
+<a name="ProvaMethodOverview" />
+**6.1 Method Overview**<br />
+
+The following is an overview of the RPC methods which are implemented by Prova, but not the original bitcoind or btcd clients. Click the method name for further details such as parameter and return information.
+
+|#|Method|Safe for limited user?|Description|
+|---|------|----------|-----------|
+|1|[getadmininfo](#getadmininfo)|Y|Get info about the current admin state.|
+
+
+<a name="ProvaMethodDetails" />
+**6.2 Method Details**<br />
+
+<a name="getadmininfo"/>
+
+|   |   |
+|---|---|
+|Method|getadmininfo|
+|Parameters|None|
+|Description|Get the latest admin state: unspent admin transaction outputs, net issuance, and admin keys.|
+|Returns|`{ (json object)`<br />&nbsp;`"hash": "data",  (string) the hex-encoded bytes of the best block hash`<br />&nbsp;`"height": n (numeric) the block height of the best block`<br />&nbsp;`"threadtips": { (json object) `<br />&nbsp;&nbsp;`"issue":  "data", (string) the transaction id of the unspent issue thread utxo`<br />&nbsp;&nbsp;`"provision":  "data", (string) the transaction id of the unspent provision thread utxo`<br />&nbsp;&nbsp;`"root":  "data", (string) the transaction id of the unspent root thread utxo`<br />&nbsp;`} `<br />&nbsp;`"totalsupply": n (numeric) the net value of admin issuance`<br />&nbsp;`"lastkeyid": n (numeric) the highest key id value ever provisioned`<br />&nbsp;`"rootkeys": (array of strings) the root pubKeys`<br />&nbsp;`"provisionkeys": (array of strings) the provision pubKeys`<br />&nbsp;`"issuekeys": (array of strings) the issue pubKeys`<br />&nbsp;`"validatekeys": (array of strings) the validate pubKeys`<br />&nbsp;`"wspkeys": { (json object) `<br />&nbsp;&nbsp;`"$keyId":  "data", (string) the wsp pubKey`<br />&nbsp;`} `<br />`}`|
+[Return to Overview](#ExtMethodOverview)<br />
 
 <a name="ExtensionMethods" />
 ### 6. Extension Methods
@@ -665,10 +693,10 @@ The following is an overview of the RPC methods which are implemented by btcd, b
 ***
 
 <a name="WSExtMethods" />
-### 7. Websocket Extension Methods (Websocket-specific)
+### 8. Websocket Extension Methods (Websocket-specific)
 
 <a name="WSExtMethodOverview" />
-**7.1 Method Overview**<br />
+**8.1 Method Overview**<br />
 
 The following is an overview of the RPC method requests available exclusively to Websocket clients.  All of these RPC methods are available to the limited
 user.  Click the method name for further details such as parameter and return information.
@@ -688,7 +716,7 @@ user.  Click the method name for further details such as parameter and return in
 |11|[session](#session)|Return details regarding a websocket client's current connection.|None|
 
 <a name="WSExtMethodDetails" />
-**7.2 Method Details**<br />
+**8.2 Method Details**<br />
 
 <a name="authenticate"/>
 
@@ -832,12 +860,12 @@ user.  Click the method name for further details such as parameter and return in
 
 
 <a name="Notifications" />
-### 8. Notifications (Websocket-specific)
+### 9. Notifications (Websocket-specific)
 
 btcd uses standard JSON-RPC notifications to notify clients of changes, rather than requiring clients to poll btcd for updates.  JSON-RPC notifications are a subset of requests, but do not contain an ID.  The notification type is categorized by the `method` field and additional details are sent as a JSON array in the `params` field.
 
 <a name="NotificationOverview" />
-**8.1 Notification Overview**<br />
+**9.1 Notification Overview**<br />
 
 The following is an overview of the JSON-RPC notifications used for Websocket connections.  Click the method name for further details of the context(s) in which they are sent and their parameters.
 
@@ -853,7 +881,7 @@ The following is an overview of the JSON-RPC notifications used for Websocket co
 |8|[rescanfinished](#rescanfinished)|A rescan operation has completed.|[rescan](#rescan)|
 
 <a name="NotificationDetails" />
-**8.2 Notification Details**<br />
+**9.2 Notification Details**<br />
 
 <a name="blockconnected"/>
 
@@ -959,7 +987,7 @@ The following is an overview of the JSON-RPC notifications used for Websocket co
 
 
 <a name="ExampleCode" />
-### 9. Example Code
+### 10. Example Code
 
 This section provides example code for interacting with the JSON-RPC API in
 various languages.
@@ -968,7 +996,7 @@ various languages.
 * [node.js](#ExampleNodeJsCode)
 
 <a name="ExampleGoApp" />
-**9.1 Go**
+**10.1 Go**
 
 This section provides examples of using the RPC interface using Go and the
 [btcrpcclient](https://github.com/btcsuite/btcrpcclient) package.
@@ -979,7 +1007,7 @@ This section provides examples of using the RPC interface using Go and the
 
 
 <a name="ExampleGetBlockCount" />
-**9.1.1 Using getblockcount to Retrieve the Current Block Height**<br />
+**10.1.1 Using getblockcount to Retrieve the Current Block Height**<br />
 
 The following is an example Go application which uses the
 [btcrpcclient](https://github.com/btcsuite/btcrpcclient) package to connect with
@@ -1039,7 +1067,7 @@ Block count: 276978
 ```
 
 <a name="ExampleGetBlock" />
-**9.1.2 Using getblock to Retrieve the Genesis Block**<br />
+**10.1.2 Using getblock to Retrieve the Genesis Block**<br />
 
 The following is an example Go application which uses the
 [btcrpcclient](https://github.com/btcsuite/btcrpcclient) package to connect with
@@ -1127,7 +1155,7 @@ Num transactions: 1
 ```
 
 <a name="ExampleNotifyBlocks" />
-**9.1.3 Using notifyblocks to Receive blockconnected and blockdisconnected
+**10.1.3 Using notifyblocks to Receive blockconnected and blockdisconnected
 Notifications (Websocket-specific)**<br />
 
 The following is an example Go application which uses the
@@ -1217,10 +1245,10 @@ Example output:
 ```
 
 <a name="ExampleNodeJsCode" />
-### 9.2. Example node.js Code
+### 10.2. Example node.js Code
 
 <a name="ExampleNotifyBlocks" />
-**9.2.1 Using notifyblocks to be Notified of Block Connects and Disconnects**<br />
+**10.2.1 Using notifyblocks to be Notified of Block Connects and Disconnects**<br />
 
 The following is example node.js code which uses [ws](https://github.com/einaros/ws)
 (can be installed with `npm install ws`) to connect with a btcd instance,

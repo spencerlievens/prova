@@ -102,7 +102,7 @@ type GetAdminInfoResult struct {
 	ProvisionKeys []string          `json:"provisionkeys,omitempty"`
 	IssueKeys     []string          `json:"issuekeys,omitempty"`
 	ValidateKeys  []string          `json:"validatekeys,omitempty"`
-	WspKeys       []WspKeyIdResult  `json:"wspkeymap,omitempty"`
+	WspKeys       []WspKeyIdResult  `json:"wspkeys,omitempty"`
 }
 
 // GetBlockChainInfoResult models the data returned from the getblockchaininfo

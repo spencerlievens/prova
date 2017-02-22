@@ -198,18 +198,17 @@ var helpDescsEnUS = map[string]string{
 	// GetAdminInfoResult help.
 	"getadmininforesult-hash":          "Block hash at which returned admin state is valid",
 	"getadmininforesult-height":        "Height of the block at which returned admin state is valid",
-	"getadmininforesult-threadtips":    "Current tips of the various admin threads",
-	"getadmininforesult-totalsupply":   "Total amount of tokens in circulation",
+	"getadmininforesult-threadtips":    "Unspent tx ids for admin threads",
+	"getadmininforesult-totalsupply":   "Net chain issuance value",
 	"getadmininforesult-lastkeyid":     "Last provisioned keyID",
-	"getadmininforesult-rootkeys":      "List of compressed, serialized strings of root pubKeys",
-	"getadmininforesult-provisionkeys": "List of compressed, serialized strings of provision pubKeys",
-	"getadmininforesult-issuekeys":     "List of compressed, serialized strings of issue pubKeys",
-	"getadmininforesult-validatekeys":  "List of compressed, serialized strings of validate pubKeys",
-	"getadmininforesult-wspkeymap":     "Map of keyIDs to wsp pubKeys",
+	"getadmininforesult-rootkeys":      "List of root pubKeys",
+	"getadmininforesult-provisionkeys": "List of provision pubKeys",
+	"getadmininforesult-issuekeys":     "List of issue pubKeys",
+	"getadmininforesult-validatekeys":  "List of validate pubKeys",
+	"getadmininforesult-wspkeys":       "Mapping of keyIDs to wsp pubKeys",
 
 	// GetAdminInfoCmd help.
-	"getadmininfo--synopsis": "Get admin key sets at best block in the main chain.",
-	"getadmininfo--result0":  "Get admin key sets at best block in the main chain.",
+	"getadmininfo--synopsis": "Returns general admin data: thread tips, keys, issuance.",
 
 	// GetBestBlockHashCmd help.
 	"getbestblockhash--synopsis": "Returns the hash of the of the best (most recent) block in the longest block chain.",
