@@ -7,9 +7,9 @@ package blockchain
 import (
 	"fmt"
 	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
 	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/txscript"
+	"github.com/bitgo/rmgd/wire"
 	"sort"
 )
 
@@ -17,7 +17,7 @@ import (
 // point of view in the chain. For example, it could be for the end of the main
 // chain, some point in the history of the main chain, or down a side chain.
 type KeyViewpoint struct {
-	threadTips   map[rmgutil.ThreadID]*chainhash.Hash
+	threadTips   map[rmgutil.ThreadID]*wire.OutPoint
 	lastKeyID    btcec.KeyID
 	totalSupply  uint64
 	adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
@@ -25,13 +25,13 @@ type KeyViewpoint struct {
 }
 
 // ThreadTips returns
-func (view *KeyViewpoint) ThreadTips() map[rmgutil.ThreadID]*chainhash.Hash {
+func (view *KeyViewpoint) ThreadTips() map[rmgutil.ThreadID]*wire.OutPoint {
 	return view.threadTips
 }
 
 // SetThreadTips sets
 func (view *KeyViewpoint) SetThreadTips(
-	threadTips map[rmgutil.ThreadID]*chainhash.Hash) {
+	threadTips map[rmgutil.ThreadID]*wire.OutPoint) {
 	view.threadTips = threadTips
 }
 
@@ -126,7 +126,7 @@ func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 	}
 	// this becomes the new tip of the admin thread
 	threadId := rmgutil.ThreadID(threadInt)
-	view.threadTips[threadId] = tx.Hash()
+	view.threadTips[threadId] = wire.NewOutPoint(tx.Hash(), 0)
 }
 
 // applyAdminOp takes a single admin opp and applies it to the view.
@@ -228,7 +228,7 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 			// when an admin thread transaction is disconnected
 			// we set the spent tx as new tip.
 			threadId := rmgutil.ThreadID(threadInt)
-			view.threadTips[threadId] = &tx.MsgTx().TxIn[0].PreviousOutPoint.Hash
+			view.threadTips[threadId] = &tx.MsgTx().TxIn[0].PreviousOutPoint
 		}
 	}
 
@@ -238,7 +238,7 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 // NewKeyViewpoint returns a new empty key view.
 func NewKeyViewpoint() *KeyViewpoint {
 	return &KeyViewpoint{
-		threadTips:   make(map[rmgutil.ThreadID]*chainhash.Hash),
+		threadTips:   make(map[rmgutil.ThreadID]*wire.OutPoint),
 		lastKeyID:    btcec.KeyID(0),
 		totalSupply:  uint64(0),
 		adminKeySets: make(map[btcec.KeySetType]btcec.PublicKeySet),

@@ -191,14 +191,14 @@ var helpDescsEnUS = map[string]string{
 	"wspkeyidresult-keyid":  "uint32 keyID assigned to WSP",
 
 	// ThreadTipResult help.
-	"threadtipresult-root":      "Transaction holding latest output for root thread",
-	"threadtipresult-provision": "Transaction holding latest output for provision thread",
-	"threadtipresult-issue":     "Transaction holding latest output for issue thread",
+	"threadtipresult-id":       "ID of admin thread",
+	"threadtipresult-name":     "Name of admin thread",
+	"threadtipresult-outpoint": "Outpoint of current tip of admin thread",
 
 	// GetAdminInfoResult help.
 	"getadmininforesult-hash":          "Block hash at which returned admin state is valid",
 	"getadmininforesult-height":        "Height of the block at which returned admin state is valid",
-	"getadmininforesult-threadtips":    "Hashes of admin threads",
+	"getadmininforesult-threadtips":    "Current tips of the various admin threads",
 	"getadmininforesult-totalsupply":   "Total amount of tokens in circulation",
 	"getadmininforesult-lastkeyid":     "Last provisioned keyID",
 	"getadmininforesult-rootkeys":      "List of compressed, serialized strings of root pubKeys",

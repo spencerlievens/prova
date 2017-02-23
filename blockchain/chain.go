@@ -205,7 +205,7 @@ type BlockChain struct {
 	// protected by the chain lock.
 
 	// threadTips hold latest transaction hash of the 3 admin threads.
-	threadTips map[rmgutil.ThreadID]*chainhash.Hash
+	threadTips map[rmgutil.ThreadID]*wire.OutPoint
 	// latest keyID is a strictly increasing counter, to avoid reuse of
 	// keyIDs.
 	lastKeyID btcec.KeyID
@@ -1468,7 +1468,7 @@ func (b *BlockChain) BestSnapshot() *BestState {
 
 // ThreadTips
 // This function is safe for concurrent access.
-func (b *BlockChain) ThreadTips() map[rmgutil.ThreadID]*chainhash.Hash {
+func (b *BlockChain) ThreadTips() map[rmgutil.ThreadID]*wire.OutPoint {
 	b.stateLock.RLock()
 	threadTips := b.threadTips
 	b.stateLock.RUnlock()
@@ -1625,7 +1625,7 @@ func New(config *Config) (*BlockChain, error) {
 		blocksPerRetarget:   int32(targetTimespan / targetTimePerBlock),
 		minMemoryNodes:      int32(targetTimespan / targetTimePerBlock),
 		bestNode:            nil,
-		threadTips:          make(map[rmgutil.ThreadID]*chainhash.Hash),
+		threadTips:          make(map[rmgutil.ThreadID]*wire.OutPoint),
 		lastKeyID:           btcec.KeyID(0),
 		totalSupply:         uint64(0),
 		adminKeySets:        make(map[btcec.KeySetType]btcec.PublicKeySet),

@@ -1457,10 +1457,22 @@ func handleGetAdminInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 	rootTip := s.chain.ThreadTips()[rmgutil.RootThread]
 	provisionTip := s.chain.ThreadTips()[rmgutil.ProvisionThread]
 	issueTip := s.chain.ThreadTips()[rmgutil.IssueThread]
-	threadTipObj := btcjson.ThreadTipResult{
-		Root:      rootTip.String(),
-		Provision: provisionTip.String(),
-		Issue:     issueTip.String(),
+	threadTipObj := []btcjson.ThreadTipResult{
+		{
+			ID:       uint32(rmgutil.RootThread),
+			Name:     "root",
+			OutPoint: rootTip.String(),
+		},
+		{
+			ID:       uint32(rmgutil.ProvisionThread),
+			Name:     "provision",
+			OutPoint: provisionTip.String(),
+		},
+		{
+			ID:       uint32(rmgutil.IssueThread),
+			Name:     "issue",
+			OutPoint: issueTip.String(),
+		},
 	}
 	wspObj := make([]btcjson.WspKeyIdResult, len(wspKeyIdMap))
 	i := 0

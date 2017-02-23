@@ -991,12 +991,12 @@ var threadOrder = []rmgutil.ThreadID{
 // serializeKeySet returns the serialization of the passed key sets.
 // This is data to be stored in the key bucket.
 func serializeKeySet(adminKeySets map[btcec.KeySetType]btcec.PublicKeySet,
-	wspKeyIdMap btcec.KeyIdMap, threadTips map[rmgutil.ThreadID]*chainhash.Hash,
+	wspKeyIdMap btcec.KeyIdMap, threadTips map[rmgutil.ThreadID]*wire.OutPoint,
 	lastKeyID btcec.KeyID, totalSupply uint64) []byte {
 	// Calculate the full size needed to serialize the chain state.
 	serializedLen := uint32(0)
 	// Add 3 thread tips + last keyID + total supply (uint64)
-	serializedLen += uint32(3*chainhash.HashSize + btcec.KeyIDSize + 8)
+	serializedLen += uint32(3*(chainhash.HashSize+4) + btcec.KeyIDSize + 8)
 	for _, keySet := range adminKeysOrder {
 		serializedLen += 4 //one uint32 for size of key set
 		serializedLen += uint32(len(adminKeySets[keySet]) * btcec.PubKeyBytesLenCompressed)
@@ -1009,9 +1009,13 @@ func serializeKeySet(adminKeySets map[btcec.KeySetType]btcec.PublicKeySet,
 	// Add thread tips + counters
 	for _, threadId := range threadOrder {
 		if threadTips[threadId] != nil {
-			copy(serializedData[offset:], threadTips[threadId][:])
+			copy(serializedData[offset:], threadTips[threadId].Hash[:])
 		}
 		offset += chainhash.HashSize
+		if threadTips[threadId] != nil {
+			byteOrder.PutUint32(serializedData[offset:], threadTips[threadId].Index)
+		}
+		offset += 4
 	}
 	byteOrder.PutUint32(serializedData[offset:], uint32(lastKeyID))
 	offset += btcec.KeyIDSize
@@ -1057,12 +1061,12 @@ func serializeKeySet(adminKeySets map[btcec.KeySetType]btcec.PublicKeySet,
 // block.
 func deserializeKeySet(serializedData []byte) (
 	map[btcec.KeySetType]btcec.PublicKeySet, btcec.KeyIdMap,
-	map[rmgutil.ThreadID]*chainhash.Hash, btcec.KeyID, uint64, error) {
+	map[rmgutil.ThreadID]*wire.OutPoint, btcec.KeyID, uint64, error) {
 
 	offset := 0
 
 	// thread tips + counters length
-	lenNeeded := 3*chainhash.HashSize + btcec.KeyIDSize + 8
+	lenNeeded := 3*(chainhash.HashSize+4) + btcec.KeyIDSize + 8
 	if len(serializedData[offset:]) < lenNeeded {
 		return nil, nil, nil, 0, 0, database.Error{
 			ErrorCode:   database.ErrCorruption,
@@ -1070,11 +1074,15 @@ func deserializeKeySet(serializedData []byte) (
 		}
 	}
 
-	threadTips := make(map[rmgutil.ThreadID]*chainhash.Hash)
+	threadTips := make(map[rmgutil.ThreadID]*wire.OutPoint)
 	for _, threadId := range threadOrder {
+
 		hash, _ := chainhash.NewHash(serializedData[offset : offset+chainhash.HashSize])
-		threadTips[threadId] = hash
 		offset += chainhash.HashSize
+		index := byteOrder.Uint32(serializedData[offset : offset+4])
+		offset += 4
+		threadTip := wire.NewOutPoint(hash, index)
+		threadTips[threadId] = threadTip
 	}
 	lastKeyID := btcec.KeyID(byteOrder.Uint32(serializedData[offset : offset+btcec.KeyIDSize]))
 	offset += btcec.KeyIDSize
@@ -1143,7 +1151,7 @@ func deserializeKeySet(serializedData []byte) (
 func dbPutKeySet(dbTx database.Tx,
 	adminKeys map[btcec.KeySetType]btcec.PublicKeySet,
 	keyIdMap map[btcec.KeyID]*btcec.PublicKey,
-	threadTips map[rmgutil.ThreadID]*chainhash.Hash,
+	threadTips map[rmgutil.ThreadID]*wire.OutPoint,
 	lastKeyID btcec.KeyID, totalSupply uint64) error {
 	// Serialize the adminKeySets.
 	serializedData := serializeKeySet(adminKeys, keyIdMap, threadTips,
@@ -1280,7 +1288,7 @@ func (b *BlockChain) createChainState() error {
 
 	b.adminKeySets = btcec.DeepCopy(b.chainParams.AdminKeySets)
 	b.wspKeyIdMap = b.chainParams.WspKeyIdMap
-	b.threadTips = make(map[rmgutil.ThreadID]*chainhash.Hash)
+	b.threadTips = make(map[rmgutil.ThreadID]*wire.OutPoint)
 	b.lastKeyID = btcec.KeyID(0)
 	b.totalSupply = uint64(0)
 
@@ -1296,9 +1304,9 @@ func (b *BlockChain) createChainState() error {
 
 	// Initiate admin thread tips
 	//threadTips := make(map[rmgutil.ThreadID]*chainhash.Hash)
-	b.threadTips[rmgutil.RootThread] = genesisBlock.Transactions()[0].Hash()
-	b.threadTips[rmgutil.ProvisionThread] = genesisBlock.Transactions()[0].Hash()
-	b.threadTips[rmgutil.IssueThread] = genesisBlock.Transactions()[0].Hash()
+	b.threadTips[rmgutil.RootThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 0)
+	b.threadTips[rmgutil.ProvisionThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 1)
+	b.threadTips[rmgutil.IssueThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 2)
 	b.lastKeyID = btcec.KeyID(2)
 
 	// Create the initial the database chain state including creating the

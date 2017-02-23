@@ -988,7 +988,7 @@ func TestKeySetSerialization(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		threadTips   map[rmgutil.ThreadID]*chainhash.Hash
+		threadTips   map[rmgutil.ThreadID]*wire.OutPoint
 		lastKeyID    btcec.KeyID
 		totalSupply  uint64
 		adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
@@ -1006,13 +1006,13 @@ func TestKeySetSerialization(t *testing.T) {
 				return keySets
 			}(),
 			// priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
-			serialized: hexToBytes("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf10000000000000000"),
+			serialized: hexToBytes("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf10000000000000000"),
 		},
 		{
 			name: "two keys",
-			threadTips: func() map[rmgutil.ThreadID]*chainhash.Hash {
-				threadTips := make(map[rmgutil.ThreadID]*chainhash.Hash)
-				threadTips[rmgutil.RootThread] = newHashFromStr("00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048")
+			threadTips: func() map[rmgutil.ThreadID]*wire.OutPoint {
+				threadTips := make(map[rmgutil.ThreadID]*wire.OutPoint)
+				threadTips[rmgutil.RootThread] = wire.NewOutPoint(newHashFromStr("00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048"), 1337)
 				return threadTips
 			}(),
 			lastKeyID:   btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0}),
@@ -1036,7 +1036,7 @@ func TestKeySetSerialization(t *testing.T) {
 					keyId2: pubKey2,
 				}
 			}(),
-			serialized: hexToBytes("4860eb18bf1b1620e37e9490fc8a427514416fd75159ab86688e9a83000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000002d310100000000000000000000000002000000025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202000000000200000001000000038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a820200000100025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"),
+			serialized: hexToBytes("4860eb18bf1b1620e37e9490fc8a427514416fd75159ab86688e9a83000000003905000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000002d310100000000000000000000000002000000025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202000000000200000001000000038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a820200000100025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"),
 		},
 	}
 
@@ -1060,9 +1060,10 @@ func TestKeySetSerialization(t *testing.T) {
 				"unexpected error: %v", i, test.name, err)
 			continue
 		}
-		if !threadTips[rmgutil.RootThread].IsEqual(
-			test.threadTips[rmgutil.RootThread]) &&
-			test.threadTips[rmgutil.RootThread] != nil {
+		if test.threadTips[rmgutil.RootThread] != nil &&
+			(!threadTips[rmgutil.RootThread].Hash.IsEqual(
+				&test.threadTips[rmgutil.RootThread].Hash) ||
+				threadTips[rmgutil.RootThread].Index != test.threadTips[rmgutil.RootThread].Index) {
 			t.Errorf("deserializeKeySet #%d (%s) "+
 				"mismatched state - got %v, want %v", i,
 				test.name, threadTips[rmgutil.RootThread],

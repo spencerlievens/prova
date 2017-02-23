@@ -86,23 +86,23 @@ type WspKeyIdResult struct {
 
 // ThreadTipResult
 type ThreadTipResult struct {
-	Root      string `json:"root"`
-	Provision string `json:"provision"`
-	Issue     string `json:"issue"`
+	ID       uint32 `json:"id"`
+	Name     string `json:"name"`
+	OutPoint string `json:"outpoint"`
 }
 
 // GetAdminInfoResult models the data from the getadmininfo command.
 type GetAdminInfoResult struct {
-	Hash          string           `json:"hash"`
-	Height        uint32           `json:"height"`
-	ThreadTips    ThreadTipResult  `json:"threadtips"`
-	TotalSupply   uint64           `json:"totalsupply"`
-	LastKeyID     uint32           `json:"lastkeyid"`
-	RootKeys      []string         `json:"rootkeys,omitempty"`
-	ProvisionKeys []string         `json:"provisionkeys,omitempty"`
-	IssueKeys     []string         `json:"issuekeys,omitempty"`
-	ValidateKeys  []string         `json:"validatekeys,omitempty"`
-	WspKeys       []WspKeyIdResult `json:"wspkeymap,omitempty"`
+	Hash          string            `json:"hash"`
+	Height        uint32            `json:"height"`
+	ThreadTips    []ThreadTipResult `json:"threadtips"`
+	TotalSupply   uint64            `json:"totalsupply"`
+	LastKeyID     uint32            `json:"lastkeyid"`
+	RootKeys      []string          `json:"rootkeys,omitempty"`
+	ProvisionKeys []string          `json:"provisionkeys,omitempty"`
+	IssueKeys     []string          `json:"issuekeys,omitempty"`
+	ValidateKeys  []string          `json:"validatekeys,omitempty"`
+	WspKeys       []WspKeyIdResult  `json:"wspkeymap,omitempty"`
 }
 
 // GetBlockChainInfoResult models the data returned from the getblockchaininfo
