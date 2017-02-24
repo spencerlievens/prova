@@ -28,28 +28,30 @@ func (view *KeyViewpoint) ThreadTips() map[rmgutil.ThreadID]*wire.OutPoint {
 	return view.threadTips
 }
 
-// SetThreadTips sets
+// SetThreadTips sets the tips of the admin threads.
+// The passed reference is deep copied, so modification does not affect
+// source data structures.
 func (view *KeyViewpoint) SetThreadTips(
 	threadTips map[rmgutil.ThreadID]*wire.OutPoint) {
-	view.threadTips = threadTips
+	view.threadTips = rmgutil.CopyThreadTips(threadTips)
 }
 
-// LastKeyID returns
+// LastKeyID
 func (view *KeyViewpoint) LastKeyID() btcec.KeyID {
 	return view.lastKeyID
 }
 
-// SetLastKeyID sets
+// SetLastKeyID
 func (view *KeyViewpoint) SetLastKeyID(lastKeyID btcec.KeyID) {
 	view.lastKeyID = lastKeyID
 }
 
-// TotalSupply returns
+// TotalSupply
 func (view *KeyViewpoint) TotalSupply() uint64 {
 	return view.totalSupply
 }
 
-// SetTotalSupply sets
+// SetTotalSupply
 func (view *KeyViewpoint) SetTotalSupply(totalSupply uint64) {
 	view.totalSupply = totalSupply
 }
@@ -85,7 +87,7 @@ func (view *KeyViewpoint) GetAdminKeyHashes(threadID rmgutil.ThreadID) ([][]byte
 // SetKeyIDs sets the mapping of keyIDs to ASP keys.
 func (view *KeyViewpoint) SetKeyIDs(aspKeyIdMap btcec.KeyIdMap) {
 	if aspKeyIdMap != nil {
-		view.aspKeyIdMap = aspKeyIdMap
+		view.aspKeyIdMap = aspKeyIdMap.DeepCopy()
 	}
 }
 
