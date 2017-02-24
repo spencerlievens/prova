@@ -6,7 +6,7 @@ With RMG we need a way to guarantee against a situation in which a certain valid
 
 Each block will be signed with a key that has a chain of signing authority that leads back to the genesis block.
 
-1. The network should be participatory with regard to validator. The ongoing chain should always composed of a diverse set of independent contributors.
+1. The network should be participatory with regard to validator. The ongoing chain should always be composed of a diverse set of independent contributors.
 2. Should a validator's key ever be used in an aggressive way towards the network, the validator's key may be revoked through administrative action. This administrative transaction should not be able to be blocked by the validator himself.
 3. We want to avoid a hardware arms race among validators.
 
@@ -48,7 +48,7 @@ Instead of deterministic blocks, miners could be given deterministic time window
 Pros:
 
 - A time round-robin may closely model the desired behavior of every miner getting a turn at bat.
-- It should be simple to fairly stateless-ly evaluate whether hashing should proceed and whether a block is valid
+- It should be simple to fairly evaluate in a stateless manner whether hashing should proceed and whether a block is valid
 
 Cons:
 
@@ -57,7 +57,7 @@ Cons:
 
 ## Individualized Difficulty
 
-Each validator key or deterministic grouping of validator keys could have an individualized difficulty rating. Every validaotr then has an equal chance at a block regardless of their hash power.
+Each validator key or deterministic grouping of validator keys could have an individualized difficulty rating. Every validator then has an equal chance at a block regardless of their hash power.
 
 Pros:
 
@@ -86,7 +86,7 @@ This would work by having every generator provably burn or pay Bitcoin to a know
 
 ## Recommendation
 
-The most simple and effective algorithm would be a straightforward addition of two consensus rules: one for total blocks and another for block runs.
+The simplest and most effective algorithm would be a straightforward addition of two consensus rules: one for total blocks and another for block runs.
 
 The total blocks limit determines the permissible share of a mining difficulty period. A good value for this would be something like 25%: that would prevent someone from owning the end of one period and the beginning of another period to try and get a reorganizing majority of blocks.
 
