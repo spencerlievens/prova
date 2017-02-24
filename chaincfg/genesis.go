@@ -138,7 +138,7 @@ var testNet3GenesisBlock = wire.MsgBlock{
 		MerkleRoot: testNet3GenesisMerkleRoot, // 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
 		Timestamp:  time.Unix(1477648033, 0),  // 2016-10-28 09:47:13 +0000 UTC
 		Bits:       0x2007ffff,                // 537395199 [07ffff0000000000000000000000000000000000000000000000000000000000]
-		Nonce:      6,
+		Nonce:      1001,
 	},
 	Transactions: []*wire.MsgTx{&genesisCoinbaseTx},
 }
