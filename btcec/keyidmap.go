@@ -24,3 +24,13 @@ func (keyMap KeyIdMap) Equal(v KeyIdMap) bool {
 	}
 	return true
 }
+
+// DeepCopy creates a deep copy of the admin keys.
+func (keyMap KeyIdMap) DeepCopy() KeyIdMap {
+	keyIdMapCopy := make(map[KeyID]*PublicKey)
+	for keyID, pubKey := range keyMap {
+		pubKeyCopy, _ := ParsePubKey(pubKey.SerializeCompressed(), S256())
+		keyIdMapCopy[keyID] = pubKeyCopy
+	}
+	return keyIdMapCopy
+}

@@ -253,6 +253,20 @@ func TestCheckTransactionSanity(t *testing.T) {
 			code:    blockchain.ErrInvalidAdminTx,
 		},
 		{
+			name: "Issue thread trying to issue and destroy.",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn:    []*wire.TxIn{&dummyTxIn}, // only one input => issuance
+				TxOut: []*wire.TxOut{&issueTxOut, { // yet admin op => destruction
+					Value:    100,
+					PkScript: []byte{txscript.OP_RETURN},
+				}},
+				LockTime: 0,
+			},
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminTx,
+		},
+		{
 			name: "admin transaction with thread output at pos 1.",
 			tx: wire.MsgTx{
 				Version:  1,

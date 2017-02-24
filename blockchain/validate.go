@@ -251,23 +251,17 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 			} else {
 				// take care of issue thread
 				// If issuance/destruction tx, any non-nulldata outputs must be valid Aztec scripts
+				isDestruction := len(msgTx.TxIn) > 1
 				if txOutIndex > 0 {
 					pops := adminOutputs[txOutIndex-1]
 					scriptType := txscript.TypeOfScript(pops)
-					if len(pops) != 1 {
-						if scriptType != txscript.AztecTy {
-							str := fmt.Sprintf("admin issue transaction %v "+
-								"expected to have prova output at %d, "+
-								"but found %x.", tx.Hash, txOutIndex, pops)
+					if len(pops) == 1 {
+						if !isDestruction {
+							str := fmt.Sprintf("issue thread transaction %v "+
+								"tries to issue and destroy at the same "+
+								"time.", tx.Hash)
 							return ruleError(ErrInvalidAdminTx, str)
 						}
-						if atoms == 0 {
-							str := fmt.Sprintf("admin issue transaction %v "+
-								"trying to issue 0 at output "+
-								"#%d.", tx.Hash, txOutIndex)
-							return ruleError(ErrInvalidAdminTx, str)
-						}
-					} else {
 						if scriptType != txscript.NullDataTy {
 							str := fmt.Sprintf("admin issue transaction %v "+
 								"has invalid output #%d.", tx.Hash, txOutIndex)
@@ -279,6 +273,20 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 									"#%d.", tx.Hash, txOutIndex)
 								return ruleError(ErrInvalidAdminTx, str)
 							}
+						}
+					} else {
+						if scriptType != txscript.AztecTy &&
+							scriptType != txscript.GeneralAztecTy {
+							str := fmt.Sprintf("admin issue transaction %v "+
+								"expected to have prova output at %d, "+
+								"but found %x.", tx.Hash, txOutIndex, pops)
+							return ruleError(ErrInvalidAdminTx, str)
+						}
+						if atoms == 0 {
+							str := fmt.Sprintf("admin issue transaction %v "+
+								"trying to issue 0 at output "+
+								"#%d.", tx.Hash, txOutIndex)
+							return ruleError(ErrInvalidAdminTx, str)
 						}
 					}
 				}
@@ -1113,9 +1121,9 @@ func CheckTransactionOutputs(tx *rmgutil.Tx, keyView *KeyViewpoint) error {
 			// TODO(prova): check strictly increasing keyID
 			if isAddOp {
 				if keyView.wspKeyIdMap[keyID] != nil {
-					str := fmt.Sprintf("keyID added in transaction %v "+
+					str := fmt.Sprintf("keyID %v added in transaction %v "+
 						"exists already in admin set. Operation "+
-						"rejected.", tx.Hash())
+						"rejected.", keyID, tx.Hash())
 					return ruleError(ErrInvalidAdminOp, str)
 				}
 				if keyID != keyView.LastKeyID()+1 {

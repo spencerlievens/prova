@@ -114,10 +114,35 @@ func (view *KeyViewpoint) LookupKeyIDs(keyIDs []btcec.KeyID) map[btcec.KeyID][]b
 // verified.
 func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
-	if threadInt < 0 ||
-		rmgutil.ThreadID(threadInt) == rmgutil.IssueThread {
-		// Issue Thread, or not admin transaction
+	if threadInt < 0 {
+		// not admin transaction
 		return // so we skip.
+	}
+	if rmgutil.ThreadID(threadInt) == rmgutil.IssueThread {
+		isDestruction := len(tx.MsgTx().TxIn) > 1
+		if isDestruction {
+			// if this is a destruction operation
+			// look over all non-prova outputs and sum them up.
+			for i := 0; i < len(adminOutputs); i++ {
+				// if this output pk script is a NullDataTy, then,
+				// according to previous validation, it must be
+				// admin operation (destruction)
+				scriptType := txscript.TypeOfScript(adminOutputs[i])
+				if scriptType == txscript.NullDataTy {
+					view.totalSupply -= uint64(tx.MsgTx().TxOut[i+1].Value)
+				}
+			}
+		} else {
+			// if it is an issuance operation, look over all but first
+			// output and sum up values.
+			// remember that a issuing transaction is not allow to also
+			// destroy, as to previous validation.
+			for i := 1; i < len(tx.MsgTx().TxOut); i++ {
+				view.totalSupply += uint64(tx.MsgTx().TxOut[i].Value)
+			}
+		}
+		view.threadTips[rmgutil.IssueThread] = wire.NewOutPoint(tx.Hash(), 0)
+		return
 	}
 	for i := 0; i < len(adminOutputs); i++ {
 		isAddOp, keySetType, pubKey,
@@ -211,23 +236,40 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 		tx := transactions[txIdx]
 
 		// If an admin transaction is disconnected, undo what it did to chain state.
-		// TODO(aztec): execute more than the first op.
-		// TODO(aztec): add more threads and ops.
 		threadInt, adminOutputs := txscript.GetAdminDetails(tx)
 		if threadInt >= int(rmgutil.RootThread) {
-			for i := 0; i < len(adminOutputs); i++ {
-				isAddOp, keySetType, pubKey,
-					keyID := txscript.ExtractAdminOpData(adminOutputs[i])
-				isAddOp = !isAddOp
-				view.applyAdminOp(isAddOp, keySetType, pubKey, keyID)
-				// decrease lastKeyID counter, is an Add op is disconnected.
-				if keySetType == btcec.WspKeySet && isAddOp {
-					view.lastKeyID = keyID - 1
+			threadId := rmgutil.ThreadID(threadInt)
+			if threadId == rmgutil.IssueThread {
+				isDestruction := len(tx.MsgTx().TxIn) > 1
+				if isDestruction {
+					for i := 0; i < len(adminOutputs); i++ {
+						// if this output pk script is a NullDataTy, then,
+						// according to previous validation, it must be
+						// admin operation (destruction)
+						scriptType := txscript.TypeOfScript(adminOutputs[i])
+						if scriptType == txscript.NullDataTy {
+							view.totalSupply += uint64(tx.MsgTx().TxOut[i+1].Value)
+						}
+					}
+				} else {
+					for i := 1; i < len(tx.MsgTx().TxOut); i++ {
+						view.totalSupply -= uint64(tx.MsgTx().TxOut[i].Value)
+					}
+				}
+			} else {
+				for i := 0; i < len(adminOutputs); i++ {
+					isAddOp, keySetType, pubKey,
+						keyID := txscript.ExtractAdminOpData(adminOutputs[i])
+					isAddOp = !isAddOp
+					view.applyAdminOp(isAddOp, keySetType, pubKey, keyID)
+					// decrease lastKeyID counter, is an Add op is disconnected.
+					if keySetType == btcec.WspKeySet && isAddOp {
+						view.lastKeyID = keyID - 1
+					}
 				}
 			}
 			// when an admin thread transaction is disconnected
 			// we set the spent tx as new tip.
-			threadId := rmgutil.ThreadID(threadInt)
 			view.threadTips[threadId] = &tx.MsgTx().TxIn[0].PreviousOutPoint
 		}
 	}
