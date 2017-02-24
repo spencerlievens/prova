@@ -66,7 +66,7 @@ In RMG, the header serialization is:
 
 The block height and the extraNonce are removed from the Coinbase, as is the SegWit additional merkle root.
 
-The motivation for removing these elements is to clean up the Bitcoin metadata representation by moving components from the originally undefined data structure that is the Coinbase ScriptSig to a strictly defined data structure that is the header.
+The motivation for removing these elements is to clean up the Bitcoin metadata representation by moving components from the originally undefined data structure that is the Coinbase scriptSig to a strictly defined data structure that is the header.
 
 ## Changes to the hash function:
 
