@@ -55,10 +55,6 @@ func (s *fakeChain) FetchUtxoView(tx *rmgutil.Tx) (*blockchain.UtxoViewpoint, er
 	return viewpoint, nil
 }
 
-func (s *fakeChain) AdminKeySets() map[btcec.KeySetType]btcec.PublicKeySet {
-	return make(map[btcec.KeySetType]btcec.PublicKeySet)
-}
-
 // hexToBytes converts the passed hex string into bytes and will panic if there
 // is an error.  This is only provided for the hard-coded constants so errors in
 // the source code can be detected. It will only (and must only) be called with
@@ -71,10 +67,27 @@ func hexToBytes(s string) []byte {
 	return b
 }
 
-// KeyIDs returns all keyID to pub key mapping set on the chain.
-// The returned instance must be treated as immutable since it is shared by all
-// callers.
-// This function is safe for concurrent access.
+// ThreadTips returns the thread tips on the fake chain instance.
+func (s *fakeChain) ThreadTips() map[rmgutil.ThreadID]*wire.OutPoint {
+	return make(map[rmgutil.ThreadID]*wire.OutPoint)
+}
+
+// LastKeyID returns the last issued keyID on the the fake chain instance.
+func (s *fakeChain) LastKeyID() btcec.KeyID {
+	return btcec.KeyID(0)
+}
+
+// TotalSupply returns the total supply on the fake chain instance.
+func (s *fakeChain) TotalSupply() uint64 {
+	return uint64(0)
+}
+
+// AdminKeySets returns the set of admin keys on the fake chain instance.
+func (s *fakeChain) AdminKeySets() map[btcec.KeySetType]btcec.PublicKeySet {
+	return make(map[btcec.KeySetType]btcec.PublicKeySet)
+}
+
+// KeyIDs returns all keyID to pub key mapping set on the fake chain instance.
 func (s *fakeChain) KeyIDs() btcec.KeyIdMap {
 	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
 	pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
@@ -331,6 +344,9 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 			},
 			ChainParams:     chainParams,
 			FetchUtxoView:   chain.FetchUtxoView,
+			ThreadTips:      chain.ThreadTips,
+			LastKeyID:       chain.LastKeyID,
+			TotalSupply:     chain.TotalSupply,
 			GetKeyIDs:       chain.KeyIDs,
 			GetAdminKeySets: chain.AdminKeySets,
 			BestHeight:      chain.BestHeight,

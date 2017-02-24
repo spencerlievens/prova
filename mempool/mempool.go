@@ -56,10 +56,19 @@ type Config struct {
 	// transaction output information.
 	FetchUtxoView func(*rmgutil.Tx) (*blockchain.UtxoViewpoint, error)
 
-	// TODO(aztec)
+	// ThreadTips defines the function to fetch thread tips.
+	ThreadTips func() map[rmgutil.ThreadID]*wire.OutPoint
+
+	// LastKeyID defines the function to fetch last keyID.
+	LastKeyID func() btcec.KeyID
+
+	// TotalSupply defines the function to fetch total supply.
+	TotalSupply func() uint64
+
+	// GetKeyIDs defines the function to use to fetch keyID information.
 	GetKeyIDs func() btcec.KeyIdMap
 
-	// TODO(aztec)
+	// GetAdminKeySets defines the function to fetch admin key Sets.
 	GetAdminKeySets func() map[btcec.KeySetType]btcec.PublicKeySet
 
 	// BestHeight defines the function to use to access the block height of
@@ -597,6 +606,9 @@ func (mp *TxPool) maybeAcceptTransaction(tx *rmgutil.Tx, isNew, rateLimit bool) 
 
 	// Set the data for the keyview from chain
 	keyView := blockchain.NewKeyViewpoint()
+	keyView.SetThreadTips(mp.cfg.ThreadTips())
+	keyView.SetTotalSupply(mp.cfg.TotalSupply())
+	keyView.SetLastKeyID(mp.cfg.LastKeyID())
 	keyView.SetKeyIDs(mp.cfg.GetKeyIDs())
 	keyView.SetKeys(mp.cfg.GetAdminKeySets())
 
@@ -638,6 +650,12 @@ func (mp *TxPool) maybeAcceptTransaction(tx *rmgutil.Tx, isNew, rateLimit bool) 
 		if cerr, ok := err.(blockchain.RuleError); ok {
 			return nil, chainRuleError(cerr)
 		}
+		return nil, err
+	}
+
+	// CheckTransactionOutputs checks outputs for state violations.
+	err = blockchain.CheckTransactionOutputs(tx, keyView)
+	if err != nil {
 		return nil, err
 	}
 
