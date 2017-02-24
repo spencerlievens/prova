@@ -34,7 +34,7 @@ Problems:
 
 Benefits:
 
-- Already used in production for Decred, which is also based off of [BCTD](https://github.com/btcsuite/btcd)
+- Already used in production for Decred, which is also based off of [btcd](https://github.com/btcsuite/btcd)
 - Drop in replacement for sha256 here: https://github.com/decred/dcrd/blob/master/chaincfg/chainhash/hashfuncs.go
 - Top contender for SHA3 algorithm
 - Various language implementations exist
