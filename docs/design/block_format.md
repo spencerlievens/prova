@@ -22,7 +22,7 @@ sha3(
 )
 ```
 
-In Bitcoin, the block height was soft forked into the consensus rules in [BIP-34](https://github.com/bitcoin/bips/blob/master/bip-0034.mediawiki), therefore it was placed in the coinbase and not the block header. RMG moves this commitment to the header.
+In Bitcoin, the block height was soft forked into the consensus rules in [BIP-34](https://github.com/bitcoin/bips/blob/master/bip-0034.mediawiki). Block height therefore was placed in the coinbase and not the blockheader.
 
 The block size is added to the RMG header as it is important metadata and consensus critical, this commitment can help improve the validation level of headers-only syncing clients.
 
