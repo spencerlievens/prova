@@ -2,7 +2,7 @@
 
 Standard RMG transactions use a new type of script & corresponding address format that provides chain-enforced safety against unauthorized fund movement, double-spends, fund loss, or un-authorized holding of funds.
 
-These transactions are modelled after the original multi-sig design of Bitcoin transactions, specifically in a m-of-n signing configuration with a quorum of keys being explicitly-permissioned Wallet Service Provider (WSP) keys, referenced by 32-bit KeyIDs, along with a non-quorum set of public key hashes. Typically this means 2 KeyIDs and 1 key hash in a 2-of-3 configuration.
+These transactions are styled after the original multi-sig design of Bitcoin transactions, specifically in a m-of-n signing configuration with a quorum of keys being explicitly-permissioned Wallet Service Provider (WSP) keys, referenced by 32-bit KeyIDs, along with a non-quorum set of public key hashes. Typically this means 2 KeyIDs and 1 key hash in a 2-of-3 configuration.
 
 Wallet Service Providers are businesses or organizations explicitly vetted by The Royal Mint. The WSP keys are provisioned and assigned to KeyIDs on the chain itself using [administrative transactions](admin.md).
 
