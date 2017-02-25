@@ -10,7 +10,6 @@ import (
 	"github.com/bitgo/rmgd/rmgutil"
 	"github.com/bitgo/rmgd/txscript"
 	"github.com/bitgo/rmgd/wire"
-	"sort"
 )
 
 // KeyViewpoint represents a view into the set of admin keys from a specific
@@ -76,7 +75,6 @@ func (view *KeyViewpoint) GetAdminKeyHashes(threadID rmgutil.ThreadID) ([][]byte
 	}
 
 	pubs := view.adminKeySets[btcec.KeySetType(threadID)]
-	sort.Sort(ByPubKey{PublicKeys(pubs)})
 	hashes := make([][]byte, len(pubs))
 	for i, pubKey := range pubs {
 		hashes[i] = rmgutil.Hash160(pubKey.SerializeCompressed())
@@ -172,36 +170,6 @@ func (view *KeyViewpoint) applyAdminOp(isAddOp bool,
 			view.adminKeySets[keySetType] = view.adminKeySets[keySetType].Remove(pos)
 		}
 	}
-}
-
-// PublicKeys is a wrapper for the btcec.PublicKey array to allow sorting.
-type PublicKeys []btcec.PublicKey
-
-// Len to implement the sort interface.
-func (pubs PublicKeys) Len() int {
-	return len(pubs)
-}
-
-// Swap to implement the sort interface.
-func (pubs PublicKeys) Swap(i, j int) {
-	pubs[i], pubs[j] = pubs[j], pubs[i]
-}
-
-// ByPubKey implements sort.Interface by providing Less and using the Len and
-// Swap methods of the embedded PublicKeys value.
-type ByPubKey struct {
-	PublicKeys
-}
-
-// Less compares two private keys to determine order. The key are compared by
-// deriving the public keys, and comparing lexicographically.
-func (s ByPubKey) Less(i, j int) bool {
-	pubKeyI := &s.PublicKeys[i]
-	pubKeyStrI := fmt.Sprintf("%x", pubKeyI.SerializeCompressed())
-
-	pubKeyJ := &s.PublicKeys[j]
-	pubKeyStrJ := fmt.Sprintf("%x", pubKeyJ.SerializeCompressed())
-	return pubKeyStrI < pubKeyStrJ
 }
 
 // connectTransaction updates the view by processing all new admin operations in

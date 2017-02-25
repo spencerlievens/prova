@@ -231,7 +231,6 @@ func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
 		if err != nil {
 			return nil, class, nil, 0, err
 		}
-		sort.Sort(ByPubKey{keys})
 		// do the signing
 		script, _ := signSafeMultiSig(tx, idx, txSigHashes, inputAmt, subScript, hashType,
 			keys, nrequired, kdb)

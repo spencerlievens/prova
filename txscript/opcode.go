@@ -2006,6 +2006,9 @@ type parsedSigInfo struct {
 // See the opcodeCheckSigVerify documentation for more details about the process
 // for verifying each signature.
 //
+// Note that, unlike in Bitcoin, pubkeys/sigs in the scriptSig do NOT need to be in the
+// same order as the key hashes in the scriptPub.
+//
 // Stack transformation:
 // [... [{sig, pubkey} ...] numsigs [keyid ...] numkeyids [pubkeyhash ...] numpubkeyhashes] -> [... bool]
 func opcodeCheckSafeMultiSig(op *parsedOpcode, vm *Engine) error {
@@ -2080,23 +2083,17 @@ func opcodeCheckSafeMultiSig(op *parsedOpcode, vm *Engine) error {
 
 	success := true
 	// Initially increment, since we decrement immediately at the top of loop
-	numKeyHashes++
 	pubKeyHashIdx := -1
 	signatureIdx := 0
+	matchedKeyHashes := make(map[int]bool)
 	for numSignatures > 0 {
 		// When there are more signatures than public key remaining,
 		// there is no way to succeed since too many signatures are
 		// invalid, so exit early.
 		pubKeyHashIdx++
-		numKeyHashes--
-		if numSignatures > numKeyHashes {
-			success = false
-			break
-		}
 
 		sigInfo := signatures[signatureIdx]
 		pubKey := sigInfo.pubKey
-		pubKeyHash := keyHashes[pubKeyHashIdx]
 
 		// The order of the signature and public key evaluation is
 		// important here since it can be distinguished by an
@@ -2108,11 +2105,26 @@ func opcodeCheckSafeMultiSig(op *parsedOpcode, vm *Engine) error {
 			continue
 		}
 
-		// If pubkey for this sig doesn't match the current hash, move on
 		hash256 := fastsha256.Sum256(pubKey)
 		hash160 := calcHash(hash256[:], ripemd160.New())
-		if !bytes.Equal(hash160, pubKeyHash) {
-			continue
+
+		// Check hash of key in scriptSig against all key hashes in scriptPub
+		// If we don't find one that matches, script fails.
+		found := false
+		for idx, keyHash := range keyHashes {
+			if matchedKeyHashes[idx] {
+				// Make sure we don't re-match the same key
+				continue
+			}
+			if bytes.Equal(hash160, keyHash) {
+				found = true
+				matchedKeyHashes[idx] = true
+				break
+			}
+		}
+		if !found {
+			success = false
+			break
 		}
 
 		// Split the signature into hash type and signature components.

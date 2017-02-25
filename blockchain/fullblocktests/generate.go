@@ -61,8 +61,8 @@ var (
 	// helper function to sign transactions
 	lookupKey = func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
 		return []txscript.PrivateKey{
-			txscript.PrivateKey{privKey2, true},
 			txscript.PrivateKey{privKey1, true},
+			txscript.PrivateKey{privKey2, true},
 		}, nil
 	}
 )
