@@ -84,4 +84,4 @@ The rationale for this change is to prevent third party transaction id malleabil
 
 ## Value Divisibility Changes
 
-The smallest unit of value on the RMG chain is called an **Atom**. Whereas in Bitcoin, 1 BTC = 1e8 Satoshi, in the RMG system, 1 RMG (1 gold gram) = 1e6 atoms.
+The smallest unit of value on the RMG chain is called an **Atom**. Whereas in Bitcoin, 1 BTC = 1e8 satoshi, in the RMG system, 1 RMG (1 gold gram) = 1e6 atoms.
