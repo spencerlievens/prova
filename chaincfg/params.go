@@ -381,11 +381,9 @@ var TestNet3Params = Params{
 		return keySets
 	}(),
 	ASPKeyIdMap: func() btcec.KeyIdMap {
-		keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
 		pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
-		keyId2 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 		pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
-		return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey1, keyId2: pubKey2}
+		return map[btcec.KeyID]*btcec.PublicKey{btcec.KeyID(1): pubKey1, btcec.KeyID(2): pubKey2}
 	}(),
 	PowLimit:                 testNet3PowLimit,
 	PowLimitBits:             0x2007ffff,
