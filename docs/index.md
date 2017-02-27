@@ -20,9 +20,7 @@ community to track releases, contribute, and get updates on development status.
 
 * Dynamic Asset Issuance
 
-Asset issuance in Prova is done centrally.  The asset issuer's sole responsibility in Prova is to
-create and destroy the asset via newly introduced "admin transactions".  These transactions are public
-on the ledger and visible to all participants in the system.
+Asset issuance in Prova is done centrally.  The asset issuer's sole responsibility in Prova is to create and destroy the asset via newly introduced "admin transactions".  These transactions are public on the ledger and visible to all participants in the system.
 
 * Permissioned Participation
 
