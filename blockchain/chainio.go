@@ -1303,7 +1303,15 @@ func (b *BlockChain) createChainState() error {
 	b.threadTips[rmgutil.RootThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 0)
 	b.threadTips[rmgutil.ProvisionThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 1)
 	b.threadTips[rmgutil.IssueThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 2)
-	b.lastKeyID = btcec.KeyID(2)
+
+	// Set the last key id to the highest key id in the wsp key map.
+	var lastKeyID btcec.KeyID
+	for keyID := range b.aspKeyIdMap {
+		if keyID > lastKeyID {
+			lastKeyID = keyID
+		}
+	}
+	b.lastKeyID = btcec.KeyID(lastKeyID)
 
 	// Create the initial the database chain state including creating the
 	// necessary index buckets and inserting the genesis block.
