@@ -933,6 +933,8 @@ func createVinList(mtx *wire.MsgTx) []btcjson.Vin {
 // transaction.
 func createVoutList(mtx *wire.MsgTx, chainParams *chaincfg.Params, filterAddrMap map[string]struct{}) []btcjson.Vout {
 	voutList := make([]btcjson.Vout, 0, len(mtx.TxOut))
+	threadInt, _ := txscript.GetAdminDetailsMsgTx(mtx)
+	isAdmin := threadInt >= 0
 	for i, v := range mtx.TxOut {
 		// The disassembled string will contain [error] inline if the
 		// script doesn't fully parse, so ignore the error here.
@@ -974,6 +976,10 @@ func createVoutList(mtx *wire.MsgTx, chainParams *chaincfg.Params, filterAddrMap
 		vout.ScriptPubKey.Hex = hex.EncodeToString(v.PkScript)
 		vout.ScriptPubKey.Type = scriptClass.String()
 		vout.ScriptPubKey.ReqSigs = int32(reqSigs)
+
+		if isAdmin && scriptClass == txscript.NullDataTy {
+			vout.ScriptPubKey.AdminOp = txscript.AdminOpString(v.PkScript)
+		}
 
 		voutList = append(voutList, vout)
 	}

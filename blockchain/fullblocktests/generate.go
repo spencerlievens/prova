@@ -253,7 +253,7 @@ func aztecThreadScript(threadID rmgutil.ThreadID) []byte {
 	return script
 }
 
-// aztecAdminScript creates a new script that executes and admin op.
+// aztecAdminScript creates a new script that executes an admin op.
 func aztecAdminScript(opcode byte, pubKey *btcec.PublicKey) []byte {
 	// size as: <operation (1 byte)> <compressed public key (33 bytes)>
 	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed)
@@ -269,7 +269,7 @@ func aztecAdminScript(opcode byte, pubKey *btcec.PublicKey) []byte {
 	return script
 }
 
-// aztecAdminWSPScript creates a new script that executes and admin op
+// aztecAdminWSPScript creates a new script that executes an admin op
 // to provision or deprovision an WSP key.
 func aztecAdminWSPScript(opcode byte, pubKey *btcec.PublicKey, keyID btcec.KeyID) []byte {
 	// size as: <operation (1 byte)> <compressed public key (33 bytes)> <key id : 4 bytes>

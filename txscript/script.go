@@ -7,6 +7,7 @@ package txscript
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg/chainhash"
@@ -402,6 +403,28 @@ func ExtractAdminOpData(pkScript []parsedOpcode) (bool, btcec.KeySetType, *btcec
 		keySetType = btcec.WspKeySet
 	}
 	return isAddOp, keySetType, pubKey, keyID
+}
+
+// AdminOpString gives a human-readable version of an admin op script.
+// The function assumes previous validation as an actual valid admin op script.
+func AdminOpString(buf []byte) string {
+	opcodes, err := ParseScript(buf)
+	if err != nil {
+		return ""
+	}
+	isAddOp, keySetType, pubKey, keyID := ExtractAdminOpData(opcodes)
+	op := "REVOKE_KEY"
+	if isAddOp {
+		op = "ADD_KEY"
+	}
+	result := fmt.Sprintf("%s %s %s",
+		op,
+		keySetType.String(),
+		hex.EncodeToString(pubKey.SerializeCompressed()))
+	if keyID > 0 {
+		result = fmt.Sprintf("%s %d", result, uint32(keyID))
+	}
+	return result
 }
 
 // canonicalPush returns true if the object is either not a push instruction

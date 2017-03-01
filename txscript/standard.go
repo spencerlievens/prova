@@ -8,6 +8,7 @@ import (
 	"github.com/bitgo/rmgd/btcec"
 	"github.com/bitgo/rmgd/chaincfg"
 	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/rmgd/wire"
 )
 
 const (
@@ -188,14 +189,14 @@ func IsAztecTx(tx *rmgutil.Tx) bool {
 	return true
 }
 
-// GetAdminDetails will read threadID and admin outputs from and admin transaction.
-func GetAdminDetails(tx *rmgutil.Tx) (int, [][]parsedOpcode) {
+// GetAdminDetails will read threadID and admin outputs from an admin transaction.
+func GetAdminDetailsMsgTx(msgTx *wire.MsgTx) (int, [][]parsedOpcode) {
 	// The first output of the admin transaction is the thread transaction.
 	// Additional outputs modify the chain state. We expect at least one additional.
-	if len(tx.MsgTx().TxOut) < 1 {
+	if len(msgTx.TxOut) < 1 {
 		return -1, nil
 	}
-	pops, err := ParseScript(tx.MsgTx().TxOut[0].PkScript)
+	pops, err := ParseScript(msgTx.TxOut[0].PkScript)
 	if err != nil {
 		return -1, nil
 	}
@@ -206,15 +207,20 @@ func GetAdminDetails(tx *rmgutil.Tx) (int, [][]parsedOpcode) {
 	if err != nil {
 		return -1, nil
 	}
-	adminOutputs := make([][]parsedOpcode, len(tx.MsgTx().TxOut)-1)
-	for i := 1; i < len(tx.MsgTx().TxOut); i++ {
-		pops, err := ParseScript(tx.MsgTx().TxOut[i].PkScript)
+	adminOutputs := make([][]parsedOpcode, len(msgTx.TxOut)-1)
+	for i := 1; i < len(msgTx.TxOut); i++ {
+		pops, err := ParseScript(msgTx.TxOut[i].PkScript)
 		if err != nil {
 			return -1, nil
 		}
 		adminOutputs[i-1] = pops
 	}
 	return int(threadID), adminOutputs
+}
+
+// GetAdminDetails will read threadID and admin outputs from an admin transaction.
+func GetAdminDetails(tx *rmgutil.Tx) (int, [][]parsedOpcode) {
+	return GetAdminDetailsMsgTx(tx.MsgTx())
 }
 
 // isAztecAdmin returns true if the passed script is admin tread script.
