@@ -72,27 +72,6 @@ func NewCreateRawTransactionCmd(inputs []TransactionInput, amounts map[string]fl
 	}
 }
 
-// PrepareProvaTransactionCmd defines the prepareprovatransaction JSON-RPC command.
-type PrepareProvaTransactionCmd struct {
-	Inputs   []TransactionInput
-	Amounts  map[string]float64 `jsonrpcusage:"{\"address\":amount,...}"` // In RMG
-	LockTime *int64
-}
-
-// NewPrepareProvaTransactionCmd returns a new instance which can be used to issue
-// a prepareprovatransaction JSON-RPC command.
-//
-// Amounts are in RMG.
-func NewPrepareProvaTransactionCmd(inputs []TransactionInput, amounts map[string]float64,
-	lockTime *int64) *PrepareProvaTransactionCmd {
-
-	return &PrepareProvaTransactionCmd{
-		Inputs:   inputs,
-		Amounts:  amounts,
-		LockTime: lockTime,
-	}
-}
-
 // DecodeRawTransactionCmd defines the decoderawtransaction JSON-RPC command.
 type DecodeRawTransactionCmd struct {
 	HexTx string
@@ -770,7 +749,6 @@ func init() {
 
 	MustRegisterCmd("addnode", (*AddNodeCmd)(nil), flags)
 	MustRegisterCmd("createrawtransaction", (*CreateRawTransactionCmd)(nil), flags)
-	MustRegisterCmd("createrawadmintransaction", (*CreateRawAdminTransactionCmd)(nil), flags)
 	MustRegisterCmd("decoderawtransaction", (*DecodeRawTransactionCmd)(nil), flags)
 	MustRegisterCmd("decodescript", (*DecodeScriptCmd)(nil), flags)
 	MustRegisterCmd("getaddresstxids", (*GetAddressTxIdsCmd)(nil), flags)
@@ -804,7 +782,6 @@ func init() {
 	MustRegisterCmd("help", (*HelpCmd)(nil), flags)
 	MustRegisterCmd("invalidateblock", (*InvalidateBlockCmd)(nil), flags)
 	MustRegisterCmd("ping", (*PingCmd)(nil), flags)
-	MustRegisterCmd("prepareprovatransaction", (*PrepareProvaTransactionCmd)(nil), flags)
 	MustRegisterCmd("reconsiderblock", (*ReconsiderBlockCmd)(nil), flags)
 	MustRegisterCmd("searchrawtransactions", (*SearchRawTransactionsCmd)(nil), flags)
 	MustRegisterCmd("sendrawtransaction", (*SendRawTransactionCmd)(nil), flags)
