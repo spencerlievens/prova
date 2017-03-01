@@ -24,6 +24,7 @@ pages:
             - Admin Transactions: design/admin.md
             - Validator Rate Limiter: design/rate_limiter.md
             - Proof of Work Alternatives: design/hashfuncs.md
-            - Admin API: admin-api.md
-            - Raw Tx Examples: example/rawtx.md
+        - Transaction Examples:
+            - Standard Transaction Examples: example/rawtx.md
+            - Admin Transaction Examples: example/admintx.md
 theme: readthedocs
