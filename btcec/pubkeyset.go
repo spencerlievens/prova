@@ -15,7 +15,7 @@ const (
 	ProvisionKeySet KeySetType = 1
 	IssueKeySet     KeySetType = 2
 	ValidateKeySet  KeySetType = 3
-	WspKeySet       KeySetType = 4
+	ASPKeySet       KeySetType = 4
 )
 
 func (kstype KeySetType) String() string {
@@ -28,7 +28,7 @@ func (kstype KeySetType) String() string {
 		return "ISSUE"
 	case ValidateKeySet:
 		return "VALIDATE"
-	case WspKeySet:
+	case ASPKeySet:
 		return "ASP"
 	default:
 		return ""

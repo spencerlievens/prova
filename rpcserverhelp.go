@@ -62,7 +62,7 @@ var helpDescsEnUS = map[string]string{
 	"createrawadmintransaction-keytype":  "The type of key to provision",
 	"createrawadmintransaction-active":   "The active state of the key",
 	"createrawadmintransaction-pubkey":   "The hex-encoded public key to provision",
-	"createrawadmintransaction-keyid":    "The key id number for a wsp key",
+	"createrawadmintransaction-keyid":    "The key id number for an ASP key",
 	"createrawadmintransaction--result0": "Hex-encoded bytes of the serialized transaction",
 
 	// PrepareProvaTransactionCmd help.
@@ -187,9 +187,9 @@ var helpDescsEnUS = map[string]string{
 	"getbestblock--synopsis": "Get block height and hash of best block in the main chain.",
 	"getbestblock--result0":  "Get block height and hash of best block in the main chain.",
 
-	// WspKeyIdResult help.
-	"wspkeyidresult-pubkey": "compressed, serialized pubKey of WSP",
-	"wspkeyidresult-keyid":  "uint32 keyID assigned to WSP",
+	// ASPKeyIdResult help.
+	"aspkeyidresult-pubkey": "compressed, serialized pubKey of ASP",
+	"aspkeyidresult-keyid":  "uint32 keyID assigned to ASP",
 
 	// ThreadTipResult help.
 	"threadtipresult-id":       "ID of admin thread",
@@ -206,7 +206,7 @@ var helpDescsEnUS = map[string]string{
 	"getadmininforesult-provisionkeys": "List of provision pubKeys",
 	"getadmininforesult-issuekeys":     "List of issue pubKeys",
 	"getadmininforesult-validatekeys":  "List of validate pubKeys",
-	"getadmininforesult-wspkeys":       "Mapping of keyIDs to wsp pubKeys",
+	"getadmininforesult-aspkeys":       "Mapping of keyIDs to ASP pubKeys",
 
 	// GetAdminInfoCmd help.
 	"getadmininfo--synopsis": "Returns general admin data: thread tips, keys, issuance.",

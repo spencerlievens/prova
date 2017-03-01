@@ -273,9 +273,9 @@ func IsValidAdminOp(pops []parsedOpcode, threadID rmgutil.ThreadID) bool {
 			op == AdminOpValidateKeyRevoke {
 			return true
 		}
-		if op == AdminOpWSPKeyAdd ||
-			op == AdminOpWSPKeyRevoke {
-			// check length of data for WSP ops
+		if op == AdminOpASPKeyAdd ||
+			op == AdminOpASPKeyRevoke {
+			// check length of data for ASP ops
 			if len(pops[1].data) == 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize {
 				return true
 			}

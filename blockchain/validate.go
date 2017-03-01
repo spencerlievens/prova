@@ -1062,7 +1062,7 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewp
 func CheckProvaOutput(tx *rmgutil.Tx, txOutIndex int, keyIDs []btcec.KeyID,
 	keyView *KeyViewpoint) error {
 	for _, keyID := range keyIDs {
-		if keyView.wspKeyIdMap[keyID] == nil {
+		if keyView.aspKeyIdMap[keyID] == nil {
 			str := fmt.Sprintf("transaction %v output %v has unknown "+
 				"keyID %v.", tx.Hash(), txOutIndex, keyID)
 			return ruleError(ErrInvalidTx, str)
@@ -1116,11 +1116,11 @@ func CheckTransactionOutputs(tx *rmgutil.Tx, keyView *KeyViewpoint) error {
 	for i := 0; i < len(adminOutputs); i++ {
 		isAddOp, keySetType, pubKey,
 			keyID := txscript.ExtractAdminOpData(adminOutputs[i])
-		if keySetType == btcec.WspKeySet {
+		if keySetType == btcec.ASPKeySet {
 			// TODO(prova): check pubKey collisions
 			// TODO(prova): check strictly increasing keyID
 			if isAddOp {
-				if keyView.wspKeyIdMap[keyID] != nil {
+				if keyView.aspKeyIdMap[keyID] != nil {
 					str := fmt.Sprintf("keyID %v added in transaction %v "+
 						"exists already in admin set. Operation "+
 						"rejected.", keyID, tx.Hash())
@@ -1132,7 +1132,7 @@ func CheckTransactionOutputs(tx *rmgutil.Tx, keyView *KeyViewpoint) error {
 					return ruleError(ErrInvalidAdminOp, str)
 				}
 			} else {
-				if keyView.wspKeyIdMap[keyID] == nil {
+				if keyView.aspKeyIdMap[keyID] == nil {
 					str := fmt.Sprintf("keyID %v can not be revoked in "+
 						"transaction %v. It does not exist in admin set.",
 						keyID, tx.Hash())
@@ -1505,6 +1505,6 @@ func (b *BlockChain) CheckConnectBlock(block *rmgutil.Block) error {
 	keyView.SetLastKeyID(b.lastKeyID)
 	keyView.SetTotalSupply(b.totalSupply)
 	keyView.SetKeys(b.adminKeySets)
-	keyView.SetKeyIDs(b.wspKeyIdMap)
+	keyView.SetKeyIDs(b.aspKeyIdMap)
 	return b.checkConnectBlock(newNode, block, utxoView, keyView, nil)
 }

@@ -113,8 +113,8 @@ PROVISION_KEY_ADD <provision pub key>
 PROVISION_KEY_REVOKE <provision pub key>
 VALIDATE_KEY_ADD <validate pub key>
 VALIDATE_KEY_REVOKE <validate pub key>
-ASP_KEY_ADD <wsp pub key> <key id>
-ASP_KEY_REVOKE <wsp pub key> <key id>
+ASP_KEY_ADD <asp pub key> <key id>
+ASP_KEY_REVOKE <asp pub key> <key id>
 ```
 
 When encoded into a transaction, the operations and their keys will be represented as:

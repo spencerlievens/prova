@@ -84,7 +84,7 @@ type AcceptedBlock struct {
 	IsMainChain  bool
 	IsOrphan     bool
 	AdminKeySets map[btcec.KeySetType]btcec.PublicKeySet
-	WspKeyIdMap  btcec.KeyIdMap
+	ASPKeyIdMap  btcec.KeyIdMap
 	TotalSupply  uint64
 }
 
@@ -269,9 +269,9 @@ func provaAdminScript(opcode byte, pubKey *btcec.PublicKey) []byte {
 	return script
 }
 
-// provaAdminWSPScript creates a new script that executes an admin op
-// to provision or deprovision an WSP key.
-func provaAdminWSPScript(opcode byte, pubKey *btcec.PublicKey, keyID btcec.KeyID) []byte {
+// provaAdminASPScript creates a new script that executes an admin op
+// to provision or deprovision an ASP key.
+func provaAdminASPScript(opcode byte, pubKey *btcec.PublicKey, keyID btcec.KeyID) []byte {
 	// size as: <operation (1 byte)> <compressed public key (33 bytes)> <key id : 4 bytes>
 	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
 	data[0] = opcode
@@ -478,8 +478,8 @@ func createAdminTx(spend *spendableOut, threadID rmgutil.ThreadID, op byte, pubK
 	return spendTx
 }
 
-// createWSPAdminTx creates an admin tx that provisions a keyID
-func createWspAdminTx(spend *spendableOut, op byte, pubKey *btcec.PublicKey,
+// createASPAdminTx creates an admin tx that provisions a keyID
+func createASPAdminTx(spend *spendableOut, op byte, pubKey *btcec.PublicKey,
 	keyID btcec.KeyID) *wire.MsgTx {
 	spendTx := wire.NewMsgTx()
 	spendTx.AddTxIn(&wire.TxIn{
@@ -491,7 +491,7 @@ func createWspAdminTx(spend *spendableOut, op byte, pubKey *btcec.PublicKey,
 	spendTx.AddTxOut(wire.NewTxOut(txValue,
 		provaThreadScript(rmgutil.ProvisionThread)))
 	spendTx.AddTxOut(wire.NewTxOut(txValue,
-		provaAdminWSPScript(op, pubKey, keyID)))
+		provaAdminASPScript(op, pubKey, keyID)))
 
 	sigScript, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
 		0, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
@@ -705,11 +705,11 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	// expectTipBlock creates a test instance that expects the provided
 	// block to be the current tip of the block chain.
 	lastAdminKeySets := btcec.DeepCopy(chaincfg.RegressionNetParams.AdminKeySets)
-	lastWspKeys := chaincfg.RegressionNetParams.WspKeyIdMap.DeepCopy()
+	lastASPKeys := chaincfg.RegressionNetParams.ASPKeyIdMap.DeepCopy()
 	lastTotalSupply := uint64(0)
 	acceptBlock := func(blockName string, block *wire.MsgBlock, isMainChain, isOrphan bool) TestInstance {
 		blockHeight := g.blockHeights[blockName]
-		return AcceptedBlock{blockName, block, blockHeight, isMainChain, isOrphan, lastAdminKeySets, lastWspKeys, lastTotalSupply}
+		return AcceptedBlock{blockName, block, blockHeight, isMainChain, isOrphan, lastAdminKeySets, lastASPKeys, lastTotalSupply}
 	}
 	rejectBlock := func(blockName string, block *wire.MsgBlock, code blockchain.ErrorCode) TestInstance {
 		blockHeight := g.blockHeights[blockName]
@@ -747,12 +747,12 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 		}
 		lastAdminKeySets = adminKeySets
 	}
-	assertWspKey := func(adminKey *btcec.PublicKey, keyID btcec.KeyID) {
-		wspKeys := lastWspKeys.DeepCopy()
-		if wspKeys != nil {
-			wspKeys[keyID] = adminKey
+	assertASPKey := func(adminKey *btcec.PublicKey, keyID btcec.KeyID) {
+		aspKeys := lastASPKeys.DeepCopy()
+		if aspKeys != nil {
+			aspKeys[keyID] = adminKey
 		}
-		lastWspKeys = wspKeys
+		lastASPKeys = aspKeys
 	}
 	assertTotalSupply := func(totalSupply uint64) {
 		lastTotalSupply = totalSupply
@@ -875,10 +875,10 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	// provision a keyID and check
 	keyId := btcec.KeyIDFromAddressBuffer([]byte{3, 0, 0, 0})
-	wspKeyIdAddTx := createWspAdminTx(outs[1], txscript.AdminOpWSPKeyAdd, pubKey1, keyId)
-	g.nextBlock("b8", nil, additionalTx(wspKeyIdAddTx))
+	aspKeyIdAddTx := createASPAdminTx(outs[1], txscript.AdminOpASPKeyAdd, pubKey1, keyId)
+	g.nextBlock("b8", nil, additionalTx(aspKeyIdAddTx))
 	assertAdminKeys(btcec.ProvisionKeySet, []btcec.PublicKey{*pubKey1, *pubKey2})
-	assertWspKey(pubKey1, keyId)
+	assertASPKey(pubKey1, keyId)
 	accepted()
 
 	// ---------------------------------------------------------------------

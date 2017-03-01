@@ -303,8 +303,8 @@ const (
 	AdminOpProvisionKeyRevoke = 0x04 // 4
 	AdminOpValidateKeyAdd     = 0x11 // 17
 	AdminOpValidateKeyRevoke  = 0x12 // 18
-	AdminOpWSPKeyAdd          = 0x13 // 19
-	AdminOpWSPKeyRevoke       = 0x14 // 20
+	AdminOpASPKeyAdd          = 0x13 // 19
+	AdminOpASPKeyRevoke       = 0x14 // 20
 )
 
 // Conditional execution constants.

@@ -20,7 +20,7 @@ type KeyViewpoint struct {
 	lastKeyID    btcec.KeyID
 	totalSupply  uint64
 	adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
-	wspKeyIdMap  btcec.KeyIdMap
+	aspKeyIdMap  btcec.KeyIdMap
 }
 
 // ThreadTips returns
@@ -82,24 +82,24 @@ func (view *KeyViewpoint) GetAdminKeyHashes(threadID rmgutil.ThreadID) ([][]byte
 	return hashes, nil
 }
 
-// SetKeyIDs sets the mapping of keyIDs to WSP keys.
-func (view *KeyViewpoint) SetKeyIDs(wspKeyIdMap btcec.KeyIdMap) {
-	if wspKeyIdMap != nil {
-		view.wspKeyIdMap = wspKeyIdMap
+// SetKeyIDs sets the mapping of keyIDs to ASP keys.
+func (view *KeyViewpoint) SetKeyIDs(aspKeyIdMap btcec.KeyIdMap) {
+	if aspKeyIdMap != nil {
+		view.aspKeyIdMap = aspKeyIdMap
 	}
 }
 
-// KeyIDs returns a mapping of keyIDs to WSP keys at the position in the chain
+// KeyIDs returns a mapping of keyIDs to ASP keys at the position in the chain
 // the view currently represents.
 func (view *KeyViewpoint) KeyIDs() btcec.KeyIdMap {
-	return view.wspKeyIdMap
+	return view.aspKeyIdMap
 }
 
 // LookupKeyIDs returns pubKeyHashes for all registered KeyIDs
 func (view *KeyViewpoint) LookupKeyIDs(keyIDs []btcec.KeyID) map[btcec.KeyID][]byte {
 	keyIdMap := make(map[btcec.KeyID][]byte)
 	for _, keyID := range keyIDs {
-		pubKey := view.wspKeyIdMap[keyID]
+		pubKey := view.aspKeyIdMap[keyID]
 		if pubKey != nil {
 			keyIdMap[keyID] = rmgutil.Hash160(pubKey.SerializeCompressed())
 		}
@@ -155,12 +155,12 @@ func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 // applyAdminOp takes a single admin opp and applies it to the view.
 func (view *KeyViewpoint) applyAdminOp(isAddOp bool,
 	keySetType btcec.KeySetType, pubKey *btcec.PublicKey, keyID btcec.KeyID) {
-	if keySetType == btcec.WspKeySet {
+	if keySetType == btcec.ASPKeySet {
 		if isAddOp {
-			view.wspKeyIdMap[keyID] = pubKey
+			view.aspKeyIdMap[keyID] = pubKey
 			view.lastKeyID = keyID
 		} else {
-			delete(view.wspKeyIdMap, keyID)
+			delete(view.aspKeyIdMap, keyID)
 		}
 	} else {
 		if isAddOp {
@@ -231,7 +231,7 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 					isAddOp = !isAddOp
 					view.applyAdminOp(isAddOp, keySetType, pubKey, keyID)
 					// decrease lastKeyID counter, is an Add op is disconnected.
-					if keySetType == btcec.WspKeySet && isAddOp {
+					if keySetType == btcec.ASPKeySet && isAddOp {
 						view.lastKeyID = keyID - 1
 					}
 				}
@@ -252,6 +252,6 @@ func NewKeyViewpoint() *KeyViewpoint {
 		lastKeyID:    btcec.KeyID(0),
 		totalSupply:  uint64(0),
 		adminKeySets: make(map[btcec.KeySetType]btcec.PublicKeySet),
-		wspKeyIdMap:  make(map[btcec.KeyID]*btcec.PublicKey),
+		aspKeyIdMap:  make(map[btcec.KeyID]*btcec.PublicKey),
 	}
 }

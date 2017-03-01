@@ -556,11 +556,11 @@ func handleCreateRawAdminTransaction(s *rpcServer, cmd interface{}, closeChan <-
 	case keyType == "provisioning" && !active:
 		op = txscript.AdminOpProvisionKeyRevoke
 		threadID = rmgutil.RootThread
-	case keyType == "wsp" && active:
-		op = txscript.AdminOpWSPKeyAdd
+	case keyType == "asp" && active:
+		op = txscript.AdminOpASPKeyAdd
 		threadID = rmgutil.ProvisionThread
-	case keyType == "wsp" && !active:
-		op = txscript.AdminOpWSPKeyRevoke
+	case keyType == "asp" && !active:
+		op = txscript.AdminOpASPKeyRevoke
 		threadID = rmgutil.ProvisionThread
 	case keyType == "validate" && active:
 		op = txscript.AdminOpValidateKeyAdd
@@ -575,11 +575,11 @@ func handleCreateRawAdminTransaction(s *rpcServer, cmd interface{}, closeChan <-
 		}
 	}
 
-	// Confirm that a key id is assigned to the WSP change.
-	if keyType == "wsp" && c.KeyId == nil {
+	// Confirm that a key id is assigned to the ASP change.
+	if keyType == "asp" && c.KeyId == nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidAddressOrKey,
-			Message: "WSP admin transactions require a key id",
+			Message: "ASP admin transactions require a key id",
 		}
 	}
 
@@ -625,14 +625,14 @@ func handleCreateRawAdminTransaction(s *rpcServer, cmd interface{}, closeChan <-
 	// Craft the admin statement to use for this transaction.
 	// This looks like [1 byte op code][33 bytes compressed public key]
 	adminStatementDataSize := 1 + btcec.PubKeyBytesLenCompressed
-	if keyType == "wsp" {
-		// WSP adds need an extra appended 4 byte keyid
+	if keyType == "asp" {
+		// ASP adds need an extra appended 4 byte keyid
 		adminStatementDataSize += btcec.KeyIDSize
 	}
 	adminStatementData := make([]byte, adminStatementDataSize)
 	adminStatementData[0] = op
 	copy(adminStatementData[1:], pubKey.SerializeCompressed())
-	if keyType == "wsp" {
+	if keyType == "asp" {
 		keyIdBytes := make([]byte, btcec.KeyIDSize)
 		binary.LittleEndian.PutUint32(keyIdBytes, *c.KeyId)
 		keyIdIndex := 1 + btcec.PubKeyBytesLenCompressed
@@ -1459,7 +1459,7 @@ func handleGetAddressTxIds(s *rpcServer, cmd interface{}, closeChan <-chan struc
 func handleGetAdminInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	best := s.chain.BestSnapshot()
 	adminKeySets := s.chain.AdminKeySets()
-	wspKeyIdMap := s.chain.KeyIDs()
+	aspKeyIdMap := s.chain.KeyIDs()
 	rootTip := s.chain.ThreadTips()[rmgutil.RootThread]
 	provisionTip := s.chain.ThreadTips()[rmgutil.ProvisionThread]
 	issueTip := s.chain.ThreadTips()[rmgutil.IssueThread]
@@ -1480,10 +1480,10 @@ func handleGetAdminInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 			OutPoint: issueTip.String(),
 		},
 	}
-	wspObj := make([]btcjson.WspKeyIdResult, len(wspKeyIdMap))
+	aspObj := make([]btcjson.ASPKeyIdResult, len(aspKeyIdMap))
 	i := 0
-	for k, v := range wspKeyIdMap {
-		wspObj[i] = btcjson.WspKeyIdResult{
+	for k, v := range aspKeyIdMap {
+		aspObj[i] = btcjson.ASPKeyIdResult{
 			KeyID:  uint32(k),
 			PubKey: hex.EncodeToString(v.SerializeCompressed()),
 		}
@@ -1499,7 +1499,7 @@ func handleGetAdminInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 		ProvisionKeys: adminKeySets[btcec.ProvisionKeySet].ToStringArray(),
 		IssueKeys:     adminKeySets[btcec.IssueKeySet].ToStringArray(),
 		ValidateKeys:  adminKeySets[btcec.ValidateKeySet].ToStringArray(),
-		WspKeys:       wspObj,
+		ASPKeys:       aspObj,
 	}
 	return result, nil
 }

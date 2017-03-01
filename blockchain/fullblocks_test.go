@@ -97,10 +97,10 @@ func TestFullBlocks(t *testing.T) {
 				chain.AdminKeySets()[btcec.IssueKeySet].ToStringArray())
 		}
 		// Check KeyIDs
-		if item.IsMainChain && !item.WspKeyIdMap.Equal(chain.KeyIDs()) {
+		if item.IsMainChain && !item.ASPKeyIdMap.Equal(chain.KeyIDs()) {
 			t.Fatalf("block %q (hash %s, height %d) should "+
 				"have keyID %x, got %v", item.Name, block.Hash(),
-				blockHeight, item.WspKeyIdMap, chain.KeyIDs())
+				blockHeight, item.ASPKeyIdMap, chain.KeyIDs())
 		}
 		// Check Total Supply
 		if chain.TotalSupply() != item.TotalSupply {
