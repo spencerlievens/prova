@@ -249,8 +249,8 @@ func asInt32(pop parsedOpcode) (int32, error) {
 	return result.Int32(), err
 }
 
-// ExtractKeyIDs takes an Aztec pkScript and extracts the keyIDs from it.
-// We assume a Aztec address structure like this:
+// ExtractKeyIDs takes an Prova pkScript and extracts the keyIDs from it.
+// We assume a Prova address structure like this:
 // basic: <2 hash keyID1 keyID2 3 OP_CHECKSAFEMULTISIG>
 // general: <x hash/keyID hash/keyID y OP_CHECKSAFEMULTISIG>
 func ExtractKeyIDs(pkScript []parsedOpcode) ([]btcec.KeyID, error) {
@@ -276,7 +276,7 @@ func ExtractKeyIDs(pkScript []parsedOpcode) ([]btcec.KeyID, error) {
 }
 
 // ReplaceKeyIds replaces keyIds in a pkScript with pubKeyHashes.
-// We assume a Aztec address structure like this:
+// We assume a Prova address structure like this:
 // basic: <2 hash keyID1 keyID2 3 OP_CHECKSAFEMULTISIG>
 // general: <x hash/keyID hash/keyID y OP_CHECKSAFEMULTISIG>
 func ReplaceKeyIDs(pkScript []parsedOpcode, keyIdMap map[btcec.KeyID][]byte) error {
@@ -309,8 +309,8 @@ func ReplaceKeyIDs(pkScript []parsedOpcode, keyIdMap map[btcec.KeyID][]byte) err
 	return nil
 }
 
-// ExtractThreadID takes an Aztec admin pkScript and extracts the threadID from it.
-// We assume an Aztec admin pkScript structure like this:
+// ExtractThreadID takes an Prova admin pkScript and extracts the threadID from it.
+// We assume an Prova admin pkScript structure like this:
 // <threadID> OP_CHECKTHREAD
 func ExtractThreadID(pkScript []parsedOpcode) (rmgutil.ThreadID, error) {
 	if len(pkScript) != 2 || !isSmallInt(pkScript[0].opcode) {
@@ -469,7 +469,7 @@ func removeOpcodeByData(pkscript []parsedOpcode, data []byte) []parsedOpcode {
 // calcSignatureHash will, given a script and hash type for the current script
 // engine instance, calculate the signature hash to be used for signing and
 // verification.
-// TODO(aztec): Redefine this completely to eliminate malleability (segwit)
+// TODO(prova): Redefine this completely to eliminate malleability (segwit)
 func calcSignatureHash(script []parsedOpcode, hashType SigHashType, tx *wire.MsgTx, idx int) []byte {
 	// The SigHashSingle signature type signs only the corresponding input
 	// and output (the output with the same index number as the input).
@@ -728,7 +728,7 @@ func getSigOpCount(pops []parsedOpcode, precise bool) int {
 				nSigs += MaxPubKeysPerMultiSig
 			}
 		case OP_CHECKSAFEMULTISIG:
-			// TODO(aztec): implement
+			// TODO(prova): implement
 			fallthrough
 		default:
 			// Not a sigop.

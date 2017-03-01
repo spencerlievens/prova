@@ -48,24 +48,24 @@ const (
 	ScriptHashTy                      // Pay to script hash.
 	MultiSigTy                        // Multi signature.
 	NullDataTy                        // Empty data-only (provably prunable).
-	AztecTy                           // Aztec standard 2-of-3 type (subset of GeneralAztecTy)
-	GeneralAztecTy                    // Aztec (generalized m-of-n) script
-	AztecAdminTy                      // Aztec Admin Operations
+	ProvaTy                           // Prova standard 2-of-3 type (subset of GeneralProvaTy)
+	GeneralProvaTy                    // Prova (generalized m-of-n) script
+	ProvaAdminTy                      // Prova Admin Operations
 )
 
 // scriptClassToName houses the human-readable strings which describe each
 // script class.
 var scriptClassToName = []string{
-	// TODO(aztec): clean up non-used types
+	// TODO(prova): clean up non-used types
 	NonStandardTy:  "nonstandard",
 	PubKeyTy:       "pubkey",
 	PubKeyHashTy:   "pubkeyhash",
 	ScriptHashTy:   "scripthash",
 	MultiSigTy:     "multisig",
 	NullDataTy:     "nulldata",
-	AztecTy:        "aztec",
-	GeneralAztecTy: "aztec",
-	AztecAdminTy:   "aztecadmin",
+	ProvaTy:        "safe_multisig",
+	GeneralProvaTy: "safe_multisig",
+	ProvaAdminTy:   "admin",
 }
 
 // String implements the Stringer interface by returning the name of
@@ -78,8 +78,8 @@ func (t ScriptClass) String() string {
 	return scriptClassToName[t]
 }
 
-// isGeneralAztec returns true if the passed script is an Aztec script (generalized m-of-n)
-func isGeneralAztec(pops []parsedOpcode) bool {
+// isGeneralProva returns true if the passed script is an Prova script (generalized m-of-n)
+func isGeneralProva(pops []parsedOpcode) bool {
 	// The absolute minimum is 3 keys:
 	// OP_2 <keyid> <keyid> <pubkey> OP_3 OP_CHECKMULTISIG
 	sLen := len(pops)
@@ -154,20 +154,20 @@ func isGeneralAztec(pops []parsedOpcode) bool {
 	return true
 }
 
-// isAztec returns true if the passed script is a 2 of 3 aztec transaction.
-func isAztec(pops []parsedOpcode) bool {
+// isProva returns true if the passed script is a 2 of 3 prova transaction.
+func isProva(pops []parsedOpcode) bool {
 	return len(pops) == 6 &&
 		pops[0].opcode.value == OP_2 &&
 		pops[4].opcode.value == OP_3 &&
-		isGeneralAztec(pops)
+		isGeneralProva(pops)
 }
 
-// IsAztecTx determines if a transaction is a standard aztec transaction consisting
-// of only outputs to standard aztec scripts and 0-value nulldata scripts.
-func IsAztecTx(tx *rmgutil.Tx) bool {
+// IsProvaTx determines if a transaction is a standard prova transaction consisting
+// of only outputs to standard prova scripts and 0-value nulldata scripts.
+func IsProvaTx(tx *rmgutil.Tx) bool {
 	msgTx := tx.MsgTx()
 
-	// An aztec transaction must have at least one output.
+	// An prova transaction must have at least one output.
 	if len(msgTx.TxOut) == 0 {
 		return false
 	}
@@ -182,7 +182,7 @@ func IsAztecTx(tx *rmgutil.Tx) bool {
 			if atoms != 0 {
 				return false
 			}
-		} else if !isGeneralAztec(pops) {
+		} else if !isGeneralProva(pops) {
 			return false
 		}
 	}
@@ -200,7 +200,7 @@ func GetAdminDetailsMsgTx(msgTx *wire.MsgTx) (int, [][]parsedOpcode) {
 	if err != nil {
 		return -1, nil
 	}
-	if TypeOfScript(pops) != AztecAdminTy {
+	if TypeOfScript(pops) != ProvaAdminTy {
 		return -1, nil
 	}
 	threadID, err := ExtractThreadID(pops)
@@ -223,8 +223,8 @@ func GetAdminDetails(tx *rmgutil.Tx) (int, [][]parsedOpcode) {
 	return GetAdminDetailsMsgTx(tx.MsgTx())
 }
 
-// isAztecAdmin returns true if the passed script is admin tread script.
-func isAztecAdmin(pops []parsedOpcode) bool {
+// isProvaAdmin returns true if the passed script is admin tread script.
+func isProvaAdmin(pops []parsedOpcode) bool {
 	sLen := len(pops)
 	if sLen != 2 {
 		return false
@@ -314,12 +314,12 @@ func TypeOfScript(pops []parsedOpcode) ScriptClass {
 func typeOfScript(pops []parsedOpcode) ScriptClass {
 	if isNullData(pops) {
 		return NullDataTy
-	} else if isAztec(pops) {
-		return AztecTy
-	} else if isGeneralAztec(pops) {
-		return GeneralAztecTy
-	} else if isAztecAdmin(pops) {
-		return AztecAdminTy
+	} else if isProva(pops) {
+		return ProvaTy
+	} else if isGeneralProva(pops) {
+		return GeneralProvaTy
+	} else if isProvaAdmin(pops) {
+		return ProvaAdminTy
 	}
 	return NonStandardTy
 }
@@ -342,16 +342,16 @@ func GetScriptClass(script []byte) ScriptClass {
 // while finding out the type).
 func expectedInputs(pops []parsedOpcode, class ScriptClass) int {
 	switch class {
-	case AztecTy:
+	case ProvaTy:
 		fallthrough
-	case GeneralAztecTy:
-		// Standard Aztec script first push is a small number for the number
-		// of (sig, pubkey) pairs. Unlike multisig Bitcoin scripts, Aztec
+	case GeneralProvaTy:
+		// Standard Prova script first push is a small number for the number
+		// of (sig, pubkey) pairs. Unlike multisig Bitcoin scripts, Prova
 		// scripts use key hashes rather than keys, thus the keys must be
 		// included on redemption.
 		return asSmallInt(pops[0].opcode) * 2
 
-	case AztecAdminTy:
+	case ProvaAdminTy:
 		//2 pubkeys + 2 sigs
 		return 4
 
@@ -459,9 +459,9 @@ func CalcMultiSigStats(script []byte) (int, int, error) {
 	return numPubKeys, numSigs, nil
 }
 
-// payToAztecScript creates a new script to pay a transaction output to an
-// Aztec 2-of-3 address.
-func payToAztecScript(pubKeyHash []byte, keyIDs []btcec.KeyID) ([]byte, error) {
+// payToProvaScript creates a new script to pay a transaction output to an
+// Prova 2-of-3 address.
+func payToProvaScript(pubKeyHash []byte, keyIDs []btcec.KeyID) ([]byte, error) {
 	if len(keyIDs) != 2 {
 		return nil, ErrBadNumRequired
 	}
@@ -479,19 +479,19 @@ func payToAztecScript(pubKeyHash []byte, keyIDs []btcec.KeyID) ([]byte, error) {
 // specified address.
 func PayToAddrScript(addr rmgutil.Address) ([]byte, error) {
 	switch addr := addr.(type) {
-	case *rmgutil.AddressAztec:
+	case *rmgutil.AddressProva:
 		if addr == nil {
 			return nil, ErrUnsupportedAddress
 		}
-		return payToAztecScript(addr.ScriptAddress(), addr.ScriptKeyIDs())
+		return payToProvaScript(addr.ScriptAddress(), addr.ScriptKeyIDs())
 	}
 
 	return nil, ErrUnsupportedAddress
 }
 
-// AztecThreadScript creates a new script to pay a transaction output to an
-// Aztec Admin Thread.
-func AztecThreadScript(threadID rmgutil.ThreadID) ([]byte, error) {
+// ProvaThreadScript creates a new script to pay a transaction output to an
+// Prova Admin Thread.
+func ProvaThreadScript(threadID rmgutil.ThreadID) ([]byte, error) {
 	return NewScriptBuilder().
 		AddInt64(int64(threadID)).
 		AddOp(OP_CHECKTHREAD).Script()
@@ -553,7 +553,7 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 	scriptClass := typeOfScript(pops)
 	switch scriptClass {
 
-	case AztecTy:
+	case ProvaTy:
 		requiredSigs = 2
 		key0, err0 := asInt32(pops[2])
 		key1, err1 := asInt32(pops[3])
@@ -561,15 +561,15 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 			btcec.KeyID(key0),
 			btcec.KeyID(key1),
 		}
-		addr, err := rmgutil.NewAddressAztec(pops[1].data, keyIDs, chainParams)
+		addr, err := rmgutil.NewAddressProva(pops[1].data, keyIDs, chainParams)
 		if err == nil && err0 == nil && err1 == nil {
 			addrs = append(addrs, addr)
 		}
 
-	case GeneralAztecTy:
-		// TODO(aztec): define what to do for generalized aztec scripts
+	case GeneralProvaTy:
+		// TODO(prova): define what to do for generalized prova scripts
 
-	case AztecAdminTy:
+	case ProvaAdminTy:
 		requiredSigs = 2
 
 	case NullDataTy:

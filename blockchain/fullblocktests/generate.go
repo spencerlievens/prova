@@ -240,9 +240,9 @@ func standardCoinbaseScript(blockHeight uint32, extraNonce uint64) ([]byte, erro
 		AddInt64(int64(extraNonce)).Script()
 }
 
-// aztecThreadScript creates a new script to pay a transaction output to an
-// Aztec Admin Thread.
-func aztecThreadScript(threadID rmgutil.ThreadID) []byte {
+// provaThreadScript creates a new script to pay a transaction output to an
+// Prova Admin Thread.
+func provaThreadScript(threadID rmgutil.ThreadID) []byte {
 	builder := txscript.NewScriptBuilder()
 	script, err := builder.
 		AddInt64(int64(threadID)).
@@ -253,8 +253,8 @@ func aztecThreadScript(threadID rmgutil.ThreadID) []byte {
 	return script
 }
 
-// aztecAdminScript creates a new script that executes an admin op.
-func aztecAdminScript(opcode byte, pubKey *btcec.PublicKey) []byte {
+// provaAdminScript creates a new script that executes an admin op.
+func provaAdminScript(opcode byte, pubKey *btcec.PublicKey) []byte {
 	// size as: <operation (1 byte)> <compressed public key (33 bytes)>
 	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed)
 	data[0] = opcode
@@ -269,9 +269,9 @@ func aztecAdminScript(opcode byte, pubKey *btcec.PublicKey) []byte {
 	return script
 }
 
-// aztecAdminWSPScript creates a new script that executes an admin op
+// provaAdminWSPScript creates a new script that executes an admin op
 // to provision or deprovision an WSP key.
-func aztecAdminWSPScript(opcode byte, pubKey *btcec.PublicKey, keyID btcec.KeyID) []byte {
+func provaAdminWSPScript(opcode byte, pubKey *btcec.PublicKey, keyID btcec.KeyID) []byte {
 	// size as: <operation (1 byte)> <compressed public key (33 bytes)> <key id : 4 bytes>
 	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
 	data[0] = opcode
@@ -318,7 +318,7 @@ func (g *testGenerator) createCoinbaseTx(blockHeight uint32) *wire.MsgTx {
 	//      private keys defined for this test suite
 	pkHash := make([]byte, 20)
 	rand.Read(pkHash)
-	addr, _ := rmgutil.NewAddressAztec(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	addr, _ := rmgutil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	scriptPkScript, _ := txscript.PayToAddrScript(addr)
 
 	tx.AddTxOut(&wire.TxOut{
@@ -444,7 +444,7 @@ func createSpendTx(spend *spendableOut, fee rmgutil.Amount) *wire.MsgTx {
 	//      private keys defined for this test suite
 	pkHash := make([]byte, 20)
 	rand.Read(pkHash)
-	addr, _ := rmgutil.NewAddressAztec(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	addr, _ := rmgutil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	scriptPkScript, _ := txscript.PayToAddrScript(addr)
 	spendTx.AddTxOut(wire.NewTxOut(int64(spend.amount-fee), scriptPkScript))
 
@@ -466,9 +466,9 @@ func createAdminTx(spend *spendableOut, threadID rmgutil.ThreadID, op byte, pubK
 		SignatureScript:  nil,
 	})
 	txValue := int64(0) // how much the tx is spending. 0 for admin tx.
-	spendTx.AddTxOut(wire.NewTxOut(txValue, aztecThreadScript(threadID)))
+	spendTx.AddTxOut(wire.NewTxOut(txValue, provaThreadScript(threadID)))
 	spendTx.AddTxOut(wire.NewTxOut(txValue,
-		aztecAdminScript(op, pubKey)))
+		provaAdminScript(op, pubKey)))
 
 	sigScript, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
 		0, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
@@ -489,9 +489,9 @@ func createWspAdminTx(spend *spendableOut, op byte, pubKey *btcec.PublicKey,
 	})
 	txValue := int64(0) // how much the tx is spending. 0 for admin tx.
 	spendTx.AddTxOut(wire.NewTxOut(txValue,
-		aztecThreadScript(rmgutil.ProvisionThread)))
+		provaThreadScript(rmgutil.ProvisionThread)))
 	spendTx.AddTxOut(wire.NewTxOut(txValue,
-		aztecAdminWSPScript(op, pubKey, keyID)))
+		provaAdminWSPScript(op, pubKey, keyID)))
 
 	sigScript, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
 		0, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
@@ -513,12 +513,12 @@ func createIssueTx(thread *spendableOut, value int64, spend *spendableOut) *wire
 		SignatureScript:  nil,
 	})
 	// thread output
-	spendTx.AddTxOut(wire.NewTxOut(int64(0), aztecThreadScript(rmgutil.IssueThread)))
+	spendTx.AddTxOut(wire.NewTxOut(int64(0), provaThreadScript(rmgutil.IssueThread)))
 	if spend == nil {
 		// issue some tokens: create a prova output
 		pkHash := make([]byte, 20)
 		rand.Read(pkHash)
-		addr, _ := rmgutil.NewAddressAztec(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+		addr, _ := rmgutil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 		scriptPkScript, _ := txscript.PayToAddrScript(addr)
 		spendTx.AddTxOut(wire.NewTxOut(value, scriptPkScript))
 	} else {

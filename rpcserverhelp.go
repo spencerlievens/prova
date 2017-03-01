@@ -65,15 +65,15 @@ var helpDescsEnUS = map[string]string{
 	"createrawadmintransaction-keyid":    "The key id number for a wsp key",
 	"createrawadmintransaction--result0": "Hex-encoded bytes of the serialized transaction",
 
-	// PrepareAztecTransactionCmd help.
-	"prepareaztectransaction--synopsis":      "Returns a new transaction spending the provided inputs and sending to the provided addresses.",
-	"prepareaztectransaction-inputs":         "The inputs to the transaction",
-	"prepareaztectransaction-amounts":        "JSON object with the destination addresses as keys and amounts as values",
-	"prepareaztectransaction-amounts--key":   "address",
-	"prepareaztectransaction-amounts--value": "n.nnn",
-	"prepareaztectransaction-amounts--desc":  "The destination address as the key and the amount in RMG as the value",
-	"prepareaztectransaction-locktime":       "Locktime value; a non-zero value will also locktime-activate the inputs",
-	"prepareaztectransaction--result0":       "Hex-encoded bytes of the serialized transaction",
+	// PrepareProvaTransactionCmd help.
+	"prepareprovatransaction--synopsis":      "Returns a new transaction spending the provided inputs and sending to the provided addresses.",
+	"prepareprovatransaction-inputs":         "The inputs to the transaction",
+	"prepareprovatransaction-amounts":        "JSON object with the destination addresses as keys and amounts as values",
+	"prepareprovatransaction-amounts--key":   "address",
+	"prepareprovatransaction-amounts--value": "n.nnn",
+	"prepareprovatransaction-amounts--desc":  "The destination address as the key and the amount in RMG as the value",
+	"prepareprovatransaction-locktime":       "Locktime value; a non-zero value will also locktime-activate the inputs",
+	"prepareprovatransaction--result0":       "Hex-encoded bytes of the serialized transaction",
 
 	// ScriptSig help.
 	"scriptsig-asm": "Disassembly of the script",
@@ -122,11 +122,11 @@ var helpDescsEnUS = map[string]string{
 	"decoderawtransaction--synopsis": "Returns a JSON object representing the provided serialized, hex-encoded transaction.",
 	"decoderawtransaction-hextx":     "Serialized, hex-encoded transaction",
 
-	// SignAztecTransactionCmd help.
-	"signaztectransaction--synopsis": "Hex-encoded bytes of the serialized transaction",
-	"signaztectransaction-hextx":     "Serialized, hex-encoded transaction",
-	"signaztectransaction-privkeys":  "Hex-encoded 32-byte compressed keys",
-	"signaztectransaction--result0":  "Hex-encoded bytes of the serialized transaction",
+	// SignProvaTransactionCmd help.
+	"signprovatransaction--synopsis": "Hex-encoded bytes of the serialized transaction",
+	"signprovatransaction-hextx":     "Serialized, hex-encoded transaction",
+	"signprovatransaction-privkeys":  "Hex-encoded 32-byte compressed keys",
+	"signprovatransaction--result0":  "Hex-encoded bytes of the serialized transaction",
 
 	// SetValidateKeysCmd help.
 	"setvalidatekeys--synopsis": "Sets the private keys to use to sign generated blocks",
@@ -688,12 +688,12 @@ var rpcResultTypes = map[string][]interface{}{
 	"node":                      nil,
 	"help":                      {(*string)(nil), (*string)(nil)},
 	"ping":                      nil,
-	"prepareaztectransaction": {(*string)(nil)},
+	"prepareprovatransaction": {(*string)(nil)},
 	"searchrawtransactions":   {(*string)(nil), (*[]btcjson.SearchRawTransactionsResult)(nil)},
 	"sendrawtransaction":      {(*string)(nil)},
 	"setgenerate":             nil,
 	"setvalidatekeys":         nil,
-	"signaztectransaction":    {(*string)(nil)},
+	"signprovatransaction":    {(*string)(nil)},
 	"stop":                    {(*string)(nil)},
 	"submitblock":             {nil, (*string)(nil)},
 	"validateaddress":         {(*btcjson.ValidateAddressChainResult)(nil)},

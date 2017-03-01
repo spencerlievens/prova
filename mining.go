@@ -66,7 +66,7 @@ func isAdmin(msgTx *wire.MsgTx) bool {
 			return false
 		}
 		scriptClass := txscript.TypeOfScript(pops)
-		if scriptClass == txscript.AztecAdminTy {
+		if scriptClass == txscript.ProvaAdminTy {
 			return true
 		}
 	}

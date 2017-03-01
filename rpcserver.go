@@ -167,12 +167,12 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"help":                      handleHelp,
 	"node":                      handleNode,
 	"ping":                      handlePing,
-	"prepareaztectransaction": handlePrepareAztecTransaction,
+	"prepareprovatransaction": handlePrepareProvaTransaction,
 	"searchrawtransactions":   handleSearchRawTransactions,
 	"sendrawtransaction":      handleSendRawTransaction,
 	"setgenerate":             handleSetGenerate,
 	"setvalidatekeys":         handleSetValidateKeys,
-	"signaztectransaction":    handleSignAztecTransaction,
+	"signprovatransaction":    handleSignProvaTransaction,
 	"stop":                    handleStop,
 	"submitblock":             handleSubmitBlock,
 	"validateaddress":         handleValidateAddress,
@@ -269,10 +269,10 @@ var rpcLimited = map[string]struct{}{
 	"getrawmempool":           {},
 	"getrawtransaction":       {},
 	"gettxout":                {},
-	"prepareaztectransaction": {},
+	"prepareprovatransaction": {},
 	"searchrawtransactions":   {},
 	"sendrawtransaction":      {},
-	"signaztectransaction":    {},
+	"signprovatransaction":    {},
 	"submitblock":             {},
 	"validateaddress":         {},
 	"verifymessage":           {},
@@ -773,9 +773,9 @@ type addressToKey struct {
 	compressed bool
 }
 
-// handlePrepareAztecTransaction handles prepareaztectransaction commands.
-func handlePrepareAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	c := cmd.(*btcjson.PrepareAztecTransactionCmd)
+// handlePrepareProvaTransaction handles prepareprovatransaction commands.
+func handlePrepareProvaTransaction(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.PrepareProvaTransactionCmd)
 
 	// Validate the locktime, if given.
 	if c.LockTime != nil &&
@@ -828,7 +828,7 @@ func handlePrepareAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-ch
 		// the network encoded with the address matches the network the
 		// server is currently on.
 		switch addr.(type) {
-		case *rmgutil.AddressAztec:
+		case *rmgutil.AddressProva:
 		default:
 			return nil, &btcjson.RPCError{
 				Code:    btcjson.ErrRPCInvalidAddressOrKey,
@@ -1018,10 +1018,10 @@ func createTxRawResult(chainParams *chaincfg.Params, mtx *wire.MsgTx,
 	return txReply, nil
 }
 
-// handleSignAztecTransaction handles signaztectransaction commands.
+// handleSignProvaTransaction handles signprovatransaction commands.
 // Note: this signing method requires in-order signing.
-func handleSignAztecTransaction(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	c := cmd.(*btcjson.SignAztecTransactionCmd)
+func handleSignProvaTransaction(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.SignProvaTransactionCmd)
 
 	// Deserialize the transaction.
 	hexStr := c.HexTx

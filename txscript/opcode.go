@@ -520,7 +520,7 @@ var opcodeArray = [256]opcode{
 	OP_NOP9:  {OP_NOP9, "OP_NOP9", 1, opcodeNop},
 	OP_NOP10: {OP_NOP10, "OP_NOP10", 1, opcodeNop},
 
-	// Aztec opcodes
+	// Prova opcodes
 	OP_CHECKSAFEMULTISIG: {OP_CHECKSAFEMULTISIG, "OP_CHECKSAFEMULTISIG", 1, opcodeCheckSafeMultiSig},
 	OP_CHECKTHREAD:       {OP_CHECKTHREAD, "OP_CHECKTHREAD", 1, opcodeCheckSafeMultiSig},
 
@@ -1999,7 +1999,7 @@ type parsedSigInfo struct {
 //
 // Note that keyids are a concept that must be handled entirely outside the scripting
 // engine, because they require reference to chain state. We handle translation of the
-// Aztec-conforming scripts into scripts that can be executed by the VM at a higher
+// Prova-conforming scripts into scripts that can be executed by the VM at a higher
 // layer. Scripts to be executed by this opcode handler MUST already have their
 // key-ids entirely translated into key-hashes.
 //
@@ -2019,7 +2019,7 @@ func opcodeCheckSafeMultiSig(op *parsedOpcode, vm *Engine) error {
 	}
 	numKeyHashes := int(numKeys.Int32())
 	if numKeyHashes < 0 || numKeyHashes > MaxPubKeysPerMultiSig {
-		// TODO(aztec): different limit here
+		// TODO(prova): different limit here
 		return ErrStackTooManyPubKeys
 	}
 	vm.numOps += numKeyHashes
@@ -2070,12 +2070,12 @@ func opcodeCheckSafeMultiSig(op *parsedOpcode, vm *Engine) error {
 	}
 
 	// Get script starting from the most recent OP_CODESEPARATOR.
-	// TODO(aztec): Possibly remove
+	// TODO(prova): Possibly remove
 	script := vm.subScript()
 
 	// Remove any of the signatures since there is no way for a signature to
 	// sign itself.
-	// TODO(aztec): this will likely change -- need to figure out if we really need to include the script when signing
+	// TODO(prova): this will likely change -- need to figure out if we really need to include the script when signing
 	for _, sigInfo := range signatures {
 		script = removeOpcodeByData(script, sigInfo.signature)
 		script = removeOpcodeByData(script, sigInfo.pubKey)
