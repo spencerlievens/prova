@@ -580,7 +580,7 @@ The following is an overview of the RPC methods which are implemented by Prova, 
 |#|Method|Safe for limited user?|Description|
 |---|------|----------|-----------|
 |1|[getadmininfo](#getadmininfo)|Y|Get info about the current admin state.|
-
+|2|[setvalidatekeys](#setvalidatekeys)|Y|Set the validate private keys.|
 
 <a name="ProvaMethodDetails" />
 **6.2 Method Details**<br />
@@ -594,6 +594,19 @@ The following is an overview of the RPC methods which are implemented by Prova, 
 |Description|Get the latest admin state: unspent admin transaction outputs, net issuance, and admin keys.|
 |Returns|`{ (json object)`<br />&nbsp;`"hash": "data",  (string) the hex-encoded bytes of the best block hash`<br />&nbsp;`"height": n (numeric) the block height of the best block`<br />&nbsp;`"threadtips": [{ (array of json objects)`<br />&nbsp;&nbsp;`"id": n (numeric) the thread id`<br />&nbsp;&nbsp;`"name":  "data", (string) the thread name`<br />&nbsp;&nbsp;`"outpoint":  "txid:vout", (string) the unspent outpoint`<br />&nbsp;`}] `<br />&nbsp;`"totalsupply": n (numeric) the net value of admin issuance`<br />&nbsp;`"lastkeyid": n (numeric) the highest key id value ever provisioned`<br />&nbsp;`"rootkeys": (array of strings) the root pubKeys`<br />&nbsp;`"provisionkeys": (array of strings) the provision pubKeys`<br />&nbsp;`"issuekeys": (array of strings) the issue pubKeys`<br />&nbsp;`"validatekeys": (array of strings) the validate pubKeys`<br />&nbsp;`"aspkeys": [{ (array of json objects) `<br />&nbsp;&nbsp;`"pubkey":  "data", (string) the asp pubKey`<br />&nbsp;&nbsp;`"keyid":  n, (numeric) the ASP key id`<br />&nbsp;`}] `<br />`}`
 [Return to Overview](#ExtMethodOverview)<br />
+
+***
+
+<a name="setvalidatekeys"></a>
+
+|   |   |
+|---|---|
+|Method|setvalidatekeys|
+|Parameters|1. validateprivkeys (array of strings, required) - The private keys to use as validate keys |
+|Description|Set the private keys to use as signing validate keys when generating new blocks.|
+|Note|Setvalidatekeys is not intended to be used in conjunction with the validate keys environment variable.|
+|Returns|Nothing|
+[Return to Overview](#MethodOverview)<br />
 
 <a name="ExtensionMethods" />
 ### 6. Extension Methods
