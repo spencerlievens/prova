@@ -691,7 +691,7 @@ func createVinList(mtx *wire.MsgTx) []btcjson.Vin {
 func createVoutList(mtx *wire.MsgTx, chainParams *chaincfg.Params, filterAddrMap map[string]struct{}) []btcjson.Vout {
 	voutList := make([]btcjson.Vout, 0, len(mtx.TxOut))
 	threadInt, _ := txscript.GetAdminDetailsMsgTx(mtx)
-	isAdmin := threadInt >= 0
+	isAdmin := rmgutil.ThreadID(threadInt) == rmgutil.RootThread || rmgutil.ThreadID(threadInt) == rmgutil.ProvisionThread
 	for i, v := range mtx.TxOut {
 		// The disassembled string will contain [error] inline if the
 		// script doesn't fully parse, so ignore the error here.
