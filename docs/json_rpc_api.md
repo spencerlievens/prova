@@ -28,20 +28,18 @@
 <a name="Overview" />
 ### 1. Overview
 
-btcd provides a [JSON-RPC](http://json-rpc.org/wiki/specification) API that is
-fully compatible with the original bitcoind/bitcoin-qt.  There are a few key
-differences between btcd and bitcoind as far as how RPCs are serviced:
+Prova provides a [JSON-RPC](http://json-rpc.org/wiki/specification) API that is
+fully compatible with the original btcd and bitcoind/bitcoin-qt.  There are a few key differences between Prova and bitcoind as far as how RPCs are serviced:
 * Unlike bitcoind that has the wallet and chain intermingled in the same process
   which leads to several issues, btcd intentionally splits the wallet and chain
   services into independent processes.  See the blog post
   [here](https://blog.conformal.com/btcd-not-your-moms-bitcoin-daemon/) for
   further details on why they were separated.  This means that if you are
-  talking directly to btcd, only chain-related RPCs are available.  However both
-  chain-related and wallet-related RPCs are available via
+  talking directly to Prova, only chain-related RPCs are available.  However both chain-related and wallet-related RPCs are available via
   [btcwallet](https://github.com/btcsuite/btcwallet).
-* btcd is secure by default which means that the RPC connection is TLS-enabled
+* Prova is secure by default which means that the RPC connection is TLS-enabled
   by default
-* btcd provides access to the API through both
+* Prova provides access to the API through both
   [HTTP POST](http://en.wikipedia.org/wiki/POST_%28HTTP%29) requests and
   [Websockets](http://en.wikipedia.org/wiki/WebSocket)
 

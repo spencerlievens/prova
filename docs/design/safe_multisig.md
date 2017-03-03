@@ -1,10 +1,10 @@
 # Safe Multi-Sig
 
-Standard RMG transactions use a new type of script & corresponding address format that provides chain-enforced safety against unauthorized fund movement, double-spends, fund loss, or un-authorized holding of funds.
+Standard Prova transactions use a new type of script & corresponding address format that provides chain-enforced safety against unauthorized fund movement, double-spends, fund loss, or un-authorized holding of funds.
 
-These transactions are modeled after the original multi-sig design of Bitcoin transactions, specifically in a m-of-n signing configuration with a quorum of keys being explicitly-permissioned Wallet Service Provider (ASP) keys, referenced by 32-bit KeyIDs, along with a non-quorum set of public key hashes. Typically this means 2 KeyIDs and 1 key hash in a 2-of-3 configuration.
+These transactions are modeled after the original multi-sig design of Bitcoin transactions, specifically in a m-of-n signing configuration with a quorum of keys being explicitly-permissioned Account Service Provider (ASP) keys, referenced by 32-bit KeyIDs, along with a non-quorum set of public key hashes. Typically this means 2 KeyIDs and 1 key hash in a 2-of-3 configuration.
 
-Wallet Service Providers are businesses or organizations explicitly vetted by The Royal Mint. The ASP keys are provisioned and assigned to KeyIDs on the chain itself using [administrative transactions](admin.md).
+Account Service Providers are businesses or organizations explicitly vetted by the chain root admin key holder. The ASP keys are provisioned and assigned to KeyIDs on the chain itself using [administrative transactions](admin.md).
 
 ## Transactions
 
@@ -14,7 +14,7 @@ In the original multi-sig design of Bitcoin, an OP_CHECKMULTISIG output defined 
 
 With OP_CHECKMULTISIG, as with all standard original Bitcoin outputs, public keys were the norm for specifying transaction destinations. Over time, the desire for a more convenient way to direct payments towards destinations arose and the concept of a shortened address-friendly public-key-hash output was created. Standard Bitcoin transactions now use this pay-to-public-key-hash output formulation that substitutes a 20-byte public key ripe160 sha256 public key hash for the 33-byte compressed public key.
 
-RMG transactions build on these ideas, substituting the public keys in OP_CHECKMULTISIG with shortened address-friendly identifiers of two types:
+Prova transactions build on these ideas, substituting the public keys in OP_CHECKMULTISIG with shortened address-friendly identifiers of two types:
 
 1. ASP KeyIDs: 4-byte, 32 bit unsigned int ids, saving 29 bytes in addresses vs. a pubkey
 2. Public key hashes: 20-byte hashes, saving 13 bytes
@@ -37,15 +37,15 @@ When signing a transaction which spends the 2-of-3 output above, a scriptSig of 
 <sig1> <pubKeyOrID1> <sig2> <pubKeyOrID2>
 ```
 
-In the original Bitcoin OP_CHECKMULTISIG only the signatures are provided, since the public keys are present in the scriptPub, but we need the keys (or references to them by KeyID). The OP_CHECKMULTISIG operation also required a leading throw-away value in its signature, called by some as a "dummy" value, to compensate for a bug in the evaluation of OP_CHECKMULTISIG. This dummy value is eliminated in OP_CHECKSAFEMULTISIG.
+In the original Bitcoin `OP_CHECKMULTISIG` only the signatures are provided, since the public keys are present in the scriptPub, but we need the keys (or references to them by KeyID). The `OP_CHECKMULTISIG` operation also required a leading throw-away value in its signature, called by some as a "dummy" value, to compensate for a bug in the evaluation of `OP_CHECKMULTISIG`. This dummy value is eliminated in `OP_CHECKSAFEMULTISIG`.
 
 The presented pubKeys must match either the public key hash or a ASP key id specified in the output for the spending scriptSig to be valid. The ordering of the signatures in the scriptSig must match the ordering from the scriptPub, as in Bitcoin.
 
-RMG transactions are much stricter in the enforcement of what consists of a valid output. In Bitcoin, outputs may be made to any validly formed script, without regard to whether that script is spendable. This flexibility can lead to situations where a user accidentally sends funds permanently to a "black hole" from which they cannot be recovered. In the RMG blockchain, While the validators cannot know whether a particular key hash actually has a known public key as its pre-image, they are able to enforce that a quorum of professionally-held KeyIDs can control the funds. And indeed, this is enforced by consensus. This means it is impossible to lose funds by accidentally sending to a black hole. It also makes theft much more difficult and less lucrative, since funds can only move through addresses involving vetted and registered ASPs.
+Prova transactions are much stricter in the enforcement of what consists of a valid output. In Bitcoin, outputs may be made to any validly formed script, without regard to whether that script is spendable. This flexibility can lead to situations where a user accidentally sends funds permanently to a "black hole" from which they cannot be recovered. In the Prova blockchain, while the validators cannot know whether a particular key hash actually has a known public key as its pre-image, they are able to enforce that a quorum of professionally-held KeyIDs can control the funds. And indeed, this is enforced by consensus. This means it is impossible to lose funds by accidentally sending to a black hole. It also makes theft much more difficult and less lucrative, since funds can only move through addresses involving vetted and registered ASPs.
 
 ## Address Format
 
-Standard RMG outputs in a 1 user key and 2 ASP key configuration are represented in a simple address format. Addresses are constructed using the standard base58 encoding format of the 3 identifying keys:
+Standard Prova outputs in a 1 user key and 2 ASP key configuration are represented in a simple address format. Addresses are constructed using the standard base58 encoding format of the 3 identifying keys:
 
 ```
 base58-encode(

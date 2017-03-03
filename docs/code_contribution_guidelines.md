@@ -245,7 +245,7 @@ a good thing.
 ### 5. Code Approval Process
 
 This section describes the code approval process that is used for code
-contributions.  This is how to get your changes into btcd.
+contributions.  This is how to get your changes into Prova.
 
 <a name="CodeReview"></a>
 ### 5.1 Code Review

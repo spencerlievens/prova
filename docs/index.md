@@ -2,8 +2,7 @@
 
 Prova is an open source project implementing a single-asset, decentralized ledger with governance.
 
-The Prova ledger is similar to Bitcoin's ledger and draws heavily from that project.  However, Prova
-differs from other ledger systems in that it offers:
+The Prova ledger is similar to Bitcoin's ledger and draws heavily from that project.  However, Prova differs from other ledger systems in that it offers:
 
  * Administrative asset issuance and destruction
  * Ability to operate in closed and open environments
