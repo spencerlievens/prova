@@ -57,8 +57,8 @@ base58-encode(
 )
 ```
 
-- The 1 byte version number is 33 on the main network, resulting in addresses beginning with "G"
-- The 1 byte version number is 58 on the test network, resulting in addresses beginning with "T"
+- The 1 byte version number is 51 / 0x33 on the main network, resulting in addresses beginning with "G"
+- The 1 byte version number is 88 / 0x58 on the test network, resulting in addresses beginning with "T"
 - The 20-byte public hash is the ripe160 hash of the SHA256 hash of a standard public key.
 - The subsequent two 4-byte sequences are the key ids for the ASP keys.
 - The final 4-byte checksum is the first four bytes of the double SHA256 hash of the version, hash, and key ids.
