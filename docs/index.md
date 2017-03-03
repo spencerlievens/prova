@@ -58,3 +58,17 @@ In the future, it can be updated with new cryptographic feature support,
 consensus technology, and other
 features, but for the initial version, a key decision was to use known, 
 battle-tested algorithms.
+
+Prova was created by BitGo as a fork of the btcd project, which is a reimplementation of Bitcoin Core in Go language.
+
+# How Can I Use Prova?
+
+Prova is designed for distributed asset exchange, 
+where assets are fungible values backed by a root authority. 
+As a root authority issuing assets, you would use Prova by tuning 
+the configuration and starting a customized Prova network.
+
+Prova is designed with flexibility in mind regarding the 
+administrative features to suit a variety of uses.  For example, features 
+such as provisioned block generation may be constrained to various degrees 
+or left essentially unconstrained. 
