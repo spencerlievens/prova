@@ -13,8 +13,8 @@ Prova differentiates from other blockchains in that:
 Tokens are not created as part of block creation.
 1. Accounts are protected by M-of-N multi-signature for protection against theft
 & loss.
-2. Accounts are comprised of a keys where a majority of keys are held by key
-holders approved by the asset issuer.  This prevents accidental
+2. Accounts are comprised of keys where a majority of keys are held by key
+holders approved by the asset issuer.
 3. Block creation is conducted by Validators that are approved by the asset
 issuer.
 
