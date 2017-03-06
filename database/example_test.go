@@ -10,11 +10,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/database"
-	_ "github.com/bitgo/rmgd/database/ffldb"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/database"
+	_ "github.com/bitgo/prova/database/ffldb"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 )
 
 // This example demonstrates creating a new database.
@@ -22,8 +22,8 @@ func ExampleCreate() {
 	// This example assumes the ffldb driver is imported.
 	//
 	// import (
-	// 	"github.com/bitgo/rmgd/database"
-	// 	_ "github.com/bitgo/rmgd/database/ffldb"
+	// 	"github.com/bitgo/prova/database"
+	// 	_ "github.com/bitgo/prova/database/ffldb"
 	// )
 
 	// Create a database and schedule it to be closed and removed on exit.
@@ -48,8 +48,8 @@ func Example_basicUsage() {
 	// This example assumes the ffldb driver is imported.
 	//
 	// import (
-	// 	"github.com/bitgo/rmgd/database"
-	// 	_ "github.com/bitgo/rmgd/database/ffldb"
+	// 	"github.com/bitgo/prova/database"
+	// 	_ "github.com/bitgo/prova/database/ffldb"
 	// )
 
 	// Create a database and schedule it to be closed and removed on exit.
@@ -114,8 +114,8 @@ func Example_blockStorageAndRetrieval() {
 	// This example assumes the ffldb driver is imported.
 	//
 	// import (
-	// 	"github.com/bitgo/rmgd/database"
-	// 	_ "github.com/bitgo/rmgd/database/ffldb"
+	// 	"github.com/bitgo/prova/database"
+	// 	_ "github.com/bitgo/prova/database/ffldb"
 	// )
 
 	// Create a database and schedule it to be closed and removed on exit.
@@ -136,7 +136,7 @@ func Example_blockStorageAndRetrieval() {
 	// and example.
 	err = db.Update(func(tx database.Tx) error {
 		genesisBlock := chaincfg.RegressionNetParams.GenesisBlock
-		return tx.StoreBlock(rmgutil.NewBlock(genesisBlock))
+		return tx.StoreBlock(provautil.NewBlock(genesisBlock))
 	})
 	if err != nil {
 		fmt.Println(err)

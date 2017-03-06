@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bitgo/rmgd/addrmgr"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/addrmgr"
+	"github.com/bitgo/prova/wire"
 )
 
 // naTest is used to describe a test to be performed against the NetAddressKey

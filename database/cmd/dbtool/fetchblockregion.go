@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
 )
 
 // blockRegionCmd defines the configuration options for the fetchblockregion

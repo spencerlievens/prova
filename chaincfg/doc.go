@@ -25,8 +25,8 @@
 //          "fmt"
 //          "log"
 //
-//          "github.com/bitgo/rmgd/rmgutil"
-//          "github.com/bitgo/rmgd/chaincfg"
+//          "github.com/bitgo/prova/provautil"
+//          "github.com/bitgo/prova/chaincfg"
 //  )
 //
 //  var testnet = flag.Bool("testnet", false, "operate on the testnet Bitcoin network")
@@ -46,7 +46,7 @@
 //
 //          // Create and print new payment address, specific to the active network.
 //          pubKeyHash := make([]byte, 20)
-//          addr, err := rmgutil.NewAddressPubKeyHash(pubKeyHash, chainParams)
+//          addr, err := provautil.NewAddressPubKeyHash(pubKeyHash, chainParams)
 //          if err != nil {
 //                  log.Fatal(err)
 //          }

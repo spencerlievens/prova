@@ -14,8 +14,8 @@ import (
 	"runtime/debug"
 	"runtime/pprof"
 
-	"github.com/bitgo/rmgd/blockchain/indexers"
-	"github.com/bitgo/rmgd/limits"
+	"github.com/bitgo/prova/blockchain/indexers"
+	"github.com/bitgo/prova/limits"
 )
 
 var (

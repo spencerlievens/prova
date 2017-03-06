@@ -9,8 +9,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
 )
 
 // fetchBlockCmd defines the configuration options for the fetchblock command.

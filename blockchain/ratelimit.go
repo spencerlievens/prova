@@ -1,6 +1,6 @@
 package blockchain
 
-import "github.com/bitgo/rmgd/wire"
+import "github.com/bitgo/prova/wire"
 
 // IsGenerationTrailingRateLimited determines if block generation is rate
 // limited due to hitting a trailing rate limit.

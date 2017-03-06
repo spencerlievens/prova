@@ -13,13 +13,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	_ "github.com/bitgo/rmgd/database/ffldb"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	_ "github.com/bitgo/prova/database/ffldb"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 )
 
 const (

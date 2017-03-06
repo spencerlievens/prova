@@ -5,9 +5,9 @@
 package blockchain
 
 import (
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/wire"
 )
 
 // BlockLocator is used to help locate a specific block.  The algorithm for

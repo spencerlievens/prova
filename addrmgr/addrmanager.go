@@ -22,8 +22,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/wire"
 )
 
 // AddrManager provides a concurrency safe address manager for caching potential

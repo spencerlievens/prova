@@ -5,10 +5,10 @@
 package blockchain_test
 
 import (
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
 	"testing"
 )
 
@@ -23,7 +23,7 @@ func TestHaveBlock(t *testing.T) {
 	// "blk_3A.dat.bz2",
 	}
 
-	var blocks []*rmgutil.Block
+	var blocks []*provautil.Block
 	for _, file := range testFiles {
 		blockTmp, err := loadBlocks(file)
 		if err != nil {
@@ -63,7 +63,7 @@ func TestHaveBlock(t *testing.T) {
 	}
 
 	// Insert an orphan block.
-	_, isOrphan, err := chain.ProcessBlock(rmgutil.NewBlock(&SomeBlock),
+	_, isOrphan, err := chain.ProcessBlock(provautil.NewBlock(&SomeBlock),
 		blockchain.BFNone)
 	if err != nil {
 		t.Errorf("Unable to process block: %v", err)

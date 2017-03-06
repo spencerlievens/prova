@@ -14,16 +14,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/blockchain/indexers"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/btcjson"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/mining"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/blockchain/indexers"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/btcjson"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/mining"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 )
 
 const (
@@ -54,10 +54,10 @@ type Config struct {
 
 	// FetchUtxoView defines the function to use to fetch unspent
 	// transaction output information.
-	FetchUtxoView func(*rmgutil.Tx) (*blockchain.UtxoViewpoint, error)
+	FetchUtxoView func(*provautil.Tx) (*blockchain.UtxoViewpoint, error)
 
 	// ThreadTips defines the function to fetch thread tips.
-	ThreadTips func() map[rmgutil.ThreadID]*wire.OutPoint
+	ThreadTips func() map[provautil.ThreadID]*wire.OutPoint
 
 	// LastKeyID defines the function to fetch last keyID.
 	LastKeyID func() btcec.KeyID
@@ -123,7 +123,7 @@ type Policy struct {
 
 	// MinRelayTxFee defines the minimum transaction fee in RMG/kB to be
 	// considered a non-zero fee.
-	MinRelayTxFee rmgutil.Amount
+	MinRelayTxFee provautil.Amount
 }
 
 // TxDesc is a descriptor containing a transaction in the mempool along with
@@ -146,9 +146,9 @@ type TxPool struct {
 	mtx           sync.RWMutex
 	cfg           Config
 	pool          map[chainhash.Hash]*TxDesc
-	orphans       map[chainhash.Hash]*rmgutil.Tx
-	orphansByPrev map[chainhash.Hash]map[chainhash.Hash]*rmgutil.Tx
-	outpoints     map[wire.OutPoint]*rmgutil.Tx
+	orphans       map[chainhash.Hash]*provautil.Tx
+	orphansByPrev map[chainhash.Hash]map[chainhash.Hash]*provautil.Tx
+	outpoints     map[wire.OutPoint]*provautil.Tx
 	pennyTotal    float64 // exponentially decaying total for penny spends.
 	lastPennyUnix int64   // unix time of last ``penny spend''
 }
@@ -237,7 +237,7 @@ func (mp *TxPool) limitNumOrphans() error {
 // addOrphan adds an orphan transaction to the orphan pool.
 //
 // This function MUST be called with the mempool lock held (for writes).
-func (mp *TxPool) addOrphan(tx *rmgutil.Tx) {
+func (mp *TxPool) addOrphan(tx *provautil.Tx) {
 	// Limit the number orphan transactions to prevent memory exhaustion.  A
 	// random orphan is evicted to make room if needed.
 	mp.limitNumOrphans()
@@ -247,7 +247,7 @@ func (mp *TxPool) addOrphan(tx *rmgutil.Tx) {
 		originTxHash := txIn.PreviousOutPoint.Hash
 		if _, exists := mp.orphansByPrev[originTxHash]; !exists {
 			mp.orphansByPrev[originTxHash] =
-				make(map[chainhash.Hash]*rmgutil.Tx)
+				make(map[chainhash.Hash]*provautil.Tx)
 		}
 		mp.orphansByPrev[originTxHash][*tx.Hash()] = tx
 	}
@@ -259,7 +259,7 @@ func (mp *TxPool) addOrphan(tx *rmgutil.Tx) {
 // maybeAddOrphan potentially adds an orphan to the orphan pool.
 //
 // This function MUST be called with the mempool lock held (for writes).
-func (mp *TxPool) maybeAddOrphan(tx *rmgutil.Tx) error {
+func (mp *TxPool) maybeAddOrphan(tx *provautil.Tx) error {
 	// Ignore orphan transactions that are too large.  This helps avoid
 	// a memory exhaustion attack based on sending a lot of really large
 	// orphans.  In the case there is a valid transaction larger than this,
@@ -356,7 +356,7 @@ func (mp *TxPool) HaveTransaction(hash *chainhash.Hash) bool {
 // RemoveTransaction.  See the comment for RemoveTransaction for more details.
 //
 // This function MUST be called with the mempool lock held (for writes).
-func (mp *TxPool) removeTransaction(tx *rmgutil.Tx, removeRedeemers bool) {
+func (mp *TxPool) removeTransaction(tx *provautil.Tx, removeRedeemers bool) {
 	txHash := tx.Hash()
 	if removeRedeemers {
 		// Remove any transactions which rely on this one.
@@ -391,7 +391,7 @@ func (mp *TxPool) removeTransaction(tx *rmgutil.Tx, removeRedeemers bool) {
 // they would otherwise become orphans.
 //
 // This function is safe for concurrent access.
-func (mp *TxPool) RemoveTransaction(tx *rmgutil.Tx, removeRedeemers bool) {
+func (mp *TxPool) RemoveTransaction(tx *provautil.Tx, removeRedeemers bool) {
 	// Protect concurrent access.
 	mp.mtx.Lock()
 	defer mp.mtx.Unlock()
@@ -406,7 +406,7 @@ func (mp *TxPool) RemoveTransaction(tx *rmgutil.Tx, removeRedeemers bool) {
 // contain transactions which were previously unknown to the memory pool.
 //
 // This function is safe for concurrent access.
-func (mp *TxPool) RemoveDoubleSpends(tx *rmgutil.Tx) {
+func (mp *TxPool) RemoveDoubleSpends(tx *provautil.Tx) {
 	// Protect concurrent access.
 	mp.mtx.Lock()
 	defer mp.mtx.Unlock()
@@ -425,7 +425,7 @@ func (mp *TxPool) RemoveDoubleSpends(tx *rmgutil.Tx) {
 // helper for maybeAcceptTransaction.
 //
 // This function MUST be called with the mempool lock held (for writes).
-func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *rmgutil.Tx, height uint32, fee int64) {
+func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *provautil.Tx, height uint32, fee int64) {
 	// Add the transaction to the pool and mark the referenced outpoints
 	// as spent by the pool.
 	mp.pool[*tx.Hash()] = &TxDesc{
@@ -455,7 +455,7 @@ func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *rmgutil
 // main chain.
 //
 // This function MUST be called with the mempool lock held (for reads).
-func (mp *TxPool) checkPoolDoubleSpend(tx *rmgutil.Tx) error {
+func (mp *TxPool) checkPoolDoubleSpend(tx *provautil.Tx) error {
 	for _, txIn := range tx.MsgTx().TxIn {
 		if txR, exists := mp.outpoints[txIn.PreviousOutPoint]; exists {
 			str := fmt.Sprintf("output %v already spent by "+
@@ -474,7 +474,7 @@ func (mp *TxPool) checkPoolDoubleSpend(tx *rmgutil.Tx) error {
 // transaction pool.
 //
 // This function MUST be called with the mempool lock held (for reads).
-func (mp *TxPool) fetchInputUtxos(tx *rmgutil.Tx) (*blockchain.UtxoViewpoint, error) {
+func (mp *TxPool) fetchInputUtxos(tx *provautil.Tx) (*blockchain.UtxoViewpoint, error) {
 	utxoView, err := mp.cfg.FetchUtxoView(tx)
 	if err != nil {
 		return nil, err
@@ -498,7 +498,7 @@ func (mp *TxPool) fetchInputUtxos(tx *rmgutil.Tx) (*blockchain.UtxoViewpoint, er
 // orphans.
 //
 // This function is safe for concurrent access.
-func (mp *TxPool) FetchTransaction(txHash *chainhash.Hash) (*rmgutil.Tx, error) {
+func (mp *TxPool) FetchTransaction(txHash *chainhash.Hash) (*provautil.Tx, error) {
 	// Protect concurrent access.
 	mp.mtx.RLock()
 	defer mp.mtx.RUnlock()
@@ -515,7 +515,7 @@ func (mp *TxPool) FetchTransaction(txHash *chainhash.Hash) (*rmgutil.Tx, error) 
 // more details.
 //
 // This function MUST be called with the mempool lock held (for writes).
-func (mp *TxPool) maybeAcceptTransaction(tx *rmgutil.Tx, isNew, rateLimit bool) ([]*chainhash.Hash, error) {
+func (mp *TxPool) maybeAcceptTransaction(tx *provautil.Tx, isNew, rateLimit bool) ([]*chainhash.Hash, error) {
 	txHash := tx.Hash()
 
 	// Don't accept the transaction if it already exists in the pool.  This
@@ -793,7 +793,7 @@ func (mp *TxPool) maybeAcceptTransaction(tx *rmgutil.Tx, isNew, rateLimit bool) 
 // be added to the orphan pool.
 //
 // This function is safe for concurrent access.
-func (mp *TxPool) MaybeAcceptTransaction(tx *rmgutil.Tx, isNew, rateLimit bool) ([]*chainhash.Hash, error) {
+func (mp *TxPool) MaybeAcceptTransaction(tx *provautil.Tx, isNew, rateLimit bool) ([]*chainhash.Hash, error) {
 	// Protect concurrent access.
 	mp.mtx.Lock()
 	defer mp.mtx.Unlock()
@@ -805,8 +805,8 @@ func (mp *TxPool) MaybeAcceptTransaction(tx *rmgutil.Tx, isNew, rateLimit bool) 
 // ProcessOrphans.  See the comment for ProcessOrphans for more details.
 //
 // This function MUST be called with the mempool lock held (for writes).
-func (mp *TxPool) processOrphans(hash *chainhash.Hash) []*rmgutil.Tx {
-	var acceptedTxns []*rmgutil.Tx
+func (mp *TxPool) processOrphans(hash *chainhash.Hash) []*provautil.Tx {
+	var acceptedTxns []*provautil.Tx
 
 	// Start with processing at least the passed hash.
 	processHashes := list.New()
@@ -896,7 +896,7 @@ func (mp *TxPool) processOrphans(hash *chainhash.Hash) []*rmgutil.Tx {
 // no transactions were moved from the orphan pool to the mempool.
 //
 // This function is safe for concurrent access.
-func (mp *TxPool) ProcessOrphans(hash *chainhash.Hash) []*rmgutil.Tx {
+func (mp *TxPool) ProcessOrphans(hash *chainhash.Hash) []*provautil.Tx {
 	mp.mtx.Lock()
 	acceptedTxns := mp.processOrphans(hash)
 	mp.mtx.Unlock()
@@ -915,7 +915,7 @@ func (mp *TxPool) ProcessOrphans(hash *chainhash.Hash) []*rmgutil.Tx {
 // the passed one being accepted.
 //
 // This function is safe for concurrent access.
-func (mp *TxPool) ProcessTransaction(tx *rmgutil.Tx, allowOrphan, rateLimit bool) ([]*rmgutil.Tx, error) {
+func (mp *TxPool) ProcessTransaction(tx *provautil.Tx, allowOrphan, rateLimit bool) ([]*provautil.Tx, error) {
 	// Protect concurrent access.
 	mp.mtx.Lock()
 	defer mp.mtx.Unlock()
@@ -934,7 +934,7 @@ func (mp *TxPool) ProcessTransaction(tx *rmgutil.Tx, allowOrphan, rateLimit bool
 		// are now available) and repeat for those accepted
 		// transactions until there are no more.
 		newTxs := mp.processOrphans(tx.Hash())
-		acceptedTxs := make([]*rmgutil.Tx, len(newTxs)+1)
+		acceptedTxs := make([]*provautil.Tx, len(newTxs)+1)
 
 		// Add the parent transaction first so remote nodes
 		// do not add orphans.
@@ -1064,7 +1064,7 @@ func (mp *TxPool) RawMempoolVerbose() map[string]*btcjson.GetRawMempoolVerboseRe
 
 		mpd := &btcjson.GetRawMempoolVerboseResult{
 			Size:             int32(tx.MsgTx().SerializeSize()),
-			Fee:              rmgutil.Amount(desc.Fee).ToRMG(),
+			Fee:              provautil.Amount(desc.Fee).ToRMG(),
 			Time:             desc.Added.Unix(),
 			Height:           int64(desc.Height),
 			StartingPriority: desc.StartingPriority,
@@ -1099,8 +1099,8 @@ func New(cfg *Config) *TxPool {
 	return &TxPool{
 		cfg:           *cfg,
 		pool:          make(map[chainhash.Hash]*TxDesc),
-		orphans:       make(map[chainhash.Hash]*rmgutil.Tx),
-		orphansByPrev: make(map[chainhash.Hash]map[chainhash.Hash]*rmgutil.Tx),
-		outpoints:     make(map[wire.OutPoint]*rmgutil.Tx),
+		orphans:       make(map[chainhash.Hash]*provautil.Tx),
+		orphansByPrev: make(map[chainhash.Hash]map[chainhash.Hash]*provautil.Tx),
+		outpoints:     make(map[wire.OutPoint]*provautil.Tx),
 	}
 }

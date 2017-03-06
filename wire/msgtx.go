@@ -10,7 +10,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
+	"github.com/bitgo/prova/chaincfg/chainhash"
 )
 
 const (

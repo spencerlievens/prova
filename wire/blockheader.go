@@ -10,8 +10,8 @@ import (
 	"io"
 	"time"
 	// "log"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg/chainhash"
 )
 
 // BlockValidatingPubKeySize is the number of bytes for a compressed pubkey.

@@ -1,11 +1,11 @@
 mempool
 =======
 
-[![Build Status](http://img.shields.io/travis/bitgo/rmgd.svg)]
-(https://travis-ci.org/bitgo/rmgd) [![ISC License]
+[![Build Status](http://img.shields.io/travis/bitgo/prova.svg)]
+(https://travis-ci.org/bitgo/prova) [![ISC License]
 (http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)]
-(http://godoc.org/github.com/bitgo/rmgd/mempool)
+(http://godoc.org/github.com/bitgo/prova/mempool)
 
 ## Overview
 
@@ -14,7 +14,7 @@ This package is currently a work in progress.
 ## Installation and Updating
 
 ```bash
-$ go get -u github.com/bitgo/rmgd/mempool
+$ go get -u github.com/bitgo/prova/mempool
 ```
 
 ## License

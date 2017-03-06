@@ -9,10 +9,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 	"time"
 )
 
@@ -312,13 +312,13 @@ func ReplaceKeyIDs(pkScript []parsedOpcode, keyIdMap map[btcec.KeyID][]byte) err
 // ExtractThreadID takes an Prova admin pkScript and extracts the threadID from it.
 // We assume an Prova admin pkScript structure like this:
 // <threadID> OP_CHECKTHREAD
-func ExtractThreadID(pkScript []parsedOpcode) (rmgutil.ThreadID, error) {
+func ExtractThreadID(pkScript []parsedOpcode) (provautil.ThreadID, error) {
 	if len(pkScript) != 2 || !isSmallInt(pkScript[0].opcode) {
-		return rmgutil.ThreadID(0),
+		return provautil.ThreadID(0),
 			fmt.Errorf("unable to extract threadID from script, "+
 				"unknown script structure %v", pkScript)
 	}
-	return rmgutil.ThreadID(asSmallInt(pkScript[0].opcode)), nil
+	return provautil.ThreadID(asSmallInt(pkScript[0].opcode)), nil
 }
 
 // ThreadPkScript creates a new pkScript with all keyHashes.

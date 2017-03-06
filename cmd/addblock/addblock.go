@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/blockchain/indexers"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/limits"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/blockchain/indexers"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/limits"
 	"github.com/btcsuite/btclog"
 )
 

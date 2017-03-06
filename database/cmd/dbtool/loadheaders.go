@@ -7,8 +7,8 @@ package main
 import (
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
 )
 
 // headersCmd defines the configuration options for the loadheaders command.

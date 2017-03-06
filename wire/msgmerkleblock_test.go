@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
+	"github.com/bitgo/prova/chaincfg/chainhash"
 	"github.com/davecgh/go-spew/spew"
 )
 

@@ -9,11 +9,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/database"
-	_ "github.com/bitgo/rmgd/database/ffldb"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/database"
+	_ "github.com/bitgo/prova/database/ffldb"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 	flags "github.com/btcsuite/go-flags"
 )
 
@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	btcdHomeDir     = rmgutil.AppDataDir("btcd", false)
+	btcdHomeDir     = provautil.AppDataDir("btcd", false)
 	defaultDataDir  = filepath.Join(btcdHomeDir, "data")
 	knownDbTypes    = database.SupportedDrivers()
 	activeNetParams = &chaincfg.MainNetParams

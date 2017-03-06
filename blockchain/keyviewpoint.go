@@ -6,17 +6,17 @@ package blockchain
 
 import (
 	"fmt"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 )
 
 // KeyViewpoint represents a view into the set of admin keys from a specific
 // point of view in the chain. For example, it could be for the end of the main
 // chain, some point in the history of the main chain, or down a side chain.
 type KeyViewpoint struct {
-	threadTips   map[rmgutil.ThreadID]*wire.OutPoint
+	threadTips   map[provautil.ThreadID]*wire.OutPoint
 	lastKeyID    btcec.KeyID
 	totalSupply  uint64
 	adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
@@ -24,7 +24,7 @@ type KeyViewpoint struct {
 }
 
 // ThreadTips returns
-func (view *KeyViewpoint) ThreadTips() map[rmgutil.ThreadID]*wire.OutPoint {
+func (view *KeyViewpoint) ThreadTips() map[provautil.ThreadID]*wire.OutPoint {
 	return view.threadTips
 }
 
@@ -32,8 +32,8 @@ func (view *KeyViewpoint) ThreadTips() map[rmgutil.ThreadID]*wire.OutPoint {
 // The passed reference is deep copied, so modification does not affect
 // source data structures.
 func (view *KeyViewpoint) SetThreadTips(
-	threadTips map[rmgutil.ThreadID]*wire.OutPoint) {
-	view.threadTips = rmgutil.CopyThreadTips(threadTips)
+	threadTips map[provautil.ThreadID]*wire.OutPoint) {
+	view.threadTips = provautil.CopyThreadTips(threadTips)
 }
 
 // LastKeyID
@@ -70,16 +70,16 @@ func (view *KeyViewpoint) Keys() map[btcec.KeySetType]btcec.PublicKeySet {
 }
 
 // GetAdminKeyHashes returns pubKeyHashes according to the provided threadID.
-func (view *KeyViewpoint) GetAdminKeyHashes(threadID rmgutil.ThreadID) ([][]byte, error) {
+func (view *KeyViewpoint) GetAdminKeyHashes(threadID provautil.ThreadID) ([][]byte, error) {
 
-	if threadID > rmgutil.IssueThread {
+	if threadID > provautil.IssueThread {
 		return nil, fmt.Errorf("unknown threadID %v", threadID)
 	}
 
 	pubs := view.adminKeySets[btcec.KeySetType(threadID)]
 	hashes := make([][]byte, len(pubs))
 	for i, pubKey := range pubs {
-		hashes[i] = rmgutil.Hash160(pubKey.SerializeCompressed())
+		hashes[i] = provautil.Hash160(pubKey.SerializeCompressed())
 	}
 	return hashes, nil
 }
@@ -103,7 +103,7 @@ func (view *KeyViewpoint) LookupKeyIDs(keyIDs []btcec.KeyID) map[btcec.KeyID][]b
 	for _, keyID := range keyIDs {
 		pubKey := view.aspKeyIdMap[keyID]
 		if pubKey != nil {
-			keyIdMap[keyID] = rmgutil.Hash160(pubKey.SerializeCompressed())
+			keyIdMap[keyID] = provautil.Hash160(pubKey.SerializeCompressed())
 		}
 	}
 	return keyIdMap
@@ -112,13 +112,13 @@ func (view *KeyViewpoint) LookupKeyIDs(keyIDs []btcec.KeyID) map[btcec.KeyID][]b
 // ProcessAdminOuts finds admin transactions and executes all ops in it.
 // This function is called after the validity of the transaction has been
 // verified.
-func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
+func (view *KeyViewpoint) ProcessAdminOuts(tx *provautil.Tx, blockHeight uint32) {
 	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
 	if threadInt < 0 {
 		// not admin transaction
 		return // so we skip.
 	}
-	if rmgutil.ThreadID(threadInt) == rmgutil.IssueThread {
+	if provautil.ThreadID(threadInt) == provautil.IssueThread {
 		isDestruction := len(tx.MsgTx().TxIn) > 1
 		if isDestruction {
 			// if this is a destruction operation
@@ -141,7 +141,7 @@ func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 				view.totalSupply += uint64(tx.MsgTx().TxOut[i].Value)
 			}
 		}
-		view.threadTips[rmgutil.IssueThread] = wire.NewOutPoint(tx.Hash(), 0)
+		view.threadTips[provautil.IssueThread] = wire.NewOutPoint(tx.Hash(), 0)
 		return
 	}
 	for i := 0; i < len(adminOutputs); i++ {
@@ -150,7 +150,7 @@ func (view *KeyViewpoint) ProcessAdminOuts(tx *rmgutil.Tx, blockHeight uint32) {
 		view.applyAdminOp(isAddOp, keySetType, pubKey, keyID)
 	}
 	// this becomes the new tip of the admin thread
-	threadId := rmgutil.ThreadID(threadInt)
+	threadId := provautil.ThreadID(threadInt)
 	view.threadTips[threadId] = wire.NewOutPoint(tx.Hash(), 0)
 }
 
@@ -176,7 +176,7 @@ func (view *KeyViewpoint) applyAdminOp(isAddOp bool,
 
 // connectTransaction updates the view by processing all new admin operations in
 // the passed transaction.
-func (view *KeyViewpoint) connectTransaction(tx *rmgutil.Tx, blockHeight uint32) error {
+func (view *KeyViewpoint) connectTransaction(tx *provautil.Tx, blockHeight uint32) error {
 	// Process the admin outputs that are part of this tx.
 	view.ProcessAdminOuts(tx, blockHeight)
 	return nil
@@ -184,7 +184,7 @@ func (view *KeyViewpoint) connectTransaction(tx *rmgutil.Tx, blockHeight uint32)
 
 // connectTransactions updates the view by processing all the admin operations
 // in created by all of the transactions in the passed block.
-func (view *KeyViewpoint) connectTransactions(block *rmgutil.Block) error {
+func (view *KeyViewpoint) connectTransactions(block *provautil.Block) error {
 	for _, tx := range block.Transactions() {
 		err := view.connectTransaction(tx, block.Height())
 		if err != nil {
@@ -197,7 +197,7 @@ func (view *KeyViewpoint) connectTransactions(block *rmgutil.Block) error {
 // disconnectTransactions updates the view by undoing all admin operations in
 // all of the transactions contained in the passed block, and setting the best
 // hash for the view to the block before the passed block.
-func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
+func (view *KeyViewpoint) disconnectTransactions(block *provautil.Block) error {
 
 	// Loop backwards through all transactions so operations are undone in
 	// reverse order.
@@ -207,9 +207,9 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 
 		// If an admin transaction is disconnected, undo what it did to chain state.
 		threadInt, adminOutputs := txscript.GetAdminDetails(tx)
-		if threadInt >= int(rmgutil.RootThread) {
-			threadId := rmgutil.ThreadID(threadInt)
-			if threadId == rmgutil.IssueThread {
+		if threadInt >= int(provautil.RootThread) {
+			threadId := provautil.ThreadID(threadInt)
+			if threadId == provautil.IssueThread {
 				isDestruction := len(tx.MsgTx().TxIn) > 1
 				if isDestruction {
 					for i := 0; i < len(adminOutputs); i++ {
@@ -250,7 +250,7 @@ func (view *KeyViewpoint) disconnectTransactions(block *rmgutil.Block) error {
 // NewKeyViewpoint returns a new empty key view.
 func NewKeyViewpoint() *KeyViewpoint {
 	return &KeyViewpoint{
-		threadTips:   make(map[rmgutil.ThreadID]*wire.OutPoint),
+		threadTips:   make(map[provautil.ThreadID]*wire.OutPoint),
 		lastKeyID:    btcec.KeyID(0),
 		totalSupply:  uint64(0),
 		adminKeySets: make(map[btcec.KeySetType]btcec.PublicKeySet),

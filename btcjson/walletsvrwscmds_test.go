@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bitgo/rmgd/btcjson"
+	"github.com/bitgo/prova/btcjson"
 )
 
 // TestWalletSvrWsCmds tests all of the wallet server websocket-specific

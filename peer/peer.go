@@ -17,10 +17,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/wire"
 	"github.com/btcsuite/go-socks/socks"
 	"github.com/davecgh/go-spew/spew"
 )

@@ -14,17 +14,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/btcjson"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/mempool"
-	"github.com/bitgo/rmgd/mining"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/btcjson"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/mempool"
+	"github.com/bitgo/prova/mining"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 	"github.com/btcsuite/fastsha256"
 	"github.com/btcsuite/websocket"
 	"io"
@@ -558,7 +558,7 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 	// some validity checks.
 	for encodedAddr, amount := range c.Amounts {
 		// Ensure amount is in the valid range for monetary amounts.
-		if amount <= 0 || amount > rmgutil.MaxAtoms {
+		if amount <= 0 || amount > provautil.MaxAtoms {
 			return nil, &btcjson.RPCError{
 				Code:    btcjson.ErrRPCType,
 				Message: "Invalid amount",
@@ -566,7 +566,7 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		}
 
 		// Decode the provided address.
-		addr, err := rmgutil.DecodeAddress(encodedAddr,
+		addr, err := provautil.DecodeAddress(encodedAddr,
 			activeNetParams.Params)
 		if err != nil {
 			return nil, &btcjson.RPCError{
@@ -579,8 +579,8 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		// the network encoded with the address matches the network the
 		// server is currently on.
 		switch addr.(type) {
-		case *rmgutil.AddressPubKeyHash:
-		case *rmgutil.AddressScriptHash:
+		case *provautil.AddressPubKeyHash:
+		case *provautil.AddressScriptHash:
 		default:
 			return nil, &btcjson.RPCError{
 				Code:    btcjson.ErrRPCInvalidAddressOrKey,
@@ -603,7 +603,7 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		}
 
 		// Convert the amount to atoms.
-		atoms, err := rmgutil.NewAmount(amount)
+		atoms, err := provautil.NewAmount(amount)
 		if err != nil {
 			context := "Failed to convert amount"
 			return nil, internalRPCError(err.Error(), context)
@@ -691,7 +691,7 @@ func createVinList(mtx *wire.MsgTx) []btcjson.Vin {
 func createVoutList(mtx *wire.MsgTx, chainParams *chaincfg.Params, filterAddrMap map[string]struct{}) []btcjson.Vout {
 	voutList := make([]btcjson.Vout, 0, len(mtx.TxOut))
 	threadInt, _ := txscript.GetAdminDetailsMsgTx(mtx)
-	isAdmin := rmgutil.ThreadID(threadInt) == rmgutil.RootThread || rmgutil.ThreadID(threadInt) == rmgutil.ProvisionThread
+	isAdmin := provautil.ThreadID(threadInt) == provautil.RootThread || provautil.ThreadID(threadInt) == provautil.ProvisionThread
 	for i, v := range mtx.TxOut {
 		// The disassembled string will contain [error] inline if the
 		// script doesn't fully parse, so ignore the error here.
@@ -727,7 +727,7 @@ func createVoutList(mtx *wire.MsgTx, chainParams *chaincfg.Params, filterAddrMap
 
 		var vout btcjson.Vout
 		vout.N = uint32(i)
-		vout.Value = rmgutil.Amount(v.Value).ToRMG()
+		vout.Value = provautil.Amount(v.Value).ToRMG()
 		vout.ScriptPubKey.Addresses = encodedAddrs
 		vout.ScriptPubKey.Asm = disbuf
 		vout.ScriptPubKey.Hex = hex.EncodeToString(v.PkScript)
@@ -805,7 +805,7 @@ func handleSignProvaTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		}
 	}
 
-	lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+	lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
 		keys := make([]txscript.PrivateKey, len(*c.PrivKeys))
 		for i, strPrivKey := range *c.PrivKeys {
 			privKey, err := hex.DecodeString(strPrivKey)
@@ -954,7 +954,7 @@ func handleDecodeScript(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 	}
 
 	// Convert the script itself to a pay-to-script-hash address.
-	p2sh, err := rmgutil.NewAddressScriptHash(script, s.server.chainParams)
+	p2sh, err := provautil.NewAddressScriptHash(script, s.server.chainParams)
 	if err != nil {
 		context := "Failed to convert script to pay-to-script-hash"
 		return nil, internalRPCError(err.Error(), context)
@@ -1145,7 +1145,7 @@ func handleGetAddressTxIds(s *rpcServer, cmd interface{}, closeChan <-chan struc
 	// Attempt to decode the supplied addresses.
 	addressTxns := make([]retrievedTx, 0)
 	for _, address := range c.Request.Addresses {
-		addr, err := rmgutil.DecodeAddress(address, s.server.chainParams)
+		addr, err := provautil.DecodeAddress(address, s.server.chainParams)
 		if err != nil {
 			return nil, &btcjson.RPCError{
 				Code:    btcjson.ErrRPCInvalidAddressOrKey,
@@ -1217,22 +1217,22 @@ func handleGetAdminInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 	best := s.chain.BestSnapshot()
 	adminKeySets := s.chain.AdminKeySets()
 	aspKeyIdMap := s.chain.KeyIDs()
-	rootTip := s.chain.ThreadTips()[rmgutil.RootThread]
-	provisionTip := s.chain.ThreadTips()[rmgutil.ProvisionThread]
-	issueTip := s.chain.ThreadTips()[rmgutil.IssueThread]
+	rootTip := s.chain.ThreadTips()[provautil.RootThread]
+	provisionTip := s.chain.ThreadTips()[provautil.ProvisionThread]
+	issueTip := s.chain.ThreadTips()[provautil.IssueThread]
 	threadTipObj := []btcjson.ThreadTipResult{
 		{
-			ID:       uint32(rmgutil.RootThread),
+			ID:       uint32(provautil.RootThread),
 			Name:     "root",
 			OutPoint: rootTip.String(),
 		},
 		{
-			ID:       uint32(rmgutil.ProvisionThread),
+			ID:       uint32(provautil.ProvisionThread),
 			Name:     "provision",
 			OutPoint: provisionTip.String(),
 		},
 		{
-			ID:       uint32(rmgutil.IssueThread),
+			ID:       uint32(provautil.IssueThread),
 			Name:     "issue",
 			OutPoint: issueTip.String(),
 		},
@@ -1331,7 +1331,7 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 	// The verbose flag is set, so generate the JSON object and return it.
 
 	// Deserialize the block.
-	blk, err := rmgutil.NewBlockFromBytes(blkBytes)
+	blk, err := provautil.NewBlockFromBytes(blkBytes)
 	if err != nil {
 		context := "Failed to deserialize block"
 		return nil, internalRPCError(err.Error(), context)
@@ -1675,7 +1675,7 @@ func (state *gbtWorkState) updateBlockTemplate(s *rpcServer, useCoinbaseValue bo
 		// Choose a payment address at random if the caller requests a
 		// full coinbase as opposed to only the pertinent details needed
 		// to create their own coinbase.
-		var payAddr rmgutil.Address
+		var payAddr provautil.Address
 		if !useCoinbaseValue {
 			payAddr = cfg.miningAddrs[rand.Intn(len(cfg.miningAddrs))]
 		}
@@ -1749,7 +1749,7 @@ func (state *gbtWorkState) updateBlockTemplate(s *rpcServer, useCoinbaseValue bo
 			template.ValidPayAddress = true
 
 			// Update the merkle root.
-			block := rmgutil.NewBlock(template.Block)
+			block := provautil.NewBlock(template.Block)
 			merkles := blockchain.BuildMerkleTreeStore(block.Transactions())
 			template.Block.Header.MerkleRoot = *merkles[len(merkles)-1]
 		}
@@ -2224,7 +2224,7 @@ func handleGetBlockTemplateProposal(s *rpcServer, request *btcjson.TemplateReque
 			Message: "Block decode failed: " + err.Error(),
 		}
 	}
-	block := rmgutil.NewBlock(&msgBlock)
+	block := provautil.NewBlock(&msgBlock)
 
 	// Ensure the block is building from the expected previous block.
 	expectedPrevHash, _ := s.server.blockManager.chainState.Best()
@@ -2816,7 +2816,7 @@ func handleGetTxOut(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 	txOutReply := &btcjson.GetTxOutResult{
 		BestBlock:     bestBlockHash,
 		Confirmations: int64(confirmations),
-		Value:         rmgutil.Amount(value).ToRMG(),
+		Value:         provautil.Amount(value).ToRMG(),
 		Version:       txVersion,
 		ScriptPubKey: btcjson.ScriptPubKeyResult{
 			Asm:       disbuf,
@@ -3034,7 +3034,7 @@ func handleGetWorkSubmission(s *rpcServer, hexData string) (interface{}, error) 
 
 	// Reconstruct the block using the submitted header stored block info.
 	msgBlock := blockInfo.msgBlock
-	block := rmgutil.NewBlock(msgBlock)
+	block := provautil.NewBlock(msgBlock)
 	msgBlock.Header.Timestamp = submittedHeader.Timestamp
 	msgBlock.Header.Nonce = submittedHeader.Nonce
 	msgBlock.Transactions[0].TxIn[0].SignatureScript = blockInfo.signatureScript
@@ -3195,7 +3195,7 @@ func handlePing(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (inter
 type retrievedTx struct {
 	txBytes []byte
 	blkHash *chainhash.Hash // Only set when transaction is in a block.
-	tx      *rmgutil.Tx
+	tx      *provautil.Tx
 }
 
 // fetchInputTxos fetches the outpoints from all transactions referenced by the
@@ -3373,7 +3373,7 @@ func createVinListPrevOut(s *rpcServer, mtx *wire.MsgTx, chainParams *chaincfg.P
 			vinListEntry := &vinList[len(vinList)-1]
 			vinListEntry.PrevOut = &btcjson.PrevOut{
 				Addresses: encodedAddrs,
-				Value:     rmgutil.Amount(originTxOut.Value).ToRMG(),
+				Value:     provautil.Amount(originTxOut.Value).ToRMG(),
 			}
 		}
 	}
@@ -3384,7 +3384,7 @@ func createVinListPrevOut(s *rpcServer, mtx *wire.MsgTx, chainParams *chaincfg.P
 // fetchMempoolTxnsForAddress queries the address index for all unconfirmed
 // transactions that involve the provided address.  The results will be limited
 // by the number to skip and the number requested.
-func fetchMempoolTxnsForAddress(s *rpcServer, addr rmgutil.Address, numToSkip, numRequested uint32) ([]*rmgutil.Tx, uint32) {
+func fetchMempoolTxnsForAddress(s *rpcServer, addr provautil.Address, numToSkip, numRequested uint32) ([]*provautil.Tx, uint32) {
 	// There are no entries to return when there are less available than the
 	// number being skipped.
 	mpTxns := s.server.addrIndex.UnconfirmedTxnsForAddress(addr)
@@ -3433,7 +3433,7 @@ func handleSearchRawTransactions(s *rpcServer, cmd interface{}, closeChan <-chan
 	}
 
 	// Attempt to decode the supplied address.
-	addr, err := rmgutil.DecodeAddress(c.Address, s.server.chainParams)
+	addr, err := provautil.DecodeAddress(c.Address, s.server.chainParams)
 	if err != nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidAddressOrKey,
@@ -3700,7 +3700,7 @@ func handleSendRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan st
 		}
 	}
 
-	tx := rmgutil.NewTx(msgtx)
+	tx := provautil.NewTx(msgtx)
 	acceptedTxs, err := s.server.txMemPool.ProcessTransaction(tx, false, false)
 	if err != nil {
 		// When the error is a rule error, it means the transaction was
@@ -3835,7 +3835,7 @@ func handleSubmitBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 		return nil, rpcDecodeHexError(hexStr)
 	}
 
-	block, err := rmgutil.NewBlockFromBytes(serializedBlock)
+	block, err := provautil.NewBlockFromBytes(serializedBlock)
 	if err != nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCDeserialization,
@@ -3857,7 +3857,7 @@ func handleValidateAddress(s *rpcServer, cmd interface{}, closeChan <-chan struc
 	c := cmd.(*btcjson.ValidateAddressCmd)
 
 	result := btcjson.ValidateAddressChainResult{}
-	addr, err := rmgutil.DecodeAddress(c.Address, activeNetParams.Params)
+	addr, err := provautil.DecodeAddress(c.Address, activeNetParams.Params)
 	if err != nil {
 		// Return the default value (false) for IsValid.
 		return result, nil
@@ -3925,7 +3925,7 @@ func handleVerifyMessage(s *rpcServer, cmd interface{}, closeChan <-chan struct{
 	c := cmd.(*btcjson.VerifyMessageCmd)
 
 	// Decode the provided address.
-	addr, err := rmgutil.DecodeAddress(c.Address, activeNetParams.Params)
+	addr, err := provautil.DecodeAddress(c.Address, activeNetParams.Params)
 	if err != nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidAddressOrKey,
@@ -3934,7 +3934,7 @@ func handleVerifyMessage(s *rpcServer, cmd interface{}, closeChan <-chan struct{
 	}
 
 	// Only P2PKH addresses are valid for signing.
-	if _, ok := addr.(*rmgutil.AddressPubKeyHash); !ok {
+	if _, ok := addr.(*provautil.AddressPubKeyHash); !ok {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCType,
 			Message: "Address is not a pay-to-pubkey-hash address",
@@ -3972,7 +3972,7 @@ func handleVerifyMessage(s *rpcServer, cmd interface{}, closeChan <-chan struct{
 	} else {
 		serializedPK = btcPK.SerializeUncompressed()
 	}
-	address, err := rmgutil.NewAddressPubKey(serializedPK,
+	address, err := provautil.NewAddressPubKey(serializedPK,
 		activeNetParams.Params)
 	if err != nil {
 		// Again mirror Bitcoin Core behavior, which treats error in public key
@@ -4455,7 +4455,7 @@ func genCertPair(certFile, keyFile string) error {
 
 	org := "btcd autogenerated cert"
 	validUntil := time.Now().Add(10 * 365 * 24 * time.Hour)
-	cert, key, err := rmgutil.NewTLSCertPair(org, validUntil, nil)
+	cert, key, err := provautil.NewTLSCertPair(org, validUntil, nil)
 	if err != nil {
 		return err
 	}

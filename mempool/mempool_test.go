@@ -6,13 +6,13 @@ package mempool
 
 import (
 	"encoding/hex"
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 	"reflect"
 	"sync"
 	"testing"
@@ -33,7 +33,7 @@ type fakeChain struct {
 // returned view can be examined for duplicate unspent transaction outputs.
 //
 // This function is safe for concurrent access however the returned view is NOT.
-func (s *fakeChain) FetchUtxoView(tx *rmgutil.Tx) (*blockchain.UtxoViewpoint, error) {
+func (s *fakeChain) FetchUtxoView(tx *provautil.Tx) (*blockchain.UtxoViewpoint, error) {
 	s.RLock()
 	defer s.RUnlock()
 
@@ -68,8 +68,8 @@ func hexToBytes(s string) []byte {
 }
 
 // ThreadTips returns the thread tips on the fake chain instance.
-func (s *fakeChain) ThreadTips() map[rmgutil.ThreadID]*wire.OutPoint {
-	return make(map[rmgutil.ThreadID]*wire.OutPoint)
+func (s *fakeChain) ThreadTips() map[provautil.ThreadID]*wire.OutPoint {
+	return make(map[provautil.ThreadID]*wire.OutPoint)
 }
 
 // LastKeyID returns the last issued keyID on the the fake chain instance.
@@ -116,16 +116,16 @@ func (s *fakeChain) SetHeight(height uint32) {
 // amount associated with it.
 type spendableOutput struct {
 	outPoint wire.OutPoint
-	amount   rmgutil.Amount
+	amount   provautil.Amount
 }
 
 // txOutToSpendableOut returns a spendable output given a transaction and index
 // of the output to use.  This is useful as a convenience when creating test
 // transactions.
-func txOutToSpendableOut(tx *rmgutil.Tx, outputNum uint32) spendableOutput {
+func txOutToSpendableOut(tx *provautil.Tx, outputNum uint32) spendableOutput {
 	return spendableOutput{
 		outPoint: wire.OutPoint{Hash: *tx.Hash(), Index: outputNum},
-		amount:   rmgutil.Amount(tx.MsgTx().TxOut[outputNum].Value),
+		amount:   provautil.Amount(tx.MsgTx().TxOut[outputNum].Value),
 	}
 }
 
@@ -140,7 +140,7 @@ type poolHarness struct {
 	// payment address throughout the tests.
 	privKey1    *btcec.PrivateKey
 	privKey2    *btcec.PrivateKey
-	payAddr     rmgutil.Address
+	payAddr     provautil.Address
 	payScript   []byte
 	chainParams *chaincfg.Params
 
@@ -153,7 +153,7 @@ type poolHarness struct {
 // address associated with the harness.  It automatically uses a standard
 // signature script that starts with the block height that is required by
 // version 2 blocks.
-func (p *poolHarness) CreateCoinbaseTx(blockHeight uint32, numOutputs uint32) (*rmgutil.Tx, error) {
+func (p *poolHarness) CreateCoinbaseTx(blockHeight uint32, numOutputs uint32) (*provautil.Tx, error) {
 	// Create standard coinbase script.
 	coinbaseScript, err := txscript.NewScriptBuilder().
 		AddInt64(int64(blockHeight)).Script()
@@ -186,17 +186,17 @@ func (p *poolHarness) CreateCoinbaseTx(blockHeight uint32, numOutputs uint32) (*
 		})
 	}
 
-	return rmgutil.NewTx(tx), nil
+	return provautil.NewTx(tx), nil
 }
 
 // CreateSignedTx creates a new signed transaction that consumes the provided
 // inputs and generates the provided number of outputs by evenly splitting the
 // total input amount.  All outputs will be to the payment script associated
 // with the harness and all inputs are assumed to do the same.
-func (p *poolHarness) CreateSignedTx(inputs []spendableOutput, numOutputs uint32) (*rmgutil.Tx, error) {
+func (p *poolHarness) CreateSignedTx(inputs []spendableOutput, numOutputs uint32) (*provautil.Tx, error) {
 	// Calculate the total input amount and split it amongst the requested
 	// number of outputs.
-	var totalInput rmgutil.Amount
+	var totalInput provautil.Amount
 	for _, input := range inputs {
 		totalInput += input.amount
 	}
@@ -224,7 +224,7 @@ func (p *poolHarness) CreateSignedTx(inputs []spendableOutput, numOutputs uint32
 		})
 	}
 
-	lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+	lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
 		return []txscript.PrivateKey{
 			txscript.PrivateKey{p.privKey1, true},
 			txscript.PrivateKey{p.privKey2, true},
@@ -241,18 +241,18 @@ func (p *poolHarness) CreateSignedTx(inputs []spendableOutput, numOutputs uint32
 		tx.TxIn[i].SignatureScript = sigScript
 	}
 
-	return rmgutil.NewTx(tx), nil
+	return provautil.NewTx(tx), nil
 }
 
 // CreateTxChain creates a chain of zero-fee transactions (each subsequent
 // transaction spends the entire amount from the previous one) with the first
 // one spending the provided outpoint.  Each transaction spends the entire
 // amount of the previous one and as such does not include any fees.
-func (p *poolHarness) CreateTxChain(firstOutput spendableOutput, numTxns uint32) ([]*rmgutil.Tx, error) {
-	txChain := make([]*rmgutil.Tx, 0, numTxns)
+func (p *poolHarness) CreateTxChain(firstOutput spendableOutput, numTxns uint32) ([]*provautil.Tx, error) {
+	txChain := make([]*provautil.Tx, 0, numTxns)
 	prevOutPoint := firstOutput.outPoint
 	spendableAmount := firstOutput.amount
-	lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+	lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
 		return []txscript.PrivateKey{
 			txscript.PrivateKey{p.privKey1, true},
 			txscript.PrivateKey{p.privKey2, true},
@@ -281,7 +281,7 @@ func (p *poolHarness) CreateTxChain(firstOutput spendableOutput, numTxns uint32)
 		}
 		tx.TxIn[0].SignatureScript = sigScript
 
-		txChain = append(txChain, rmgutil.NewTx(tx))
+		txChain = append(txChain, provautil.NewTx(tx))
 
 		// Next transaction uses outputs from this one.
 		prevOutPoint = wire.OutPoint{Hash: tx.TxHash(), Index: 0}
@@ -309,12 +309,12 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 		0xd1, 0xa7, 0x34, 0x7d, 0x9d, 0x65, 0xcf, 0xe9,
 		0x3c, 0xe1, 0xeb, 0xff, 0xdc, 0xa2, 0x26, 0x94,
 	})
-	pkHash := rmgutil.Hash160(pubKey1.SerializeCompressed())
+	pkHash := provautil.Hash160(pubKey1.SerializeCompressed())
 	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
 
 	// Generate associated Prova address and resulting payment script.
-	payAddr, err := rmgutil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, chainParams)
+	payAddr, err := provautil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, chainParams)
 	if err != nil {
 		return nil, nil, err
 	}

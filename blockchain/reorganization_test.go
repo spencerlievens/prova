@@ -13,10 +13,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 )
 
 // TestReorganization loads a set of test blocks which force a chain
@@ -35,7 +35,7 @@ func Reorganization(t *testing.T) {
 		"blk_3A.dat.bz2",
 	}
 
-	var blocks []*rmgutil.Block
+	var blocks []*provautil.Block
 	for _, file := range testFiles {
 		blockTmp, err := loadBlocks(file)
 		if err != nil {
@@ -79,8 +79,8 @@ func Reorganization(t *testing.T) {
 
 // loadBlocks reads files containing bitcoin block data (gzipped but otherwise
 // in the format bitcoind writes) from disk and returns them as an array of
-// rmgutil.Block.  This is largely borrowed from the test code in btcdb.
-func loadBlocks(filename string) (blocks []*rmgutil.Block, err error) {
+// provautil.Block.  This is largely borrowed from the test code in btcdb.
+func loadBlocks(filename string) (blocks []*provautil.Block, err error) {
 	filename = filepath.Join("testdata/", filename)
 
 	var network = wire.MainNet
@@ -99,7 +99,7 @@ func loadBlocks(filename string) (blocks []*rmgutil.Block, err error) {
 	}
 	defer fi.Close()
 
-	var block *rmgutil.Block
+	var block *provautil.Block
 
 	err = nil
 	for height := int64(1); err == nil; height++ {
@@ -125,7 +125,7 @@ func loadBlocks(filename string) (blocks []*rmgutil.Block, err error) {
 		// read block
 		dr.Read(rbytes)
 
-		block, err = rmgutil.NewBlockFromBytes(rbytes)
+		block, err = provautil.NewBlockFromBytes(rbytes)
 		if err != nil {
 			return
 		}

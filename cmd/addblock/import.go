@@ -11,12 +11,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/blockchain/indexers"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/blockchain/indexers"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 )
 
 var zeroHash = chainhash.Hash{}
@@ -94,7 +94,7 @@ func (bi *blockImporter) readBlock() ([]byte, error) {
 // with any potential errors.
 func (bi *blockImporter) processBlock(serializedBlock []byte) (bool, error) {
 	// Deserialize the block which includes checks for malformed blocks.
-	block, err := rmgutil.NewBlockFromBytes(serializedBlock)
+	block, err := provautil.NewBlockFromBytes(serializedBlock)
 	if err != nil {
 		return false, err
 	}

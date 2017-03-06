@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/bitgo/rmgd/btcjson"
+	"github.com/bitgo/prova/btcjson"
 )
 
 // TestChainSvrCustomResults ensures any results that have custom marshalling

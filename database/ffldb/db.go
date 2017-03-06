@@ -14,11 +14,11 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/database/internal/treap"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/database/internal/treap"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 	"github.com/btcsuite/goleveldb/leveldb"
 	"github.com/btcsuite/goleveldb/leveldb/comparer"
 	ldberrors "github.com/btcsuite/goleveldb/leveldb/errors"
@@ -1146,7 +1146,7 @@ func (tx *transaction) hasBlock(hash *chainhash.Hash) bool {
 //   - ErrTxClosed if the transaction has already been closed
 //
 // This function is part of the database.Tx interface implementation.
-func (tx *transaction) StoreBlock(block *rmgutil.Block) error {
+func (tx *transaction) StoreBlock(block *provautil.Block) error {
 	// Ensure transaction state is valid.
 	if err := tx.checkClosed(); err != nil {
 		return err

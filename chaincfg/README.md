@@ -1,11 +1,11 @@
 chaincfg
 ========
 
-[![Build Status](http://img.shields.io/travis/bitgo/rmgd.svg)]
-(https://travis-ci.org/bitgo/rmgd) [![ISC License]
+[![Build Status](http://img.shields.io/travis/bitgo/prova.svg)]
+(https://travis-ci.org/bitgo/prova) [![ISC License]
 (http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)]
-(http://godoc.org/github.com/bitgo/rmgd/chaincfg)
+(http://godoc.org/github.com/bitgo/prova/chaincfg)
 
 Package chaincfg defines chain configuration parameters for the three standard
 Bitcoin networks and provides the ability for callers to define their own custom
@@ -26,8 +26,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/chaincfg"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/chaincfg"
 )
 
 var testnet = flag.Bool("testnet", false, "operate on the testnet Bitcoin network")
@@ -47,7 +47,7 @@ func main() {
 
 	// Create and print new payment address, specific to the active network.
 	pubKeyHash := make([]byte, 20)
-	addr, err := rmgutil.NewAddressPubKeyHash(pubKeyHash, chainParams)
+	addr, err := provautil.NewAddressPubKeyHash(pubKeyHash, chainParams)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func main() {
 ## Installation and Updating
 
 ```bash
-$ go get -u github.com/bitgo/rmgd/chaincfg
+$ go get -u github.com/bitgo/prova/chaincfg
 ```
 
 ## GPG Verification Key

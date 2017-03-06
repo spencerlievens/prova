@@ -10,12 +10,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 )
 
 const (
@@ -44,7 +44,7 @@ const (
 
 	// baseSubsidy is the starting subsidy amount for mined blocks.  This
 	// value is halved every SubsidyHalvingInterval blocks.
-	baseSubsidy = 5000 * rmgutil.AtomsPerGram
+	baseSubsidy = 5000 * provautil.AtomsPerGram
 
 	// MaxAdminKeySetSize sets a limit for the size of admin key sets.
 	// When admin transactions are validated, the pubKeyScript is generated
@@ -105,12 +105,12 @@ func IsCoinBaseTx(msgTx *wire.MsgTx) bool {
 //
 // This function only differs from IsCoinBaseTx in that it works with a higher
 // level util transaction as opposed to a raw wire transaction.
-func IsCoinBase(tx *rmgutil.Tx) bool {
+func IsCoinBase(tx *provautil.Tx) bool {
 	return IsCoinBaseTx(tx.MsgTx())
 }
 
 // IsFinalizedTransaction determines whether or not a transaction is finalized.
-func IsFinalizedTransaction(tx *rmgutil.Tx, blockHeight uint32, blockTime time.Time) bool {
+func IsFinalizedTransaction(tx *provautil.Tx, blockHeight uint32, blockTime time.Time) bool {
 	msgTx := tx.MsgTx()
 
 	// Lock time of zero means the transaction is finalized.
@@ -168,7 +168,7 @@ func CalcBlockSubsidy(height uint32, chainParams *chaincfg.Params) int64 {
 // TODO(prova): Notice that this code is a dupclicate of transaction
 // validation code in checkTransactionStandard() of policy.go
 // TODO(prova): extract functionality into admin tx validator.
-func CheckTransactionSanity(tx *rmgutil.Tx) error {
+func CheckTransactionSanity(tx *provautil.Tx) error {
 	// A transaction must have at least one input.
 	msgTx := tx.MsgTx()
 	if len(msgTx.TxIn) == 0 {
@@ -205,10 +205,10 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 				"value of %v", atoms)
 			return ruleError(ErrBadTxOutValue, str)
 		}
-		if atoms > rmgutil.MaxAtoms {
+		if atoms > provautil.MaxAtoms {
 			str := fmt.Sprintf("transaction output value of %v is "+
 				"higher than max allowed value of %v", atoms,
-				rmgutil.MaxAtoms)
+				provautil.MaxAtoms)
 			return ruleError(ErrBadTxOutValue, str)
 		}
 
@@ -219,14 +219,14 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 		if totalAtoms < 0 {
 			str := fmt.Sprintf("total value of all transaction "+
 				"outputs exceeds max allowed value of %v",
-				rmgutil.MaxAtoms)
+				provautil.MaxAtoms)
 			return ruleError(ErrBadTxOutValue, str)
 		}
-		if totalAtoms > rmgutil.MaxAtoms {
+		if totalAtoms > provautil.MaxAtoms {
 			str := fmt.Sprintf("total value of all transaction "+
 				"outputs is %v which is higher than max "+
 				"allowed value of %v", totalAtoms,
-				rmgutil.MaxAtoms)
+				provautil.MaxAtoms)
 			return ruleError(ErrBadTxOutValue, str)
 		}
 
@@ -241,7 +241,7 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 		}
 
 		if hasAdminOut {
-			if rmgutil.ThreadID(threadInt) != rmgutil.IssueThread {
+			if provautil.ThreadID(threadInt) != provautil.IssueThread {
 				// All Admin tx output values must be 0 value
 				if txOut.Value != 0 {
 					str := fmt.Sprintf("admin transaction with non-zero value "+
@@ -326,8 +326,8 @@ func CheckTransactionSanity(tx *rmgutil.Tx) error {
 	// validation code in checkTransactionStandard() of policy.go
 	// TODO(prova): extract functionality into admin tx validator.
 	if hasAdminOut {
-		threadId := rmgutil.ThreadID(threadInt)
-		if threadId == rmgutil.RootThread || threadId == rmgutil.ProvisionThread {
+		threadId := provautil.ThreadID(threadInt)
+		if threadId == provautil.RootThread || threadId == provautil.ProvisionThread {
 			// Admin tx may not have any other inputs
 			if len(msgTx.TxIn) > 1 {
 				str := fmt.Sprintf("admin transaction with more than 1 input.")
@@ -417,7 +417,7 @@ func checkProofOfWork(header *wire.BlockHeader, powLimit *big.Int, flags Behavio
 // CheckProofOfWork ensures the block header bits which indicate the target
 // difficulty is in min/max range and that the block hash is less than the
 // target difficulty as claimed.
-func CheckProofOfWork(block *rmgutil.Block, powLimit *big.Int) error {
+func CheckProofOfWork(block *provautil.Block, powLimit *big.Int) error {
 	return checkProofOfWork(&block.MsgBlock().Header, powLimit, BFNone)
 }
 
@@ -425,7 +425,7 @@ func CheckProofOfWork(block *rmgutil.Block, powLimit *big.Int) error {
 // input and output scripts in the provided transaction.  This uses the
 // quicker, but imprecise, signature operation counting mechanism from
 // txscript.
-func CountSigOps(tx *rmgutil.Tx) int {
+func CountSigOps(tx *provautil.Tx) int {
 	msgTx := tx.MsgTx()
 
 	// Accumulate the number of signature operations in all transaction
@@ -450,7 +450,7 @@ func CountSigOps(tx *rmgutil.Tx) int {
 // transactions which are of the pay-to-script-hash type.  This uses the
 // precise, signature operation counting mechanism from the script engine which
 // requires access to the input transaction scripts.
-func CountP2SHSigOps(tx *rmgutil.Tx, isCoinBaseTx bool, utxoView *UtxoViewpoint) (int, error) {
+func CountP2SHSigOps(tx *provautil.Tx, isCoinBaseTx bool, utxoView *UtxoViewpoint) (int, error) {
 	// Coinbase transactions have no interesting inputs.
 	if isCoinBaseTx {
 		return 0, nil
@@ -544,7 +544,7 @@ func checkBlockHeaderSanity(header *wire.BlockHeader, powLimit *big.Int, timeSou
 //
 // The flags do not modify the behavior of this function directly, however they
 // are needed to pass along to checkBlockHeaderSanity.
-func checkBlockSanity(block *rmgutil.Block, powLimit *big.Int, timeSource MedianTimeSource, flags BehaviorFlags) error {
+func checkBlockSanity(block *provautil.Block, powLimit *big.Int, timeSource MedianTimeSource, flags BehaviorFlags) error {
 	msgBlock := block.MsgBlock()
 	header := &msgBlock.Header
 	err := checkBlockHeaderSanity(header, powLimit, timeSource, flags)
@@ -655,7 +655,7 @@ func checkBlockSanity(block *rmgutil.Block, powLimit *big.Int, timeSource Median
 
 // CheckBlockSanity performs some preliminary checks on a block to ensure it is
 // sane before continuing with block processing.  These checks are context free.
-func CheckBlockSanity(block *rmgutil.Block, powLimit *big.Int, timeSource MedianTimeSource) error {
+func CheckBlockSanity(block *provautil.Block, powLimit *big.Int, timeSource MedianTimeSource) error {
 	return checkBlockSanity(block, powLimit, timeSource, BFNone)
 }
 
@@ -792,7 +792,7 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 // for how the flags modify its behavior.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) checkBlockContext(block *rmgutil.Block, prevNode *blockNode, flags BehaviorFlags) error {
+func (b *BlockChain) checkBlockContext(block *provautil.Block, prevNode *blockNode, flags BehaviorFlags) error {
 	// The genesis block is valid by definition.
 	if prevNode == nil {
 		return nil
@@ -836,7 +836,7 @@ func (b *BlockChain) checkBlockContext(block *rmgutil.Block, prevNode *blockNode
 // http://r6.ca/blog/20120206T005236Z.html.
 //
 // This function MUST be called with the chain state lock held (for reads).
-func (b *BlockChain) checkBIP0030(node *blockNode, block *rmgutil.Block, view *UtxoViewpoint) error {
+func (b *BlockChain) checkBIP0030(node *blockNode, block *provautil.Block, view *UtxoViewpoint) error {
 	// Fetch utxo details for all of the transactions in this block.
 	// Typically, there will not be any utxos for any of the transactions.
 	fetchSet := make(map[chainhash.Hash]struct{})
@@ -874,7 +874,7 @@ func (b *BlockChain) checkBIP0030(node *blockNode, block *rmgutil.Block, view *U
 //
 // NOTE: The transaction MUST have already been sanity checked with the
 // CheckTransactionSanity function prior to calling this function.
-func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewpoint, chainParams *chaincfg.Params) (int64, error) {
+func CheckTransactionInputs(tx *provautil.Tx, txHeight uint32, utxoView *UtxoViewpoint, chainParams *chaincfg.Params) (int64, error) {
 	// Coinbase transactions have no inputs.
 	if IsCoinBase(tx) {
 		return 0, nil
@@ -967,14 +967,14 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewp
 		originTxAtoms := utxoEntry.AmountByIndex(originTxIndex)
 		if originTxAtoms < 0 {
 			str := fmt.Sprintf("transaction output has negative "+
-				"value of %v", rmgutil.Amount(originTxAtoms))
+				"value of %v", provautil.Amount(originTxAtoms))
 			return 0, ruleError(ErrBadTxOutValue, str)
 		}
-		if originTxAtoms > rmgutil.MaxAtoms {
+		if originTxAtoms > provautil.MaxAtoms {
 			str := fmt.Sprintf("transaction output value of %v is "+
 				"higher than max allowed value of %v",
-				rmgutil.Amount(originTxAtoms),
-				rmgutil.MaxAtoms)
+				provautil.Amount(originTxAtoms),
+				provautil.MaxAtoms)
 			return 0, ruleError(ErrBadTxOutValue, str)
 		}
 
@@ -984,11 +984,11 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewp
 		lastAtomsIn := totalAtomsIn
 		totalAtomsIn += originTxAtoms
 		if totalAtomsIn < lastAtomsIn ||
-			totalAtomsIn > rmgutil.MaxAtoms {
+			totalAtomsIn > provautil.MaxAtoms {
 			str := fmt.Sprintf("total value of all transaction "+
 				"inputs is %v which is higher than max "+
 				"allowed value of %v", totalAtomsIn,
-				rmgutil.MaxAtoms)
+				provautil.MaxAtoms)
 			return 0, ruleError(ErrBadTxOutValue, str)
 		}
 	}
@@ -1003,8 +1003,8 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewp
 
 	isIssueThread := false
 	if hasAdminOut {
-		threadId := rmgutil.ThreadID(threadInt)
-		if threadId == rmgutil.IssueThread {
+		threadId := provautil.ThreadID(threadInt)
+		if threadId == provautil.IssueThread {
 			isIssueThread = true // we should make exception for in/out check
 		}
 	}
@@ -1059,7 +1059,7 @@ func CheckTransactionInputs(tx *rmgutil.Tx, txHeight uint32, utxoView *UtxoViewp
 //
 // NOTE: The passed output MUST have already been sanity checked with the
 // CheckTransactionSanity function prior to calling this function.
-func CheckProvaOutput(tx *rmgutil.Tx, txOutIndex int, keyIDs []btcec.KeyID,
+func CheckProvaOutput(tx *provautil.Tx, txOutIndex int, keyIDs []btcec.KeyID,
 	keyView *KeyViewpoint) error {
 	for _, keyID := range keyIDs {
 		if keyView.aspKeyIdMap[keyID] == nil {
@@ -1076,7 +1076,7 @@ func CheckProvaOutput(tx *rmgutil.Tx, txOutIndex int, keyIDs []btcec.KeyID,
 //
 // NOTE: The transaction MUST have already been sanity checked with the
 // CheckTransactionSanity function prior to calling this function.
-func CheckTransactionOutputs(tx *rmgutil.Tx, keyView *KeyViewpoint) error {
+func CheckTransactionOutputs(tx *provautil.Tx, keyView *KeyViewpoint) error {
 	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
 	hasAdminOut := (threadInt >= 0)
 	if !hasAdminOut {
@@ -1095,8 +1095,8 @@ func CheckTransactionOutputs(tx *rmgutil.Tx, keyView *KeyViewpoint) error {
 		}
 		return nil
 	}
-	threadId := rmgutil.ThreadID(threadInt)
-	if threadId == rmgutil.IssueThread {
+	threadId := provautil.ThreadID(threadInt)
+	if threadId == provautil.IssueThread {
 		for i, output := range adminOutputs {
 			if len(output) > 1 {
 				keyIDs, err := txscript.ExtractKeyIDs(output)
@@ -1237,7 +1237,7 @@ func (b *BlockChain) isValidateKeyRateLimited(node *blockNode, validatePubKey wi
 // checks performed by this function.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint, stxos *[]spentTxOut) error {
+func (b *BlockChain) checkConnectBlock(node *blockNode, block *provautil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint, stxos *[]spentTxOut) error {
 	// If the side chain blocks end up in the database, a call to
 	// CheckBlockSanity should be done here in case a previous version
 	// allowed a block that is no longer valid.  However, since the
@@ -1480,7 +1480,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *rmgutil.Block, ut
 // transaction script validation.
 //
 // This function is safe for concurrent access.
-func (b *BlockChain) CheckConnectBlock(block *rmgutil.Block) error {
+func (b *BlockChain) CheckConnectBlock(block *provautil.Block) error {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 

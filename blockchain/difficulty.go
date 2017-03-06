@@ -6,7 +6,7 @@
 package blockchain
 
 import (
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
+	"github.com/bitgo/prova/chaincfg/chainhash"
 	"math/big"
 	"time"
 )

@@ -9,7 +9,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/bitgo/rmgd/peer"
+	"github.com/bitgo/prova/peer"
 )
 
 func TestSetLogWriter(t *testing.T) {

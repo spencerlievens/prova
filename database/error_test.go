@@ -8,7 +8,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/bitgo/rmgd/database"
+	"github.com/bitgo/prova/database"
 )
 
 // TestErrorCodeStringer tests the stringized output for the ErrorCode type.

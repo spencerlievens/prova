@@ -7,10 +7,10 @@ package mempool
 import (
 	"fmt"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 )
 
 const (
@@ -47,13 +47,13 @@ const (
 	// purposes.  It is also used to help determine if a transaction is
 	// considered dust and as a base for calculating minimum required fees
 	// for larger transactions.  This value is in Atoms/1000 bytes.
-	DefaultMinRelayTxFee = rmgutil.Amount(0)
+	DefaultMinRelayTxFee = provautil.Amount(0)
 )
 
 // calcMinRequiredTxRelayFee returns the minimum transaction fee required for a
 // transaction with the passed serialized size to be accepted into the memory
 // pool and relayed.
-func calcMinRequiredTxRelayFee(serializedSize int64, minRelayTxFee rmgutil.Amount) int64 {
+func calcMinRequiredTxRelayFee(serializedSize int64, minRelayTxFee provautil.Amount) int64 {
 	// Calculate the minimum fee for a transaction to be allowed into the
 	// mempool and relayed by scaling the base fee (which is the minimum
 	// free transaction relay fee).  minTxRelayFee is in Atoms/kB so
@@ -67,8 +67,8 @@ func calcMinRequiredTxRelayFee(serializedSize int64, minRelayTxFee rmgutil.Amoun
 
 	// Set the minimum fee to the maximum possible value if the calculated
 	// fee is not in the valid range for monetary amounts.
-	if minFee < 0 || minFee > rmgutil.MaxAtoms {
-		minFee = rmgutil.MaxAtoms
+	if minFee < 0 || minFee > provautil.MaxAtoms {
+		minFee = provautil.MaxAtoms
 	}
 
 	return minFee
@@ -159,7 +159,7 @@ func calcInputValueAge(tx *wire.MsgTx, utxoView *blockchain.UtxoViewpoint, nextB
 // not perform those checks because the script engine already does this more
 // accurately and concisely via the txscript.ScriptVerifyCleanStack and
 // txscript.ScriptVerifySigPushOnly flags.
-func checkInputsStandard(tx *rmgutil.Tx, utxoView *blockchain.UtxoViewpoint) error {
+func checkInputsStandard(tx *provautil.Tx, utxoView *blockchain.UtxoViewpoint) error {
 	// NOTE: The reference implementation also does a coinbase check here,
 	// but coinbases have already been rejected prior to calling this
 	// function so no need to recheck.
@@ -262,7 +262,7 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 // Dust is defined in terms of the minimum transaction relay fee.  In
 // particular, if the cost to the network to spend coins is more than 1/3 of the
 // minimum transaction relay fee, it is considered dust.
-func isDust(txOut *wire.TxOut, minRelayTxFee rmgutil.Amount) bool {
+func isDust(txOut *wire.TxOut, minRelayTxFee provautil.Amount) bool {
 	// Unspendable outputs are considered dust.
 	if txscript.IsUnspendable(txOut.PkScript) {
 		return true
@@ -337,7 +337,7 @@ func isDust(txOut *wire.TxOut, minRelayTxFee rmgutil.Amount) bool {
 // TODO(prova): Notice that this code is a dupclicate of transaction
 // validation code in CheckTransactionSanity() of validate.go
 // TODO(prova): extract functionality into admin tx validator.
-func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockchain.MedianTimeSource, minRelayTxFee rmgutil.Amount) error {
+func checkTransactionStandard(tx *provautil.Tx, height uint32, timeSource blockchain.MedianTimeSource, minRelayTxFee provautil.Amount) error {
 	// The transaction must be a currently supported version.
 	msgTx := tx.MsgTx()
 	if msgTx.Version > wire.TxVersion || msgTx.Version < 1 {
@@ -419,8 +419,8 @@ func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockcha
 
 		// All Admin tx output values must be 0 value
 		if hasAdminOut {
-			threadId := rmgutil.ThreadID(threadInt)
-			if threadId != rmgutil.IssueThread && txOut.Value != 0 {
+			threadId := provautil.ThreadID(threadInt)
+			if threadId != provautil.IssueThread && txOut.Value != 0 {
 				str := fmt.Sprintf("admin transaction with non-zero value "+
 					"output #%d.", txInIndex)
 				return txRuleError(wire.RejectInvalid, str)
@@ -451,8 +451,8 @@ func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockcha
 	// validation code in CheckTransactionSanity() of validate.go
 	// TODO(prova): extract functionality into admin tx validator.
 	if hasAdminOut {
-		threadId := rmgutil.ThreadID(threadInt)
-		if threadId == rmgutil.RootThread || threadId == rmgutil.ProvisionThread {
+		threadId := provautil.ThreadID(threadInt)
+		if threadId == provautil.RootThread || threadId == provautil.ProvisionThread {
 			// Admin tx may not have any other inputs
 			if len(msgTx.TxIn) > 1 {
 				str := fmt.Sprintf("admin transaction with more than 1 input.")
@@ -479,7 +479,7 @@ func checkTransactionStandard(tx *rmgutil.Tx, height uint32, timeSource blockcha
 			}
 		}
 
-		if threadId == rmgutil.IssueThread {
+		if threadId == provautil.IssueThread {
 			// TODO(prova): take care of issue thread
 			// If issuance/destruction tx, any non-nulldata outputs must be valid Prova scripts
 		}

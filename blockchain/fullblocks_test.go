@@ -7,13 +7,13 @@ package blockchain_test
 
 import (
 	"bytes"
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/blockchain/fullblocktests"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/blockchain/fullblocktests"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 	"testing"
 )
 
@@ -40,7 +40,7 @@ func TestFullBlocks(t *testing.T) {
 	// specified in the test.
 	testAcceptedBlock := func(item fullblocktests.AcceptedBlock) {
 		blockHeight := item.Height
-		block := rmgutil.NewBlock(item.Block)
+		block := provautil.NewBlock(item.Block)
 		block.SetHeight(blockHeight)
 		t.Logf("Testing block %s (hash %s, height %d)",
 			item.Name, block.Hash(), blockHeight)
@@ -68,10 +68,10 @@ func TestFullBlocks(t *testing.T) {
 		}
 
 		// Check Thread Tips
-		if chain.ThreadTips()[rmgutil.RootThread].String() != item.ThreadTips[rmgutil.RootThread].String() {
+		if chain.ThreadTips()[provautil.RootThread].String() != item.ThreadTips[provautil.RootThread].String() {
 			t.Fatalf("block %q (hash %s, height %d) should "+
 				"have threadTips %v, got %v", item.Name, block.Hash(),
-				blockHeight, item.ThreadTips[rmgutil.RootThread], chain.ThreadTips()[rmgutil.RootThread])
+				blockHeight, item.ThreadTips[provautil.RootThread], chain.ThreadTips()[provautil.RootThread])
 		}
 
 		// Check Total Supply
@@ -123,7 +123,7 @@ func TestFullBlocks(t *testing.T) {
 	// specified in the test.
 	testRejectedBlock := func(item fullblocktests.RejectedBlock) {
 		blockHeight := item.Height
-		block := rmgutil.NewBlock(item.Block)
+		block := provautil.NewBlock(item.Block)
 		block.SetHeight(blockHeight)
 		t.Logf("Testing block %s (hash %s, height %d)",
 			item.Name, block.Hash(), blockHeight)
@@ -180,7 +180,7 @@ func TestFullBlocks(t *testing.T) {
 	// orphan or rejected with a rule violation.
 	testOrphanOrRejectedBlock := func(item fullblocktests.OrphanOrRejectedBlock) {
 		blockHeight := item.Height
-		block := rmgutil.NewBlock(item.Block)
+		block := provautil.NewBlock(item.Block)
 		block.SetHeight(blockHeight)
 		t.Logf("Testing block %s (hash %s, height %d)",
 			item.Name, block.Hash(), blockHeight)
@@ -208,7 +208,7 @@ func TestFullBlocks(t *testing.T) {
 	// block specified in the provided test instance.
 	testExpectedTip := func(item fullblocktests.ExpectedTip) {
 		blockHeight := item.Height
-		block := rmgutil.NewBlock(item.Block)
+		block := provautil.NewBlock(item.Block)
 		block.SetHeight(blockHeight)
 		t.Logf("Testing tip for block %s (hash %s, height %d)",
 			item.Name, block.Hash(), blockHeight)

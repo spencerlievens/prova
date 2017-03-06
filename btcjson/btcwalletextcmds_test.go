@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bitgo/rmgd/btcjson"
+	"github.com/bitgo/prova/btcjson"
 )
 
 // TestBtcWalletExtCmds tests all of the btcwallet extended commands marshal and

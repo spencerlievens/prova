@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 	"github.com/btcsuite/btclog"
 )
 

@@ -1,11 +1,11 @@
 wire
 ====
 
-[![Build Status](http://img.shields.io/travis/bitgo/rmgd.svg)]
-(https://travis-ci.org/bitgo/rmgd) [![ISC License]
+[![Build Status](http://img.shields.io/travis/bitgo/prova.svg)]
+(https://travis-ci.org/bitgo/prova) [![ISC License]
 (http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)]
-(http://godoc.org/github.com/bitgo/rmgd/wire)
+(http://godoc.org/github.com/bitgo/prova/wire)
 
 Package wire implements the bitcoin wire protocol.  A comprehensive suite of
 tests with 100% test coverage is provided to ensure proper functionality.
@@ -20,7 +20,7 @@ protocol level.
 ## Installation and Updating
 
 ```bash
-$ go get -u github.com/bitgo/rmgd/wire
+$ go get -u github.com/bitgo/prova/wire
 ```
 
 ## Bitcoin Message Overview

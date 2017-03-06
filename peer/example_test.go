@@ -9,9 +9,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/peer"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/peer"
+	"github.com/bitgo/prova/wire"
 )
 
 // mockRemotePeer creates a basic inbound peer listening on the simnet port for

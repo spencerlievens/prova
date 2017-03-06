@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bitgo/rmgd/blockchain"
+	"github.com/bitgo/prova/blockchain"
 )
 
 // TestTimeSorter tests the timeSorter implementation.

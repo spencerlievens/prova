@@ -7,14 +7,14 @@ package blockchain_test
 import (
 	"testing"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
 )
 
 // TestMerkle tests the BuildMerkleTreeStore API.
 func TestMerkle(t *testing.T) {
-	block := rmgutil.NewBlock(&SomeBlock)
+	block := provautil.NewBlock(&SomeBlock)
 	merkles := blockchain.BuildMerkleTreeStore(block.Transactions())
 	calculatedMerkleRoot := merkles[len(merkles)-1]
 	// TODO(prova) clean this up and generate a new block with correct merkle root

@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bitgo/rmgd/btcjson"
+	"github.com/bitgo/prova/btcjson"
 )
 
 // TestChainSvrCmds tests all of the chain server commands marshal and unmarshal

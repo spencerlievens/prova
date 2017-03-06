@@ -7,13 +7,13 @@ package blockchain_test
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 	"testing"
 	"time"
 )
@@ -23,7 +23,7 @@ import (
 func TestCalcBlockSubsidy(t *testing.T) {
 	subsidy := blockchain.CalcBlockSubsidy(0, &chaincfg.MainNetParams)
 
-	if subsidy != 5000*rmgutil.AtomsPerGram {
+	if subsidy != 5000*provautil.AtomsPerGram {
 		t.Errorf("TestCalcBlockSubsidy: inconsistent initial block "+
 			"subsidy %v", subsidy)
 	}
@@ -43,7 +43,7 @@ func TestCheckConnectBlock(t *testing.T) {
 
 	// The genesis block should fail to connect since it's already inserted.
 	genesisBlock := chaincfg.MainNetParams.GenesisBlock
-	err = chain.CheckConnectBlock(rmgutil.NewBlock(genesisBlock))
+	err = chain.CheckConnectBlock(provautil.NewBlock(genesisBlock))
 	if err == nil {
 		t.Errorf("CheckConnectBlock: Did not received expected error")
 	}
@@ -53,7 +53,7 @@ func TestCheckConnectBlock(t *testing.T) {
 // as expected.
 func TestCheckBlockSanity(t *testing.T) {
 	powLimit := chaincfg.MainNetParams.PowLimit
-	block := rmgutil.NewBlock(&SomeBlock)
+	block := provautil.NewBlock(&SomeBlock)
 	timeSource := blockchain.NewMedianTime()
 	err := blockchain.CheckBlockSanity(block, powLimit, timeSource)
 	if err != nil {
@@ -131,7 +131,7 @@ func TestCheckTransactionSanity(t *testing.T) {
 	// Create prova txout
 	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
-	payAddr, _ := rmgutil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	payAddr, _ := provautil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
 	provaTxOut := wire.TxOut{
 		Value:    300,
@@ -155,19 +155,19 @@ func TestCheckTransactionSanity(t *testing.T) {
 		PkScript: adminOpPkScript,
 	}
 	// create root tx out
-	rootPkScript, _ := txscript.ProvaThreadScript(rmgutil.RootThread)
+	rootPkScript, _ := txscript.ProvaThreadScript(provautil.RootThread)
 	rootTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: rootPkScript,
 	}
 	// create provision tx out
-	provisionPkScript, _ := txscript.ProvaThreadScript(rmgutil.ProvisionThread)
+	provisionPkScript, _ := txscript.ProvaThreadScript(provautil.ProvisionThread)
 	provisionTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: provisionPkScript,
 	}
 	// create provision tx out
-	issuePkScript, _ := txscript.ProvaThreadScript(rmgutil.IssueThread)
+	issuePkScript, _ := txscript.ProvaThreadScript(provautil.IssueThread)
 	issueTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: issuePkScript,
@@ -342,7 +342,7 @@ func TestCheckTransactionSanity(t *testing.T) {
 
 	for _, test := range tests {
 		// Ensure standardness is as expected.
-		err := blockchain.CheckTransactionSanity(rmgutil.NewTx(&test.tx))
+		err := blockchain.CheckTransactionSanity(provautil.NewTx(&test.tx))
 		if err == nil && test.isValid {
 			// Test passes since function returned standard for a
 			// transaction which is intended to be standard.
@@ -406,7 +406,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 	// Create prova txout
 	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
-	payAddr, _ := rmgutil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	payAddr, _ := provautil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
 	provaTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
@@ -473,13 +473,13 @@ func TestCheckTransactionOutputs(t *testing.T) {
 		PkScript: adminOpAspRevPkScript,
 	}
 	// create root tx out
-	rootPkScript, _ := txscript.ProvaThreadScript(rmgutil.RootThread)
+	rootPkScript, _ := txscript.ProvaThreadScript(provautil.RootThread)
 	rootTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: rootPkScript,
 	}
 	// create issue tx out
-	issuePkScript, _ := txscript.ProvaThreadScript(rmgutil.IssueThread)
+	issuePkScript, _ := txscript.ProvaThreadScript(provautil.IssueThread)
 	issueTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: issuePkScript,
@@ -702,7 +702,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 		keyView.SetKeys(test.adminKeySets)
 		keyView.SetLastKeyID(test.lastKeyID)
 		keyView.SetKeyIDs(test.aspKeyIdMap)
-		err := blockchain.CheckTransactionOutputs(rmgutil.NewTx(&test.tx), keyView)
+		err := blockchain.CheckTransactionOutputs(provautil.NewTx(&test.tx), keyView)
 		if err == nil && test.isValid {
 			// Test passes since function returned valid for a
 			// transaction which is intended to be valid.
@@ -748,11 +748,11 @@ func TestCheckTransactionInputs(t *testing.T) {
 		TxOut:    []*wire.TxOut{&prevOut},
 		LockTime: 0,
 	}
-	prevTx := rmgutil.NewTx(&prevMsgTx)
+	prevTx := provautil.NewTx(&prevMsgTx)
 	// Create prova px script
 	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
-	payAddr, _ := rmgutil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	payAddr, _ := provautil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
 	// spend prevTx
 	dummyPrevOut1 := wire.OutPoint{Hash: *prevTx.Hash(), Index: 0}
@@ -763,12 +763,12 @@ func TestCheckTransactionInputs(t *testing.T) {
 		Sequence:         wire.MaxTxInSequenceNum,
 	}
 	// create issue tip tx
-	issuePkScript, _ := txscript.ProvaThreadScript(rmgutil.IssueThread)
+	issuePkScript, _ := txscript.ProvaThreadScript(provautil.IssueThread)
 	issueTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: issuePkScript,
 	}
-	issueTipTx := rmgutil.NewTx(&wire.MsgTx{
+	issueTipTx := provautil.NewTx(&wire.MsgTx{
 		Version:  1,
 		TxIn:     []*wire.TxIn{&dummyTxIn},
 		TxOut:    []*wire.TxOut{&issueTxOut},
@@ -841,7 +841,7 @@ func TestCheckTransactionInputs(t *testing.T) {
 		utxoView := blockchain.NewUtxoViewpoint()
 		utxoView.AddTxOuts(prevTx, 100)
 		utxoView.AddTxOuts(issueTipTx, 100)
-		_, err := blockchain.CheckTransactionInputs(rmgutil.NewTx(&test.tx),
+		_, err := blockchain.CheckTransactionInputs(provautil.NewTx(&test.tx),
 			test.height, utxoView, &chaincfg.MainNetParams)
 		if err == nil && test.isValid {
 			// Test passes since function returned valid for a

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	. "github.com/bitgo/rmgd/chaincfg"
+	. "github.com/bitgo/prova/chaincfg"
 )
 
 // Define some of the required parameters for a user-registered

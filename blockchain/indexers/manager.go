@@ -8,11 +8,11 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 )
 
 var (
@@ -68,7 +68,7 @@ func dbFetchIndexerTip(dbTx database.Tx, idxKey []byte) (*chainhash.Hash, int32,
 // given block using the provided indexer and updates the tip of the indexer
 // accordingly.  An error will be returned if the current tip for the indexer is
 // not the previous block for the passed block.
-func dbIndexConnectBlock(dbTx database.Tx, indexer Indexer, block *rmgutil.Block, view *blockchain.UtxoViewpoint) error {
+func dbIndexConnectBlock(dbTx database.Tx, indexer Indexer, block *provautil.Block, view *blockchain.UtxoViewpoint) error {
 	// Assert that the block being connected properly connects to the
 	// current tip of the index.
 	idxKey := indexer.Key()
@@ -96,7 +96,7 @@ func dbIndexConnectBlock(dbTx database.Tx, indexer Indexer, block *rmgutil.Block
 // given block using the provided indexer and updates the tip of the indexer
 // accordingly.  An error will be returned if the current tip for the indexer is
 // not the passed block.
-func dbIndexDisconnectBlock(dbTx database.Tx, indexer Indexer, block *rmgutil.Block, view *blockchain.UtxoViewpoint) error {
+func dbIndexDisconnectBlock(dbTx database.Tx, indexer Indexer, block *provautil.Block, view *blockchain.UtxoViewpoint) error {
 	// Assert that the block being disconnected is the current tip of the
 	// index.
 	idxKey := indexer.Key()
@@ -307,7 +307,7 @@ func (m *Manager) Init(chain *blockchain.BlockChain) error {
 				if err != nil {
 					return err
 				}
-				block, err := rmgutil.NewBlockFromBytes(blockBytes)
+				block, err := provautil.NewBlockFromBytes(blockBytes)
 				if err != nil {
 					return err
 				}
@@ -480,7 +480,7 @@ func dbFetchTx(dbTx database.Tx, hash *chainhash.Hash) (*wire.MsgTx, error) {
 // transactions in the block.  This is sometimes needed when catching indexes up
 // because many of the txouts could actually already be spent however the
 // associated scripts are still required to index them.
-func makeUtxoView(dbTx database.Tx, block *rmgutil.Block) (*blockchain.UtxoViewpoint, error) {
+func makeUtxoView(dbTx database.Tx, block *provautil.Block) (*blockchain.UtxoViewpoint, error) {
 	view := blockchain.NewUtxoViewpoint()
 	for txIdx, tx := range block.Transactions() {
 		// Coinbases do not reference any inputs.  Since the block is
@@ -500,7 +500,7 @@ func makeUtxoView(dbTx database.Tx, block *rmgutil.Block) (*blockchain.UtxoViewp
 				return nil, err
 			}
 
-			view.AddTxOuts(rmgutil.NewTx(originTx), 0)
+			view.AddTxOuts(provautil.NewTx(originTx), 0)
 		}
 	}
 
@@ -512,7 +512,7 @@ func makeUtxoView(dbTx database.Tx, block *rmgutil.Block) (*blockchain.UtxoViewp
 // checks, and invokes each indexer.
 //
 // This is part of the blockchain.IndexManager interface.
-func (m *Manager) ConnectBlock(dbTx database.Tx, block *rmgutil.Block, view *blockchain.UtxoViewpoint) error {
+func (m *Manager) ConnectBlock(dbTx database.Tx, block *provautil.Block, view *blockchain.UtxoViewpoint) error {
 	// Call each of the currently active optional indexes with the block
 	// being connected so they can update accordingly.
 	for _, index := range m.enabledIndexes {
@@ -530,7 +530,7 @@ func (m *Manager) ConnectBlock(dbTx database.Tx, block *rmgutil.Block, view *blo
 // the index entries associated with the block.
 //
 // This is part of the blockchain.IndexManager interface.
-func (m *Manager) DisconnectBlock(dbTx database.Tx, block *rmgutil.Block, view *blockchain.UtxoViewpoint) error {
+func (m *Manager) DisconnectBlock(dbTx database.Tx, block *provautil.Block, view *blockchain.UtxoViewpoint) error {
 	// Call each of the currently active optional indexes with the block
 	// being disconnected so they can update accordingly.
 	for _, index := range m.enabledIndexes {

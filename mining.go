@@ -11,14 +11,14 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/mempool"
-	"github.com/bitgo/rmgd/mining"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/mempool"
+	"github.com/bitgo/prova/mining"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 )
 
 const (
@@ -37,14 +37,14 @@ const (
 	// coinbaseFlags is added to the coinbase script of a generated block
 	// and is used to monitor BIP16 support as well as blocks that are
 	// generated via btcd.
-	coinbaseFlags = "/rmgd/"
+	coinbaseFlags = "/prova/"
 )
 
 // txPrioItem houses a transaction along with extra information that allows the
 // transaction to be prioritized and track dependencies on other transactions
 // which have not been mined into a block yet.
 type txPrioItem struct {
-	tx       *rmgutil.Tx
+	tx       *provautil.Tx
 	fee      int64
 	priority float64
 	feePerKB int64
@@ -236,7 +236,7 @@ func standardCoinbaseScript() ([]byte, error) {
 //
 // See the comment for NewBlockTemplate for more information about why the nil
 // address handling is useful.
-func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight uint32, addr rmgutil.Address) (*rmgutil.Tx, error) {
+func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight uint32, addr provautil.Address) (*provautil.Tx, error) {
 	// Create the script to pay to the provided payment address if one was
 	// specified.  Otherwise create a script that allows the coinbase to be
 	// redeemable by anyone.
@@ -286,13 +286,13 @@ func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight uint32, addr rmguti
 		minrLog.Debugf("Created coinbase tx: %v", hex.EncodeToString(w.Bytes()))
 	}
 
-	return rmgutil.NewTx(tx), nil
+	return provautil.NewTx(tx), nil
 }
 
 // spendTransaction updates the passed view by marking the inputs to the passed
 // transaction as spent.  It also adds all outputs in the passed transaction
 // which are not provably unspendable as available unspent transaction outputs.
-func spendTransaction(utxoView *blockchain.UtxoViewpoint, tx *rmgutil.Tx, height uint32) error {
+func spendTransaction(utxoView *blockchain.UtxoViewpoint, tx *provautil.Tx, height uint32) error {
 	for _, txIn := range tx.MsgTx().TxIn {
 		originHash := &txIn.PreviousOutPoint.Hash
 		originIndex := txIn.PreviousOutPoint.Index
@@ -308,7 +308,7 @@ func spendTransaction(utxoView *blockchain.UtxoViewpoint, tx *rmgutil.Tx, height
 
 // logSkippedDeps logs any dependencies which are also skipped as a result of
 // skipping a transaction while generating a block template at the trace level.
-func logSkippedDeps(tx *rmgutil.Tx, deps *list.List) {
+func logSkippedDeps(tx *provautil.Tx, deps *list.List) {
 	if deps == nil {
 		return
 	}
@@ -421,7 +421,7 @@ func medianAdjustedTime(chainState *chainState, timeSource blockchain.MedianTime
 //  |  transactions (while block size   |   |
 //  |  <= policy.BlockMinSize)          |   |
 //   -----------------------------------  --
-func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress rmgutil.Address, validateKey *btcec.PrivateKey) (*BlockTemplate, error) {
+func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress provautil.Address, validateKey *btcec.PrivateKey) (*BlockTemplate, error) {
 	var txSource mining.TxSource = server.txMemPool
 	blockManager := server.blockManager
 	timeSource := server.timeSource
@@ -466,7 +466,7 @@ func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress rmguti
 	// generated block with reserved space.  Also create a utxo view to
 	// house all of the input transactions so multiple lookups can be
 	// avoided.
-	blockTxns := make([]*rmgutil.Tx, 0, len(sourceTxns))
+	blockTxns := make([]*provautil.Tx, 0, len(sourceTxns))
 	blockTxns = append(blockTxns, coinbaseTx)
 	blockUtxos := blockchain.NewUtxoViewpoint()
 	keyView := blockchain.NewKeyViewpoint()
@@ -801,7 +801,7 @@ mempoolLoop:
 	// Finally, perform a full check on the created block against the chain
 	// consensus rules to ensure it properly connects to the current best
 	// chain with no issues.
-	block := rmgutil.NewBlock(&msgBlock)
+	block := provautil.NewBlock(&msgBlock)
 	if err := blockManager.chain.CheckConnectBlock(block); err != nil {
 		return nil, err
 	}

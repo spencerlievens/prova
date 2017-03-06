@@ -11,12 +11,12 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 )
 
 // solveBlock attempts to find a nonce which makes the passed block header hash
@@ -87,7 +87,7 @@ func standardCoinbaseScript(nextBlockHeight int32) ([]byte, error) {
 // createCoinbaseTx returns a coinbase transaction paying an appropriate
 // subsidy based on the passed block height to the provided address.
 func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight int32,
-	addr rmgutil.Address, net *chaincfg.Params) (*rmgutil.Tx, error) {
+	addr provautil.Address, net *chaincfg.Params) (*provautil.Tx, error) {
 
 	// Create the script to pay to the provided payment address.
 	pkScript, err := txscript.PayToAddrScript(addr)
@@ -108,13 +108,13 @@ func createCoinbaseTx(coinbaseScript []byte, nextBlockHeight int32,
 		Value:    blockchain.CalcBlockSubsidy(nextBlockHeight, net),
 		PkScript: pkScript,
 	})
-	return rmgutil.NewTx(tx), nil
+	return provautil.NewTx(tx), nil
 }
 
 // createBlock creates a new block building from the previous block.
-func createBlock(prevBlock *rmgutil.Block, inclusionTxs []*rmgutil.Tx,
+func createBlock(prevBlock *provautil.Block, inclusionTxs []*provautil.Tx,
 	blockVersion int32, blockTime time.Time,
-	miningAddr rmgutil.Address, net *chaincfg.Params) (*rmgutil.Block, error) {
+	miningAddr provautil.Address, net *chaincfg.Params) (*provautil.Block, error) {
 
 	prevHash := prevBlock.Hash()
 	blockHeight := prevBlock.Height() + 1
@@ -141,7 +141,7 @@ func createBlock(prevBlock *rmgutil.Block, inclusionTxs []*rmgutil.Tx,
 	}
 
 	// Create a new block ready to be solved.
-	blockTxns := []*rmgutil.Tx{coinbaseTx}
+	blockTxns := []*provautil.Tx{coinbaseTx}
 	if inclusionTxs != nil {
 		blockTxns = append(blockTxns, inclusionTxs...)
 	}
@@ -167,6 +167,6 @@ func createBlock(prevBlock *rmgutil.Block, inclusionTxs []*rmgutil.Tx,
 		return nil, errors.New("Unable to solve block")
 	}
 
-	utilBlock := rmgutil.NewBlock(&block)
+	utilBlock := provautil.NewBlock(&block)
 	return utilBlock, nil
 }

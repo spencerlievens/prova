@@ -15,10 +15,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	. "github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	. "github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 )
 
 // testName returns a descriptive test name for the given reference test data.
@@ -196,7 +196,7 @@ func TestScriptInvalidTests(t *testing.T) {
 	}
 
 	var tests [][]string
-	var inputAmt rmgutil.Amount
+	var inputAmt provautil.Amount
 	err = json.Unmarshal(file, &tests)
 	if err != nil {
 		t.Errorf("TestBitcoindInvalidTests couldn't Unmarshal: %v",
@@ -218,7 +218,7 @@ func TestScriptInvalidTests(t *testing.T) {
 					i)
 				continue
 			}
-			inputAmt, err = rmgutil.NewAmount(0.0)
+			inputAmt, err = provautil.NewAmount(0.0)
 			if err != nil {
 				t.Errorf("%s: can't parse input amt: %v", name, err)
 				continue
@@ -268,7 +268,7 @@ func TestScriptValidTests(t *testing.T) {
 	}
 
 	var tests [][]string
-	var inputAmt rmgutil.Amount
+	var inputAmt provautil.Amount
 	err = json.Unmarshal(file, &tests)
 	if err != nil {
 		t.Errorf("TestBitcoindValidTests couldn't Unmarshal: %v",
@@ -290,7 +290,7 @@ func TestScriptValidTests(t *testing.T) {
 					i)
 				continue
 			}
-			inputAmt, err = rmgutil.NewAmount(0.0)
+			inputAmt, err = provautil.NewAmount(0.0)
 			if err != nil {
 				t.Errorf("%s: can't parse input amt: %v", name, err)
 				continue
@@ -389,7 +389,7 @@ testloop:
 			continue
 		}
 
-		tx, err := rmgutil.NewTxFromBytes(serializedTx)
+		tx, err := provautil.NewTxFromBytes(serializedTx)
 		if err != nil {
 			t.Errorf("bad test (arg 2 not msgtx %v) %d: %v", err,
 				i, test)
@@ -546,7 +546,7 @@ testloop:
 			continue
 		}
 
-		tx, err := rmgutil.NewTxFromBytes(serializedTx)
+		tx, err := provautil.NewTxFromBytes(serializedTx)
 		if err != nil {
 			t.Errorf("bad test (arg 2 not msgtx %v) %d: %v", err,
 				i, test)

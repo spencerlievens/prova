@@ -16,8 +16,8 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 )
 
 // TstMaxScriptSize makes the internal maxScriptSize constant available to the
@@ -3796,7 +3796,7 @@ func TestSigHashNew(t *testing.T) {
 	// all, the proper input amount, and with the corresponding pkScript.
 	idx := 1
 	shType := SigHashAll
-	amt := rmgutil.Amount(6e8)
+	amt := provautil.Amount(6e8)
 	pkScriptEncoded := "00141d0f172a0ecb48aee1be1f2687d2963ae33f71a1"
 	decodedScript, err := hex.DecodeString(pkScriptEncoded)
 	if err != nil {

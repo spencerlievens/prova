@@ -3,20 +3,20 @@
 // license that can be found in the LICENSE file.
 
 // NOTE: This file is intended to house the RPC commands that are supported by
-// an rmgd chain server.
+// a prova chain server.
 
 package btcjson
 
 // SetValidateKeysCmd defines the setvalidatekeys JSON-RPC command.
 // This command is not a standard command, it is an extension for operating
-// rmgd.
+// prova.
 type SetValidateKeysCmd struct {
 	PrivKeys []string
 }
 
 // NewSetValidateKeysCmd returns a new SetValidateKeysCmd which can
 // be used to issue a setvalidatekeys JSON-RPC command.  This command is
-// not a standard command. It is an extension for rmgd.
+// not a standard command. It is an extension for prova.
 func NewSetValidateKeysCmd(privKeys []string) *SetValidateKeysCmd {
 	return &SetValidateKeysCmd{
 		PrivKeys: privKeys,

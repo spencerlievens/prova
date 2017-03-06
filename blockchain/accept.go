@@ -4,7 +4,7 @@
 
 package blockchain
 
-import "github.com/bitgo/rmgd/rmgutil"
+import "github.com/bitgo/prova/provautil"
 
 // maybeAcceptBlock potentially accepts a block into the block chain and, if
 // accepted, returns whether or not it is on the main chain.  It performs
@@ -20,7 +20,7 @@ import "github.com/bitgo/rmgd/rmgutil"
 // their documentation for how the flags modify their behavior.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) maybeAcceptBlock(block *rmgutil.Block, flags BehaviorFlags) (bool, error) {
+func (b *BlockChain) maybeAcceptBlock(block *provautil.Block, flags BehaviorFlags) (bool, error) {
 	dryRun := flags&BFDryRun == BFDryRun
 
 	// Get a block node for the block previous to this one.  Will be nil

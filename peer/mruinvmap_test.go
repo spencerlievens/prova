@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/wire"
 )
 
 // TestMruInventoryMap ensures the MruInventoryMap behaves as expected including

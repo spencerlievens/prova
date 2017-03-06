@@ -5,8 +5,8 @@
 package main
 
 import (
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/wire"
 )
 
 // activeNetParams is a pointer to the parameters specific to the

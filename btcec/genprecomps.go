@@ -17,7 +17,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/bitgo/rmgd/btcec"
+	"github.com/bitgo/prova/btcec"
 )
 
 func main() {

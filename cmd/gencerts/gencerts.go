@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/prova/provautil"
 	flags "github.com/btcsuite/go-flags"
 )
 
@@ -58,7 +58,7 @@ func main() {
 	}
 
 	validUntil := time.Now().Add(time.Duration(cfg.Years) * 365 * 24 * time.Hour)
-	cert, key, err := rmgutil.NewTLSCertPair(cfg.Organization, validUntil, cfg.ExtraHosts)
+	cert, key, err := provautil.NewTLSCertPair(cfg.Organization, validUntil, cfg.ExtraHosts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "cannot generate certificate pair: %v\n", err)
 		os.Exit(1)
@@ -81,7 +81,7 @@ func main() {
 func cleanAndExpandPath(path string) string {
 	// Expand initial ~ to OS specific home directory.
 	if strings.HasPrefix(path, "~") {
-		appHomeDir := rmgutil.AppDataDir("gencerts", false)
+		appHomeDir := provautil.AppDataDir("gencerts", false)
 		homeDir := filepath.Dir(appHomeDir)
 		path = strings.Replace(path, "~", homeDir, 1)
 	}

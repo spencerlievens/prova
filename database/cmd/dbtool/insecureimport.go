@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 )
 
 // importCmd defines the configuration options for the insecureimport command.
@@ -108,7 +108,7 @@ func (bi *blockImporter) readBlock() ([]byte, error) {
 // NOTE: This is not a safe import as it does not verify chain rules.
 func (bi *blockImporter) processBlock(serializedBlock []byte) (bool, error) {
 	// Deserialize the block which includes checks for malformed blocks.
-	block, err := rmgutil.NewBlockFromBytes(serializedBlock)
+	block, err := provautil.NewBlockFromBytes(serializedBlock)
 	if err != nil {
 		return false, err
 	}

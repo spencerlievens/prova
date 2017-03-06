@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 	"github.com/btcsuite/btcrpcclient"
 )
 
@@ -293,7 +293,7 @@ func (h *Harness) connectRPCClient() error {
 // wallet.
 //
 // This function is safe for concurrent access.
-func (h *Harness) NewAddress() (rmgutil.Address, error) {
+func (h *Harness) NewAddress() (provautil.Address, error) {
 	return h.wallet.NewAddress()
 }
 
@@ -301,7 +301,7 @@ func (h *Harness) NewAddress() (rmgutil.Address, error) {
 // wallet.
 //
 // This function is safe for concurrent access.
-func (h *Harness) ConfirmedBalance() rmgutil.Amount {
+func (h *Harness) ConfirmedBalance() provautil.Amount {
 	return h.wallet.ConfirmedBalance()
 }
 
@@ -311,7 +311,7 @@ func (h *Harness) ConfirmedBalance() rmgutil.Amount {
 //
 // This function is safe for concurrent access.
 func (h *Harness) SendOutputs(targetOutputs []*wire.TxOut,
-	feeRate rmgutil.Amount) (*chainhash.Hash, error) {
+	feeRate provautil.Amount) (*chainhash.Hash, error) {
 
 	return h.wallet.SendOutputs(targetOutputs, feeRate)
 }
@@ -327,7 +327,7 @@ func (h *Harness) SendOutputs(targetOutputs []*wire.TxOut,
 //
 // This function is safe for concurrent access.
 func (h *Harness) CreateTransaction(targetOutputs []*wire.TxOut,
-	feeRate rmgutil.Amount) (*wire.MsgTx, error) {
+	feeRate provautil.Amount) (*wire.MsgTx, error) {
 
 	return h.wallet.CreateTransaction(targetOutputs, feeRate)
 }
@@ -357,8 +357,8 @@ func (h *Harness) RPCConfig() btcrpcclient.ConnConfig {
 // blockTime parameter if one doesn't wish to set a custom time.
 //
 // This function is safe for concurrent access.
-func (h *Harness) GenerateAndSubmitBlock(txns []*rmgutil.Tx, blockVersion int32,
-	blockTime time.Time) (*rmgutil.Block, error) {
+func (h *Harness) GenerateAndSubmitBlock(txns []*provautil.Tx, blockVersion int32,
+	blockTime time.Time) (*provautil.Block, error) {
 
 	h.Lock()
 	defer h.Unlock()
@@ -375,7 +375,7 @@ func (h *Harness) GenerateAndSubmitBlock(txns []*rmgutil.Tx, blockVersion int32,
 	if err != nil {
 		return nil, err
 	}
-	prevBlock := rmgutil.NewBlock(mBlock)
+	prevBlock := provautil.NewBlock(mBlock)
 
 	// Create a new block including the specified transactions
 	newBlock, err := createBlock(prevBlock, txns, blockVersion,

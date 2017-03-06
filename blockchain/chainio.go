@@ -8,11 +8,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 	"math/big"
 	"sort"
 )
@@ -410,7 +410,7 @@ func serializeSpendJournalEntry(stxos []spentTxOut) []byte {
 // view MUST have the utxos referenced by all of the transactions available for
 // the passed block since that information is required to reconstruct the spent
 // txouts.
-func dbFetchSpendJournalEntry(dbTx database.Tx, block *rmgutil.Block, view *UtxoViewpoint) ([]spentTxOut, error) {
+func dbFetchSpendJournalEntry(dbTx database.Tx, block *provautil.Block, view *UtxoViewpoint) ([]spentTxOut, error) {
 	// Exclude the coinbase transaction since it can't spend anything.
 	spendBucket := dbTx.Metadata().Bucket(spendJournalBucketName)
 	serialized := spendBucket.Get(block.Hash()[:])
@@ -982,16 +982,16 @@ var adminKeysOrder = []btcec.KeySetType{
 }
 
 // threadOrder is a helper to iterate maps of thread tips in order.
-var threadOrder = []rmgutil.ThreadID{
-	rmgutil.RootThread,
-	rmgutil.ProvisionThread,
-	rmgutil.IssueThread,
+var threadOrder = []provautil.ThreadID{
+	provautil.RootThread,
+	provautil.ProvisionThread,
+	provautil.IssueThread,
 }
 
 // serializeKeySet returns the serialization of the passed key sets.
 // This is data to be stored in the key bucket.
 func serializeKeySet(adminKeySets map[btcec.KeySetType]btcec.PublicKeySet,
-	aspKeyIdMap btcec.KeyIdMap, threadTips map[rmgutil.ThreadID]*wire.OutPoint,
+	aspKeyIdMap btcec.KeyIdMap, threadTips map[provautil.ThreadID]*wire.OutPoint,
 	lastKeyID btcec.KeyID, totalSupply uint64) []byte {
 	// Calculate the full size needed to serialize the chain state.
 	serializedLen := uint32(0)
@@ -1061,7 +1061,7 @@ func serializeKeySet(adminKeySets map[btcec.KeySetType]btcec.PublicKeySet,
 // block.
 func deserializeKeySet(serializedData []byte) (
 	map[btcec.KeySetType]btcec.PublicKeySet, btcec.KeyIdMap,
-	map[rmgutil.ThreadID]*wire.OutPoint, btcec.KeyID, uint64, error) {
+	map[provautil.ThreadID]*wire.OutPoint, btcec.KeyID, uint64, error) {
 
 	offset := 0
 
@@ -1074,7 +1074,7 @@ func deserializeKeySet(serializedData []byte) (
 		}
 	}
 
-	threadTips := make(map[rmgutil.ThreadID]*wire.OutPoint)
+	threadTips := make(map[provautil.ThreadID]*wire.OutPoint)
 	for _, threadId := range threadOrder {
 
 		hash, _ := chainhash.NewHash(serializedData[offset : offset+chainhash.HashSize])
@@ -1151,7 +1151,7 @@ func deserializeKeySet(serializedData []byte) (
 func dbPutKeySet(dbTx database.Tx,
 	adminKeys map[btcec.KeySetType]btcec.PublicKeySet,
 	keyIdMap map[btcec.KeyID]*btcec.PublicKey,
-	threadTips map[rmgutil.ThreadID]*wire.OutPoint,
+	threadTips map[provautil.ThreadID]*wire.OutPoint,
 	lastKeyID btcec.KeyID, totalSupply uint64) error {
 	// Serialize the adminKeySets.
 	serializedData := serializeKeySet(adminKeys, keyIdMap, threadTips,
@@ -1270,7 +1270,7 @@ func dbPutBestState(dbTx database.Tx, snapshot *BestState, workSum *big.Int) err
 // the genesis block, so it must only be called on an uninitialized database.
 func (b *BlockChain) createChainState() error {
 	// Create a new node from the genesis block and set it as the best node.
-	genesisBlock := rmgutil.NewBlock(b.chainParams.GenesisBlock)
+	genesisBlock := provautil.NewBlock(b.chainParams.GenesisBlock)
 	header := &genesisBlock.MsgBlock().Header
 	node := newBlockNode(header, genesisBlock.Hash())
 	node.inMainChain = true
@@ -1300,9 +1300,9 @@ func (b *BlockChain) createChainState() error {
 	utxoView.connectTransaction(genesisBlock.Transactions()[0], 0, stxos)
 
 	// Initiate admin thread tips
-	b.threadTips[rmgutil.RootThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 0)
-	b.threadTips[rmgutil.ProvisionThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 1)
-	b.threadTips[rmgutil.IssueThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 2)
+	b.threadTips[provautil.RootThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 0)
+	b.threadTips[provautil.ProvisionThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 1)
+	b.threadTips[provautil.IssueThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 2)
 
 	// Set the last key id to the highest key id in the wsp key map.
 	var lastKeyID btcec.KeyID
@@ -1497,8 +1497,8 @@ func dbFetchHeaderByHeight(dbTx database.Tx, height uint32) (*wire.BlockHeader, 
 
 // dbFetchBlockByHash uses an existing database transaction to retrieve the raw
 // block for the provided hash, deserialize it, retrieve the appropriate height
-// from the index, and return a rmgutil.Block with the height set.
-func dbFetchBlockByHash(dbTx database.Tx, hash *chainhash.Hash) (*rmgutil.Block, error) {
+// from the index, and return a provautil.Block with the height set.
+func dbFetchBlockByHash(dbTx database.Tx, hash *chainhash.Hash) (*provautil.Block, error) {
 	// Load the raw block bytes from the database.
 	blockBytes, err := dbTx.FetchBlock(hash)
 	if err != nil {
@@ -1506,7 +1506,7 @@ func dbFetchBlockByHash(dbTx database.Tx, hash *chainhash.Hash) (*rmgutil.Block,
 	}
 
 	// Create the encapsulated block and set the height appropriately.
-	block, err := rmgutil.NewBlockFromBytes(blockBytes)
+	block, err := provautil.NewBlockFromBytes(blockBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -1515,9 +1515,9 @@ func dbFetchBlockByHash(dbTx database.Tx, hash *chainhash.Hash) (*rmgutil.Block,
 }
 
 // dbFetchBlockByHeight uses an existing database transaction to retrieve the
-// raw block for the provided height, deserialize it, and return a rmgutil.Block
+// raw block for the provided height, deserialize it, and return a provautil.Block
 // with the height set.
-func dbFetchBlockByHeight(dbTx database.Tx, height uint32) (*rmgutil.Block, error) {
+func dbFetchBlockByHeight(dbTx database.Tx, height uint32) (*provautil.Block, error) {
 	// First find the hash associated with the provided height in the index.
 	hash, err := dbFetchHashByHeight(dbTx, height)
 	if err != nil {
@@ -1531,7 +1531,7 @@ func dbFetchBlockByHeight(dbTx database.Tx, height uint32) (*rmgutil.Block, erro
 	}
 
 	// Create the encapsulated block and set the height appropriately.
-	block, err := rmgutil.NewBlockFromBytes(blockBytes)
+	block, err := provautil.NewBlockFromBytes(blockBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -1590,8 +1590,8 @@ func (b *BlockChain) BlockHashByHeight(blockHeight uint32) (*chainhash.Hash, err
 // BlockByHeight returns the block at the given height in the main chain.
 //
 // This function is safe for concurrent access.
-func (b *BlockChain) BlockByHeight(blockHeight uint32) (*rmgutil.Block, error) {
-	var block *rmgutil.Block
+func (b *BlockChain) BlockByHeight(blockHeight uint32) (*provautil.Block, error) {
+	var block *provautil.Block
 	err := b.db.View(func(dbTx database.Tx) error {
 		var err error
 		block, err = dbFetchBlockByHeight(dbTx, blockHeight)
@@ -1604,8 +1604,8 @@ func (b *BlockChain) BlockByHeight(blockHeight uint32) (*rmgutil.Block, error) {
 // the appropriate chain height set.
 //
 // This function is safe for concurrent access.
-func (b *BlockChain) BlockByHash(hash *chainhash.Hash) (*rmgutil.Block, error) {
-	var block *rmgutil.Block
+func (b *BlockChain) BlockByHash(hash *chainhash.Hash) (*provautil.Block, error) {
+	var block *provautil.Block
 	err := b.db.View(func(dbTx database.Tx) error {
 		var err error
 		block, err = dbFetchBlockByHash(dbTx, hash)

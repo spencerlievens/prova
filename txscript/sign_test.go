@@ -8,13 +8,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 	"testing"
 )
 
@@ -37,11 +37,11 @@ type addressToKey struct {
 
 func mkGetKey(keys map[string]addressToKey) txscript.KeyDB {
 	if keys == nil {
-		return txscript.KeyClosure(func(addr rmgutil.Address) ([]txscript.PrivateKey, error) {
+		return txscript.KeyClosure(func(addr provautil.Address) ([]txscript.PrivateKey, error) {
 			return nil, errors.New("nope")
 		})
 	}
-	return txscript.KeyClosure(func(addr rmgutil.Address) ([]txscript.PrivateKey, error) {
+	return txscript.KeyClosure(func(addr provautil.Address) ([]txscript.PrivateKey, error) {
 		a2k, ok := keys[addr.EncodeAddress()]
 		if !ok {
 			return nil, errors.New("nope")
@@ -52,12 +52,12 @@ func mkGetKey(keys map[string]addressToKey) txscript.KeyDB {
 
 func mkGetScript(scripts map[string][]byte) txscript.ScriptDB {
 	if scripts == nil {
-		return txscript.ScriptClosure(func(addr rmgutil.Address) (
+		return txscript.ScriptClosure(func(addr provautil.Address) (
 			[]byte, error) {
 			return nil, errors.New("nope")
 		})
 	}
-	return txscript.ScriptClosure(func(addr rmgutil.Address) ([]byte,
+	return txscript.ScriptClosure(func(addr provautil.Address) ([]byte,
 		error) {
 		script, ok := scripts[addr.EncodeAddress()]
 		if !ok {
@@ -224,10 +224,10 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 		pk3 := (*btcec.PublicKey)(&key3.PublicKey)
-		pkHash := rmgutil.Hash160(pk3.SerializeCompressed())
+		pkHash := provautil.Hash160(pk3.SerializeCompressed())
 
 		//Creation of Prova address
-		addr, err := rmgutil.NewAddressProva(pkHash,
+		addr, err := provautil.NewAddressProva(pkHash,
 			[]btcec.KeyID{keyId1, keyId2}, &chaincfg.TestNet3Params)
 		if err != nil {
 			t.Errorf("failed to make Prova address for %s: %v",
@@ -243,7 +243,7 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 
-		lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+		lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
 			return []txscript.PrivateKey{
 				txscript.PrivateKey{key1, true},
 				txscript.PrivateKey{key2, true},
@@ -270,10 +270,10 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 		pk3 := (*btcec.PublicKey)(&key3.PublicKey)
-		pkHash := rmgutil.Hash160(pk3.SerializeCompressed())
+		pkHash := provautil.Hash160(pk3.SerializeCompressed())
 
 		//Creation of Prova address
-		addr, err := rmgutil.NewAddressProva(pkHash,
+		addr, err := provautil.NewAddressProva(pkHash,
 			[]btcec.KeyID{keyId1, keyId2}, &chaincfg.TestNet3Params)
 		if err != nil {
 			t.Errorf("failed to make Prova address for %s: %v",
@@ -289,7 +289,7 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 
-		lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+		lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
 			return []txscript.PrivateKey{
 				txscript.PrivateKey{key1, true},
 			}, nil
@@ -311,7 +311,7 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 
-		lookupKey = func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+		lookupKey = func(a provautil.Address) ([]txscript.PrivateKey, error) {
 			return []txscript.PrivateKey{
 				txscript.PrivateKey{key2, true},
 			}, nil
@@ -337,7 +337,7 @@ func TestSignTxOutput(t *testing.T) {
 
 	// Basic Check Thread
 	for i := range tx.TxIn {
-		threadID := rmgutil.ThreadID(i)
+		threadID := provautil.ThreadID(i)
 		msg := fmt.Sprintf("%d:%d", hashType, i)
 
 		scriptPkScript, err := txscript.ProvaThreadScript(threadID)
@@ -346,7 +346,7 @@ func TestSignTxOutput(t *testing.T) {
 				"for %s: %v", msg, err)
 		}
 
-		lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+		lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
 			return []txscript.PrivateKey{
 				txscript.PrivateKey{key1, true},
 				txscript.PrivateKey{key2, true},
@@ -362,7 +362,7 @@ func TestSignTxOutput(t *testing.T) {
 
 	// Two part Check Thread, sign with one key then the other.
 	for i := range tx.TxIn {
-		threadID := rmgutil.ThreadID(i)
+		threadID := provautil.ThreadID(i)
 		msg := fmt.Sprintf("%d:%d", hashType, i)
 
 		scriptPkScript, err := txscript.ProvaThreadScript(threadID)
@@ -371,7 +371,7 @@ func TestSignTxOutput(t *testing.T) {
 				"for %s: %v", msg, err)
 		}
 
-		lookupKey := func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+		lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
 			return []txscript.PrivateKey{
 				txscript.PrivateKey{key1, true},
 			}, nil
@@ -393,7 +393,7 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 
-		lookupKey = func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+		lookupKey = func(a provautil.Address) ([]txscript.PrivateKey, error) {
 			return []txscript.PrivateKey{
 				txscript.PrivateKey{key2, true},
 			}, nil

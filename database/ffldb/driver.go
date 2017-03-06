@@ -7,8 +7,8 @@ package ffldb
 import (
 	"fmt"
 
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/wire"
 	"github.com/btcsuite/btclog"
 )
 

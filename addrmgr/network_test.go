@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bitgo/rmgd/addrmgr"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/addrmgr"
+	"github.com/bitgo/prova/wire"
 )
 
 // TestIPTypes ensures the various functions which determine the type of an IP

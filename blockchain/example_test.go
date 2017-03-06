@@ -10,11 +10,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/database"
-	_ "github.com/bitgo/rmgd/database/ffldb"
-	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/database"
+	_ "github.com/bitgo/prova/database/ffldb"
+	"github.com/bitgo/prova/provautil"
 )
 
 // This example demonstrates how to create a new chain instance and use
@@ -58,7 +58,7 @@ func ExampleBlockChain_ProcessBlock() {
 	// Process a block.  For this example, we are going to intentionally
 	// cause an error by trying to process the genesis block which already
 	// exists.
-	genesisBlock := rmgutil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
+	genesisBlock := provautil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
 	isMainChain, isOrphan, err := chain.ProcessBlock(genesisBlock,
 		blockchain.BFNone)
 	if err != nil {

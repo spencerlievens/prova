@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"hash"
 
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/wire"
 	"github.com/btcsuite/fastsha256"
 	"github.com/btcsuite/golangcrypto/ripemd160"
 )

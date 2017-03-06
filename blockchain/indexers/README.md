@@ -1,8 +1,8 @@
 indexers
 ========
 
-[![Build Status](https://travis-ci.org/bitgo/rmgd.png?branch=master)]
-(https://travis-ci.org/bitgo/rmgd)
+[![Build Status](https://travis-ci.org/bitgo/prova.png?branch=master)]
+(https://travis-ci.org/bitgo/prova)
 
 Package indexers implements optional block chain indexes.
 
@@ -21,21 +21,21 @@ via an RPC interface.
 
 ## Documentation
 
-[![GoDoc](https://godoc.org/github.com/bitgo/rmgd/blockchain/indexers?status.png)]
-(http://godoc.org/github.com/bitgo/rmgd/blockchain/indexers)
+[![GoDoc](https://godoc.org/github.com/bitgo/prova/blockchain/indexers?status.png)]
+(http://godoc.org/github.com/bitgo/prova/blockchain/indexers)
 
 Full `go doc` style documentation for the project can be viewed online without
 installing this package by using the GoDoc site here:
-http://godoc.org/github.com/bitgo/rmgd/blockchain/indexers
+http://godoc.org/github.com/bitgo/prova/blockchain/indexers
 
 You can also view the documentation locally once the package is installed with
 the `godoc` tool by running `godoc -http=":6060"` and pointing your browser to
-http://localhost:6060/pkg/github.com/bitgo/rmgd/blockchain/indexers
+http://localhost:6060/pkg/github.com/bitgo/prova/blockchain/indexers
 
 ## Installation
 
 ```bash
-$ go get -u github.com/bitgo/rmgd/blockchain/indexers
+$ go get -u github.com/bitgo/prova/blockchain/indexers
 ```
 
 ## License

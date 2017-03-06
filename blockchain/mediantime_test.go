@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bitgo/rmgd/blockchain"
+	"github.com/bitgo/prova/blockchain"
 )
 
 // TestMedianTime tests the medianTime implementation.

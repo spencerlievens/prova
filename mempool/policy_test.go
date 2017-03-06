@@ -6,23 +6,23 @@ package mempool
 
 import (
 	"bytes"
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 	"testing"
 )
 
 // TestCalcMinRequiredTxRelayFee tests the calcMinRequiredTxRelayFee API.
 func TestCalcMinRequiredTxRelayFee(t *testing.T) {
 	tests := []struct {
-		name     string         // test description.
-		size     int64          // Transaction size in bytes.
-		relayFee rmgutil.Amount // minimum relay transaction fee.
-		want     int64          // Expected fee.
+		name     string           // test description.
+		size     int64            // Transaction size in bytes.
+		relayFee provautil.Amount // minimum relay transaction fee.
+		want     int64            // Expected fee.
 	}{
 		{
 			// Ensure combination of size and fee that are less than 1000
@@ -47,8 +47,8 @@ func TestCalcMinRequiredTxRelayFee(t *testing.T) {
 		{
 			"max standard tx size with max atoms relay fee",
 			maxStandardTxSize,
-			rmgutil.MaxAtoms,
-			rmgutil.MaxAtoms,
+			provautil.MaxAtoms,
+			provautil.MaxAtoms,
 		},
 		{
 			"1500 bytes with 5000 relay fee",
@@ -104,7 +104,7 @@ func TestCheckPkScriptStandard(t *testing.T) {
 				err)
 			return
 		}
-		pubKeyHashes = append(pubKeyHashes, rmgutil.Hash160(pk.PubKey().SerializeCompressed()))
+		pubKeyHashes = append(pubKeyHashes, provautil.Hash160(pk.PubKey().SerializeCompressed()))
 		pubKeys = append(pubKeys, pk.PubKey().SerializeCompressed())
 	}
 	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
@@ -216,7 +216,7 @@ func TestDust(t *testing.T) {
 	tests := []struct {
 		name     string // test description
 		txOut    wire.TxOut
-		relayFee rmgutil.Amount // minimum relay transaction fee.
+		relayFee provautil.Amount // minimum relay transaction fee.
 		isDust   bool
 	}{
 		{
@@ -248,8 +248,8 @@ func TestDust(t *testing.T) {
 		{
 			// Maximum allowed value is never dust.
 			"max atoms amount is never dust",
-			wire.TxOut{Value: rmgutil.MaxAtoms, PkScript: pkScript},
-			rmgutil.MaxAtoms,
+			wire.TxOut{Value: provautil.MaxAtoms, PkScript: pkScript},
+			provautil.MaxAtoms,
 			false,
 		},
 		{
@@ -295,7 +295,7 @@ func TestCheckTransactionStandard(t *testing.T) {
 	addrHash := [20]byte{0x01}
 	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
 	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
-	addr, err := rmgutil.NewAddressProva(addrHash[:],
+	addr, err := provautil.NewAddressProva(addrHash[:],
 		[]btcec.KeyID{keyId1, keyId2}, &chaincfg.TestNet3Params)
 	if err != nil {
 		t.Fatalf("NewAddressPubKeyHash: unexpected error: %v", err)
@@ -326,13 +326,13 @@ func TestCheckTransactionStandard(t *testing.T) {
 		PkScript: adminOpPkScript,
 	}
 	// create root tx out
-	rootPkScript, _ := txscript.ProvaThreadScript(rmgutil.RootThread)
+	rootPkScript, _ := txscript.ProvaThreadScript(provautil.RootThread)
 	rootTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: rootPkScript,
 	}
 	// create provision tx out
-	provisionPkScript, _ := txscript.ProvaThreadScript(rmgutil.ProvisionThread)
+	provisionPkScript, _ := txscript.ProvaThreadScript(provautil.ProvisionThread)
 	provisionTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: provisionPkScript,
@@ -589,7 +589,7 @@ func TestCheckTransactionStandard(t *testing.T) {
 	timeSource := blockchain.NewMedianTime()
 	for _, test := range tests {
 		// Ensure standardness is as expected.
-		err := checkTransactionStandard(rmgutil.NewTx(&test.tx),
+		err := checkTransactionStandard(provautil.NewTx(&test.tx),
 			test.height, timeSource, DefaultMinRelayTxFee)
 		if err == nil && test.isStandard {
 			// Test passes since function returned standard for a
@@ -652,12 +652,12 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 		PkScript: adminOpPkScript,
 	}
 	// create root tip tx
-	rootPkScript, _ := txscript.ProvaThreadScript(rmgutil.RootThread)
+	rootPkScript, _ := txscript.ProvaThreadScript(provautil.RootThread)
 	rootTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: rootPkScript,
 	}
-	rootTipTx := rmgutil.NewTx(&wire.MsgTx{
+	rootTipTx := provautil.NewTx(&wire.MsgTx{
 		Version:  1,
 		TxIn:     []*wire.TxIn{&coinbaseTxIn},
 		TxOut:    []*wire.TxOut{&rootTxOut},
@@ -670,12 +670,12 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 		Sequence:         wire.MaxTxInSequenceNum,
 	}
 	// create provision tip tx
-	provisionPkScript, _ := txscript.ProvaThreadScript(rmgutil.ProvisionThread)
+	provisionPkScript, _ := txscript.ProvaThreadScript(provautil.ProvisionThread)
 	provisionTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: provisionPkScript,
 	}
-	provisionTipTx := rmgutil.NewTx(&wire.MsgTx{
+	provisionTipTx := provautil.NewTx(&wire.MsgTx{
 		Version:  1,
 		TxIn:     []*wire.TxIn{&coinbaseTxIn},
 		TxOut:    []*wire.TxOut{&provisionTxOut},
@@ -688,12 +688,12 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 		Sequence:         wire.MaxTxInSequenceNum,
 	}
 	// create issue tip tx
-	issuePkScript, _ := txscript.ProvaThreadScript(rmgutil.IssueThread)
+	issuePkScript, _ := txscript.ProvaThreadScript(provautil.IssueThread)
 	issueTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: issuePkScript,
 	}
-	issueTipTx := rmgutil.NewTx(&wire.MsgTx{
+	issueTipTx := provautil.NewTx(&wire.MsgTx{
 		Version:  1,
 		TxIn:     []*wire.TxIn{&coinbaseTxIn},
 		TxOut:    []*wire.TxOut{&issueTxOut},
@@ -708,13 +708,13 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 	// Create prova txout
 	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
-	payAddr, _ := rmgutil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	payAddr, _ := provautil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
 	provaTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: provaPkScript,
 	}
-	provaTx := rmgutil.NewTx(&wire.MsgTx{
+	provaTx := provautil.NewTx(&wire.MsgTx{
 		Version:  1,
 		TxIn:     []*wire.TxIn{&coinbaseTxIn},
 		TxOut:    []*wire.TxOut{&provaTxOut},
@@ -814,7 +814,7 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 
 	for _, test := range tests {
 		// Ensure standardness is as expected.
-		err := checkInputsStandard(rmgutil.NewTx(&test.tx), utxoView)
+		err := checkInputsStandard(provautil.NewTx(&test.tx), utxoView)
 		if err == nil && test.isStandard {
 			// Test passes since function returned standard for a
 			// transaction which is intended to be standard.

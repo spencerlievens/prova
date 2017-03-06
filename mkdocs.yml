@@ -10,7 +10,7 @@
 #
 
 site_name: Prova
-repo_url: https://github.com/BitGo/rmgd/
+repo_url: https://github.com/BitGo/prova/
 strict: True
 pages:
     - Welcome To Prova: index.md

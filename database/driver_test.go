@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bitgo/rmgd/database"
-	_ "github.com/bitgo/rmgd/database/ffldb"
+	"github.com/bitgo/prova/database"
+	_ "github.com/bitgo/prova/database/ffldb"
 )
 
 var (

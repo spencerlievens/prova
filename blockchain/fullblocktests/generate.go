@@ -12,13 +12,13 @@ package fullblocktests
 import (
 	"errors"
 	"fmt"
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 	"math"
 	"math/rand"
 	"runtime"
@@ -59,7 +59,7 @@ var (
 	keyId1 = btcec.KeyID(1)
 	keyId2 = btcec.KeyID(2)
 	// helper function to sign transactions
-	lookupKey = func(a rmgutil.Address) ([]txscript.PrivateKey, error) {
+	lookupKey = func(a provautil.Address) ([]txscript.PrivateKey, error) {
 		return []txscript.PrivateKey{
 			txscript.PrivateKey{privKey1, true},
 			txscript.PrivateKey{privKey2, true},
@@ -83,7 +83,7 @@ type AcceptedBlock struct {
 	Height       uint32
 	IsMainChain  bool
 	IsOrphan     bool
-	ThreadTips   map[rmgutil.ThreadID]*wire.OutPoint
+	ThreadTips   map[provautil.ThreadID]*wire.OutPoint
 	TotalSupply  uint64
 	AdminKeySets map[btcec.KeySetType]btcec.PublicKeySet
 	ASPKeyIdMap  btcec.KeyIdMap
@@ -173,7 +173,7 @@ func (b RejectedNonCanonicalBlock) FullBlockTestInstance() {}
 type spendableOut struct {
 	prevOut  wire.OutPoint
 	pkScript []byte
-	amount   rmgutil.Amount
+	amount   provautil.Amount
 }
 
 // makeSpendableOutForTx returns a spendable output for the given transaction
@@ -185,7 +185,7 @@ func makeSpendableOutForTx(tx *wire.MsgTx, txOutIndex uint32) spendableOut {
 			Index: txOutIndex,
 		},
 		pkScript: tx.TxOut[0].PkScript,
-		amount:   rmgutil.Amount(tx.TxOut[txOutIndex].Value),
+		amount:   provautil.Amount(tx.TxOut[txOutIndex].Value),
 	}
 }
 
@@ -243,7 +243,7 @@ func standardCoinbaseScript(blockHeight uint32, extraNonce uint64) ([]byte, erro
 
 // provaThreadScript creates a new script to pay a transaction output to an
 // Prova Admin Thread.
-func provaThreadScript(threadID rmgutil.ThreadID) []byte {
+func provaThreadScript(threadID provautil.ThreadID) []byte {
 	builder := txscript.NewScriptBuilder()
 	script, err := builder.
 		AddInt64(int64(threadID)).
@@ -319,7 +319,7 @@ func (g *testGenerator) createCoinbaseTx(blockHeight uint32) *wire.MsgTx {
 	//      private keys defined for this test suite
 	pkHash := make([]byte, 20)
 	rand.Read(pkHash)
-	addr, _ := rmgutil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	addr, _ := provautil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	scriptPkScript, _ := txscript.PayToAddrScript(addr)
 
 	tx.AddTxOut(&wire.TxOut{
@@ -336,9 +336,9 @@ func calcMerkleRoot(txns []*wire.MsgTx) chainhash.Hash {
 		return chainhash.Hash{}
 	}
 
-	utilTxns := make([]*rmgutil.Tx, 0, len(txns))
+	utilTxns := make([]*provautil.Tx, 0, len(txns))
 	for _, tx := range txns {
-		utilTxns = append(utilTxns, rmgutil.NewTx(tx))
+		utilTxns = append(utilTxns, provautil.NewTx(tx))
 	}
 	merkles := blockchain.BuildMerkleTreeStore(utilTxns)
 	return *merkles[len(merkles)-1]
@@ -430,7 +430,7 @@ func changeCoinbaseValue(delta int64) func(*wire.MsgBlock) {
 // transaction ends up with a unique hash.  The script is a simple OP_TRUE
 // script which avoids the need to track addresses and signature scripts in the
 // tests.
-func createSpendTx(spend *spendableOut, fee rmgutil.Amount) *wire.MsgTx {
+func createSpendTx(spend *spendableOut, fee provautil.Amount) *wire.MsgTx {
 	spendTx := wire.NewMsgTx()
 
 	spendTx.AddTxIn(&wire.TxIn{
@@ -445,7 +445,7 @@ func createSpendTx(spend *spendableOut, fee rmgutil.Amount) *wire.MsgTx {
 	//      private keys defined for this test suite
 	pkHash := make([]byte, 20)
 	rand.Read(pkHash)
-	addr, _ := rmgutil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+	addr, _ := provautil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	scriptPkScript, _ := txscript.PayToAddrScript(addr)
 	spendTx.AddTxOut(wire.NewTxOut(int64(spend.amount-fee), scriptPkScript))
 
@@ -459,7 +459,7 @@ func createSpendTx(spend *spendableOut, fee rmgutil.Amount) *wire.MsgTx {
 }
 
 // createAdminTx creates an admin tx.
-func createAdminTx(spend *spendableOut, threadID rmgutil.ThreadID, op byte, pubKey *btcec.PublicKey) *wire.MsgTx {
+func createAdminTx(spend *spendableOut, threadID provautil.ThreadID, op byte, pubKey *btcec.PublicKey) *wire.MsgTx {
 	spendTx := wire.NewMsgTx()
 	spendTx.AddTxIn(&wire.TxIn{
 		PreviousOutPoint: spend.prevOut,
@@ -490,7 +490,7 @@ func createASPAdminTx(spend *spendableOut, op byte, pubKey *btcec.PublicKey,
 	})
 	txValue := int64(0) // how much the tx is spending. 0 for admin tx.
 	spendTx.AddTxOut(wire.NewTxOut(txValue,
-		provaThreadScript(rmgutil.ProvisionThread)))
+		provaThreadScript(provautil.ProvisionThread)))
 	spendTx.AddTxOut(wire.NewTxOut(txValue,
 		provaAdminASPScript(op, pubKey, keyID)))
 
@@ -514,12 +514,12 @@ func createIssueTx(thread *spendableOut, value int64, spend *spendableOut) *wire
 		SignatureScript:  nil,
 	})
 	// thread output
-	spendTx.AddTxOut(wire.NewTxOut(int64(0), provaThreadScript(rmgutil.IssueThread)))
+	spendTx.AddTxOut(wire.NewTxOut(int64(0), provaThreadScript(provautil.IssueThread)))
 	if spend == nil {
 		// issue some tokens: create a prova output
 		pkHash := make([]byte, 20)
 		rand.Read(pkHash)
-		addr, _ := rmgutil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
+		addr, _ := provautil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 		scriptPkScript, _ := txscript.PayToAddrScript(addr)
 		spendTx.AddTxOut(wire.NewTxOut(value, scriptPkScript))
 	} else {
@@ -574,7 +574,7 @@ func (g *testGenerator) nextBlock(blockName string, spend *spendableOut, mungers
 	if spend != nil {
 		// Create the transaction with a fee of 1 atom for the
 		// miner and increase the coinbase subsidy accordingly.
-		fee := rmgutil.Amount(1)
+		fee := provautil.Amount(1)
 		coinbaseTx.TxOut[0].Value += int64(fee)
 
 		// Create a transaction that spends from the provided spendable
@@ -708,13 +708,13 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	lastAdminKeySets := chaincfg.RegressionNetParams.AdminKeySets
 	lastASPKeys := chaincfg.RegressionNetParams.ASPKeyIdMap
 	lastTotalSupply := uint64(0)
-	lastThreadTips := make(map[rmgutil.ThreadID]*wire.OutPoint)
+	lastThreadTips := make(map[provautil.ThreadID]*wire.OutPoint)
 	rootOut := makeSpendableOut(g.tip, 0, 0)
-	lastThreadTips[rmgutil.RootThread] = &rootOut.prevOut
+	lastThreadTips[provautil.RootThread] = &rootOut.prevOut
 	provisionOut := makeSpendableOut(g.tip, 0, 1)
-	lastThreadTips[rmgutil.ProvisionThread] = &provisionOut.prevOut
+	lastThreadTips[provautil.ProvisionThread] = &provisionOut.prevOut
 	issueOut := makeSpendableOut(g.tip, 0, 2)
-	lastThreadTips[rmgutil.IssueThread] = &issueOut.prevOut
+	lastThreadTips[provautil.IssueThread] = &issueOut.prevOut
 
 	acceptBlock := func(blockName string, block *wire.MsgBlock, isMainChain, isOrphan bool) TestInstance {
 		blockHeight := g.blockHeights[blockName]
@@ -749,8 +749,8 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 			acceptBlock(g.tipName, g.tip, true, false),
 		})
 	}
-	assertThreadTip := func(threadId rmgutil.ThreadID, out spendableOut) {
-		threadTips := rmgutil.CopyThreadTips(lastThreadTips)
+	assertThreadTip := func(threadId provautil.ThreadID, out spendableOut) {
+		threadTips := provautil.CopyThreadTips(lastThreadTips)
 		threadTips[threadId] = &out.prevOut
 		lastThreadTips = threadTips
 	}
@@ -847,7 +847,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	issueKeyAddTx = createAdminTx(outs[0], 0, txscript.AdminOpIssueKeyAdd, pubKey1)
 	rootThreadOut := makeSpendableOutForTx(issueKeyAddTx, 0)
 	g.nextBlock("b3", nil, additionalTx(issueKeyAddTx))
-	assertThreadTip(rmgutil.RootThread, rootThreadOut)
+	assertThreadTip(provautil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1})
 	accepted()
 
@@ -858,7 +858,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	issueKeyAddTx3 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey3)
 	rootThreadOut = makeSpendableOutForTx(issueKeyAddTx3, 0)
 	g.nextBlock("b4", nil, additionalTx(issueKeyAddTx2), additionalTx(issueKeyAddTx3))
-	assertThreadTip(rmgutil.RootThread, rootThreadOut)
+	assertThreadTip(provautil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1, *pubKey2, *pubKey3})
 	accepted()
 
@@ -875,7 +875,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	issueTx2 := createIssueTx(&issueThreadOut, int64(0), outs[5])
 	rootThreadOut = makeSpendableOutForTx(issueKeyRevokeTx1, 0)
 	g.nextBlock("b6", nil, additionalTx(issueKeyRevokeTx1), additionalTx(issueTx2))
-	assertThreadTip(rmgutil.RootThread, rootThreadOut)
+	assertThreadTip(provautil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2})
 	assertTotalSupply(5000000000)
 	accepted()
@@ -886,7 +886,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	provisionKeyAddTx2 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpProvisionKeyAdd, pubKey2)
 	rootThreadOut = makeSpendableOutForTx(provisionKeyAddTx2, 0)
 	g.nextBlock("b7", nil, additionalTx(provisionKeyAddTx1), additionalTx(provisionKeyAddTx2))
-	assertThreadTip(rmgutil.RootThread, rootThreadOut)
+	assertThreadTip(provautil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.ProvisionKeySet, []btcec.PublicKey{*pubKey1, *pubKey2})
 	accepted()
 
@@ -913,7 +913,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	adminKeyAddTx := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey1)
 	rootThreadOutFork := makeSpendableOutForTx(adminKeyAddTx, 0)
 	g.nextBlock("b10", nil, additionalTx(adminKeyAddTx))
-	assertThreadTip(rmgutil.RootThread, rootThreadOutFork)
+	assertThreadTip(provautil.RootThread, rootThreadOutFork)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1})
 	accepted()
 
@@ -934,7 +934,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	//
 	// The reorg should revent the provisioning of an ISSUE key in b10.
 	g.nextBlock("b12", outs[10])
-	assertThreadTip(rmgutil.RootThread, rootThreadOut)
+	assertThreadTip(provautil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2}) // The genesis admin state is valid.
 	accepted()
 
@@ -952,7 +952,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	// key is active again.
 	g.nextBlock("b14", outs[11])
-	assertThreadTip(rmgutil.RootThread, rootThreadOutFork)
+	assertThreadTip(provautil.RootThread, rootThreadOutFork)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1})
 	accepted()
 

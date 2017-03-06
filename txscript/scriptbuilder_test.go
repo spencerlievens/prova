@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/bitgo/rmgd/txscript"
+	"github.com/bitgo/prova/txscript"
 )
 
 // TestScriptBuilderAddOp tests that pushing opcodes to a script via the

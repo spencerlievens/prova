@@ -12,10 +12,10 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/database/ffldb"
-	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/database/ffldb"
+	"github.com/bitgo/prova/provautil"
 )
 
 // dbType is the database type name for this driver.
@@ -171,7 +171,7 @@ func TestPersistence(t *testing.T) {
 		"b1key2": "foo2",
 		"b1key3": "foo3",
 	}
-	genesisBlock := rmgutil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
+	genesisBlock := provautil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
 	genesisHash := chaincfg.MainNetParams.GenesisHash
 	err = db.Update(func(tx database.Tx) error {
 		metadataBucket := tx.Metadata()

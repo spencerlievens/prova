@@ -28,14 +28,14 @@ Make sure you have an SSH key registered with GitHub, then create in your `GOPAT
 
 ```bash
 $ go get -u github.com/Masterminds/glide
-$ git clone git@github.com:BitGo/rmgd.git
+$ git clone git@github.com:BitGo/prova.git
 $ glide install
 $ go install
 ```
 
-When executing `go install` to install Prova, make sure that you are in the GOPATH directory (github.com/bitgo/rmgd) otherwise it will give you an error instructing you to install from within your GOPATH directory.
+When executing `go install` to install Prova, make sure that you are in the GOPATH directory (github.com/bitgo/prova) otherwise it will give you an error instructing you to install from within your GOPATH directory.
 
-After you install you should be able to do `go test`, `go install` and this will successfully test the top level of rmgd and build it into the go/bin. Because the bin path is in your PATH you should be able to do `rmgd -h` successfully to confirm the app has been built and is in your path.
+After you install you should be able to do `go test`, `go install` and this will successfully test the top level of prova and build it into the go/bin. Because the bin path is in your PATH you should be able to do `prova -h` successfully to confirm the app has been built and is in your path.
 
 ## Run Prova
 
@@ -44,11 +44,11 @@ To run Prova you will need a data directory to store the chain state. Create thi
 For Prova in regtest simulating 2 nodes, create directories `~/regtest/1` and `~/regtest/2` and the following test.sh bash script can run two nodes against each other in regtest.
 
 ```
-#!/bin/bash 
+#!/bin/bash
 LOCAL=127.0.0.1
-nohup rmgd --listen=$LOCAL:6001 --rpcuser=user --rpcpass=pass --rpclisten=$LOCAL:7001 --datadir=$HOME/regtest/\
+nohup prova --listen=$LOCAL:6001 --rpcuser=user --rpcpass=pass --rpclisten=$LOCAL:7001 --datadir=$HOME/regtest/\
 1/ --connect=$LOCAL:6002 --regtest --txindex > $HOME/regtest/1/btcd.log 2>&1 &
-nohup rmgd --listen=$LOCAL:6002 --rpcuser=user --rpcpass=pass --rpclisten=$LOCAL:7002 --datadir=$HOME/regtest/\
+nohup prova --listen=$LOCAL:6002 --rpcuser=user --rpcpass=pass --rpclisten=$LOCAL:7002 --datadir=$HOME/regtest/\
 2/ --connect=$LOCAL:6001 --regtest > $HOME/regtest/2/btcd.log 2>&1 &
 sleep 1
 btcctl -u user -P pass -s 127.0.0.1:7001 generate 101
@@ -57,8 +57,8 @@ btcctl -u user -P pass -s 127.0.0.1:7001 generate 101
 For Prova in testnet mode, create a ~/testnet3/1 directory, use the following command line arguments to start the testnet node and connect to the remote node.
 
 ```
-rmgd
---addpeer=dev-rmgd-01:17979
+prova
+--addpeer=dev-prova-01:17979
 --addrindex
 --datadir=$YOUR_PATH_TO_DATA_DIRECTORY
 --listen=127.0.0.1:6001
@@ -81,18 +81,18 @@ In your home directory (or wherever you would like), create a new file `rmgpacka
 Edit the file to include the contents:
 
 ```
-github.com/bitgo/rmgd/addrmgr
-github.com/bitgo/rmgd/blockchain
-github.com/bitgo/rmgd/btcec
-github.com/bitgo/rmgd/btcjson
-github.com/bitgo/rmgd/chaincfg
-github.com/bitgo/rmgd/database
-github.com/bitgo/rmgd/mempool
-github.com/bitgo/rmgd/peer
-github.com/bitgo/rmgd/rmgutil
-github.com/bitgo/rmgd/txscript
-github.com/bitgo/rmgd/wire
-github.com/bitgo/rmgd
+github.com/bitgo/prova/addrmgr
+github.com/bitgo/prova/blockchain
+github.com/bitgo/prova/btcec
+github.com/bitgo/prova/btcjson
+github.com/bitgo/prova/chaincfg
+github.com/bitgo/prova/database
+github.com/bitgo/prova/mempool
+github.com/bitgo/prova/peer
+github.com/bitgo/prova/provautil
+github.com/bitgo/prova/txscript
+github.com/bitgo/prova/wire
+github.com/bitgo/prova
 ```
 
 Now edit your bash profile to include the alias to test, replacing `~/rmgpackages` with the path to where you placed the file.

@@ -1,8 +1,8 @@
 ffldb
 =====
 
-[![Build Status](https://travis-ci.org/bitgo/rmgd.png?branch=master)]
-(https://travis-ci.org/bitgo/rmgd)
+[![Build Status](https://travis-ci.org/bitgo/prova.png?branch=master)]
+(https://travis-ci.org/bitgo/prova)
 
 Package ffldb implements a driver for the database package that uses leveldb for
 the backing metadata and flat files for block storage.
@@ -35,16 +35,16 @@ if err != nil {
 
 ## Documentation
 
-[![GoDoc](https://godoc.org/github.com/bitgo/rmgd/database/ffldb?status.png)]
-(http://godoc.org/github.com/bitgo/rmgd/database/ffldb)
+[![GoDoc](https://godoc.org/github.com/bitgo/prova/database/ffldb?status.png)]
+(http://godoc.org/github.com/bitgo/prova/database/ffldb)
 
 Full `go doc` style documentation for the project can be viewed online without
 installing this package by using the GoDoc site here:
-http://godoc.org/github.com/bitgo/rmgd/database/ffldb
+http://godoc.org/github.com/bitgo/prova/database/ffldb
 
 You can also view the documentation locally once the package is installed with
 the `godoc` tool by running `godoc -http=":6060"` and pointing your browser to
-http://localhost:6060/pkg/github.com/bitgo/rmgd/database/ffldb
+http://localhost:6060/pkg/github.com/bitgo/prova/database/ffldb
 
 ## License
 

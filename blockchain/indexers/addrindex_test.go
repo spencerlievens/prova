@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/wire"
 )
 
 // addrIndexBucket provides a mock address index database bucket by implementing

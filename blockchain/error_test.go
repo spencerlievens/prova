@@ -7,7 +7,7 @@ package blockchain_test
 import (
 	"testing"
 
-	"github.com/bitgo/rmgd/blockchain"
+	"github.com/bitgo/prova/blockchain"
 )
 
 // TestErrorCodeStringer tests the stringized output for the ErrorCode type.

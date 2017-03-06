@@ -20,19 +20,19 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bitgo/rmgd/addrmgr"
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/blockchain/indexers"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/mempool"
-	"github.com/bitgo/rmgd/mining"
-	"github.com/bitgo/rmgd/peer"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/rmgutil/bloom"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/addrmgr"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/blockchain/indexers"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/mempool"
+	"github.com/bitgo/prova/mining"
+	"github.com/bitgo/prova/peer"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/provautil/bloom"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 )
 
 const (
@@ -458,9 +458,9 @@ func (sp *serverPeer) OnTx(p *peer.Peer, msg *wire.MsgTx) {
 	}
 
 	// Add the transaction to the known inventory for the peer.
-	// Convert the raw MsgTx to a rmgutil.Tx which provides some convenience
+	// Convert the raw MsgTx to a provautil.Tx which provides some convenience
 	// methods and things such as hash caching.
-	tx := rmgutil.NewTx(msg)
+	tx := provautil.NewTx(msg)
 	iv := wire.NewInvVect(wire.InvTypeTx, tx.Hash())
 	p.AddKnownInventory(iv)
 
@@ -476,9 +476,9 @@ func (sp *serverPeer) OnTx(p *peer.Peer, msg *wire.MsgTx) {
 // OnBlock is invoked when a peer receives a block bitcoin message.  It
 // blocks until the bitcoin block has been fully processed.
 func (sp *serverPeer) OnBlock(p *peer.Peer, msg *wire.MsgBlock, buf []byte) {
-	// Convert the raw MsgBlock to a rmgutil.Block which provides some
+	// Convert the raw MsgBlock to a provautil.Block which provides some
 	// convenience methods and things such as hash caching.
-	block := rmgutil.NewBlockFromBlockAndBytes(msg, buf)
+	block := provautil.NewBlockFromBlockAndBytes(msg, buf)
 
 	// Add the block to the known inventory for the peer.
 	iv := wire.NewInvVect(wire.InvTypeBlock, block.Hash())
@@ -960,7 +960,7 @@ func (s *server) RemoveRebroadcastInventory(iv *wire.InvVect) {
 // both websocket and getblocktemplate long poll clients of the passed
 // transactions.  This function should be called whenever new transactions
 // are added to the mempool.
-func (s *server) AnnounceNewTransactions(newTxs []*rmgutil.Tx) {
+func (s *server) AnnounceNewTransactions(newTxs []*provautil.Tx) {
 	// Generate and relay inventory vectors for all newly accepted
 	// transactions into the memory pool due to the original being
 	// accepted.
@@ -1327,7 +1327,7 @@ func (s *server) handleRelayInvMsg(state *peerState, msg relayMsg) {
 			// Don't relay the transaction if there is a bloom
 			// filter loaded and the transaction doesn't match it.
 			if sp.filter.IsLoaded() {
-				tx, ok := msg.data.(*rmgutil.Tx)
+				tx, ok := msg.data.(*provautil.Tx)
 				if !ok {
 					peerLog.Warnf("Underlying data for tx" +
 						" inv relay is not a transaction")

@@ -8,8 +8,8 @@
 package database
 
 import (
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
 )
 
 // Cursor represents a cursor over key/value pairs and nested buckets of a
@@ -227,7 +227,7 @@ type Tx interface {
 	//   - ErrTxClosed if the transaction has already been closed
 	//
 	// Other errors are possible depending on the implementation.
-	StoreBlock(block *rmgutil.Block) error
+	StoreBlock(block *provautil.Block) error
 
 	// HasBlock returns whether or not a block with the given hash exists
 	// in the database.

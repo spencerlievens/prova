@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bitgo/rmgd/btcec"
+	"github.com/bitgo/prova/btcec"
 )
 
 // TestSetInt ensures that setting a field value to various native integers

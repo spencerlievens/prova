@@ -9,7 +9,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/bitgo/rmgd/btcec"
+	"github.com/bitgo/prova/btcec"
 )
 
 func TestGenerateSharedSecret(t *testing.T) {

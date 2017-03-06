@@ -5,8 +5,8 @@
 package blockchain
 
 import (
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/txscript"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/txscript"
 )
 
 // -----------------------------------------------------------------------------

@@ -7,10 +7,10 @@ package txscript
 import (
 	"errors"
 	"fmt"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 	"sort"
 )
 
@@ -124,7 +124,7 @@ func signSafeMultiSig(tx *wire.MsgTx, idx int, txSigHashes *TxSigHashes, amt int
 // the contract (i.e. nrequired signatures are provided).  Since it is arguably
 // legal to not be able to sign any of the outputs, no error is returned.
 func signMultiSig(tx *wire.MsgTx, idx int, subScript []byte, hashType SigHashType,
-	addresses []rmgutil.Address, nRequired int, kdb KeyDB) ([]byte, bool) {
+	addresses []provautil.Address, nRequired int, kdb KeyDB) ([]byte, bool) {
 	// We start with a single OP_FALSE to work around the (now standard)
 	// but in the reference implementation that causes a spurious pop at
 	// the end of OP_CHECKMULTISIG.
@@ -154,7 +154,7 @@ func signMultiSig(tx *wire.MsgTx, idx int, subScript []byte, hashType SigHashTyp
 
 func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
 	subScript []byte, hashType SigHashType, kdb KeyDB, sdb ScriptDB) (
-	[]byte, ScriptClass, []rmgutil.Address, int, error) {
+	[]byte, ScriptClass, []provautil.Address, int, error) {
 
 	class, addresses, nrequired, err := ExtractPkScriptAddrs(subScript,
 		chainParams)
@@ -251,7 +251,7 @@ func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int, inputAmt int64,
 // function with addresses, class and nrequired that do not match pkScript is
 // an error and results in undefined behaviour.
 func mergeScripts(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int,
-	pkScript []byte, class ScriptClass, addresses []rmgutil.Address,
+	pkScript []byte, class ScriptClass, addresses []provautil.Address,
 	nRequired int, sigScript, prevScript []byte) []byte {
 
 	// TODO(oga) the scripthash and multisig paths here are overly
@@ -323,7 +323,7 @@ func mergeScripts(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int,
 // pkScript. Since this function is internal only we assume that the arguments
 // have come from other functions internally and thus are all consistent with
 // each other, behaviour is undefined if this contract is broken.
-func mergeMultiSig(tx *wire.MsgTx, idx int, addresses []rmgutil.Address,
+func mergeMultiSig(tx *wire.MsgTx, idx int, addresses []provautil.Address,
 	nRequired int, pkScript, sigScript, prevScript []byte) []byte {
 
 	// This is an internal only function and we already parsed this script
@@ -389,7 +389,7 @@ sigLoop:
 			// All multisig addresses should be pubkey addreses
 			// it is an error to call this internal function with
 			// bad input.
-			pkaddr := addr.(*rmgutil.AddressPubKey)
+			pkaddr := addr.(*provautil.AddressPubKey)
 
 			pubKey := pkaddr.PubKey()
 
@@ -434,14 +434,14 @@ sigLoop:
 
 // mergeProvaSig combines the two signature scripts sigScript and prevScript
 // that both provide signatures for pkScript in output idx of tx.
-func mergeProvaSig(tx *wire.MsgTx, idx int, addresses []rmgutil.Address,
+func mergeProvaSig(tx *wire.MsgTx, idx int, addresses []provautil.Address,
 	nRequired int, pkScript, sigScript, prevScript []byte) []byte {
 	return append(prevScript[:], sigScript[:]...)
 }
 
 // mergeProvaAdminSig combines the two signature scripts sigScript and prevScript
 // that both provide signatures for pkScript in output idx of tx.
-func mergeProvaAdminSig(tx *wire.MsgTx, idx int, addresses []rmgutil.Address,
+func mergeProvaAdminSig(tx *wire.MsgTx, idx int, addresses []provautil.Address,
 	nRequired int, pkScript, sigScript, prevScript []byte) []byte {
 
 	sigPops, err := ParseScript(sigScript)
@@ -526,28 +526,28 @@ type PrivateKey struct {
 // KeyDB is an interface type provided to SignTxOutput, it encapsulates
 // any user state required to get the private keys for an address.
 type KeyDB interface {
-	GetKey(rmgutil.Address) ([]PrivateKey, error)
+	GetKey(provautil.Address) ([]PrivateKey, error)
 }
 
 // KeyClosure implements KeyDB with a closure.
-type KeyClosure func(rmgutil.Address) ([]PrivateKey, error)
+type KeyClosure func(provautil.Address) ([]PrivateKey, error)
 
 // GetKey implements KeyDB by returning the result of calling the closure.
-func (kc KeyClosure) GetKey(address rmgutil.Address) ([]PrivateKey, error) {
+func (kc KeyClosure) GetKey(address provautil.Address) ([]PrivateKey, error) {
 	return kc(address)
 }
 
 // ScriptDB is an interface type provided to SignTxOutput, it encapsulates any
 // user state required to get the scripts for an pay-to-script-hash address.
 type ScriptDB interface {
-	GetScript(rmgutil.Address) ([]byte, error)
+	GetScript(provautil.Address) ([]byte, error)
 }
 
 // ScriptClosure implements ScriptDB with a closure.
-type ScriptClosure func(rmgutil.Address) ([]byte, error)
+type ScriptClosure func(provautil.Address) ([]byte, error)
 
 // GetScript implements ScriptDB by returning the result of calling the closure.
-func (sc ScriptClosure) GetScript(address rmgutil.Address) ([]byte, error) {
+func (sc ScriptClosure) GetScript(address provautil.Address) ([]byte, error) {
 	return sc(address)
 }
 

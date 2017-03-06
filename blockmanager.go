@@ -13,13 +13,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/mempool"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/mempool"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 )
 
 const (
@@ -59,7 +59,7 @@ type newPeerMsg struct {
 // blockMsg packages a bitcoin block message and the peer it came from together
 // so the block handler has access to that information.
 type blockMsg struct {
-	block *rmgutil.Block
+	block *provautil.Block
 	peer  *serverPeer
 }
 
@@ -85,7 +85,7 @@ type donePeerMsg struct {
 // txMsg packages a bitcoin tx message and the peer it came from together
 // so the block handler has access to that information.
 type txMsg struct {
-	tx   *rmgutil.Tx
+	tx   *provautil.Tx
 	peer *serverPeer
 }
 
@@ -108,7 +108,7 @@ type processBlockResponse struct {
 // extra handling whereas this message essentially is just a concurrent safe
 // way to call ProcessBlock on the internal block chain instance.
 type processBlockMsg struct {
-	block *rmgutil.Block
+	block *provautil.Block
 	flags blockchain.BehaviorFlags
 	reply chan processBlockResponse
 }
@@ -1172,7 +1172,7 @@ func (b *blockManager) handleNotifyMsg(notification *blockchain.Notification) {
 			return
 		}
 
-		block, ok := notification.Data.(*rmgutil.Block)
+		block, ok := notification.Data.(*provautil.Block)
 		if !ok {
 			bmgrLog.Warnf("Chain accepted notification is not a block.")
 			break
@@ -1184,7 +1184,7 @@ func (b *blockManager) handleNotifyMsg(notification *blockchain.Notification) {
 
 	// A block has been connected to the main block chain.
 	case blockchain.NTBlockConnected:
-		block, ok := notification.Data.(*rmgutil.Block)
+		block, ok := notification.Data.(*provautil.Block)
 		if !ok {
 			bmgrLog.Warnf("Chain connected notification is not a block.")
 			break
@@ -1220,7 +1220,7 @@ func (b *blockManager) handleNotifyMsg(notification *blockchain.Notification) {
 
 	// A block has been disconnected from the main block chain.
 	case blockchain.NTBlockDisconnected:
-		block, ok := notification.Data.(*rmgutil.Block)
+		block, ok := notification.Data.(*provautil.Block)
 		if !ok {
 			bmgrLog.Warnf("Chain disconnected notification is not a block.")
 			break
@@ -1257,7 +1257,7 @@ func (b *blockManager) NewPeer(sp *serverPeer) {
 
 // QueueTx adds the passed transaction message and peer to the block handling
 // queue.
-func (b *blockManager) QueueTx(tx *rmgutil.Tx, sp *serverPeer) {
+func (b *blockManager) QueueTx(tx *provautil.Tx, sp *serverPeer) {
 	// Don't accept more transactions if we're shutting down.
 	if atomic.LoadInt32(&b.shutdown) != 0 {
 		sp.txProcessed <- struct{}{}
@@ -1268,7 +1268,7 @@ func (b *blockManager) QueueTx(tx *rmgutil.Tx, sp *serverPeer) {
 }
 
 // QueueBlock adds the passed block message and peer to the block handling queue.
-func (b *blockManager) QueueBlock(block *rmgutil.Block, sp *serverPeer) {
+func (b *blockManager) QueueBlock(block *provautil.Block, sp *serverPeer) {
 	// Don't accept more blocks if we're shutting down.
 	if atomic.LoadInt32(&b.shutdown) != 0 {
 		sp.blockProcessed <- struct{}{}
@@ -1348,7 +1348,7 @@ func (b *blockManager) SyncPeer() *serverPeer {
 // ProcessBlock makes use of ProcessBlock on an internal instance of a block
 // chain.  It is funneled through the block manager since btcchain is not safe
 // for concurrent access.
-func (b *blockManager) ProcessBlock(block *rmgutil.Block, flags blockchain.BehaviorFlags) (bool, error) {
+func (b *blockManager) ProcessBlock(block *provautil.Block, flags blockchain.BehaviorFlags) (bool, error) {
 	reply := make(chan processBlockResponse, 1)
 	b.msgChan <- processBlockMsg{block: block, flags: flags, reply: reply}
 	response := <-reply

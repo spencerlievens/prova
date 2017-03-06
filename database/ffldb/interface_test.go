@@ -25,11 +25,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 )
 
 var (
@@ -46,7 +46,7 @@ var (
 
 // loadBlocks loads the blocks contained in the testdata directory and returns
 // a slice of them.
-func loadBlocks(t *testing.T, dataFile string, network wire.BitcoinNet) ([]*rmgutil.Block, error) {
+func loadBlocks(t *testing.T, dataFile string, network wire.BitcoinNet) ([]*provautil.Block, error) {
 	// Open the file that contains the blocks for reading.
 	fi, err := os.Open(dataFile)
 	if err != nil {
@@ -62,8 +62,8 @@ func loadBlocks(t *testing.T, dataFile string, network wire.BitcoinNet) ([]*rmgu
 	dr := bzip2.NewReader(fi)
 
 	// Set the first block as the genesis block.
-	blocks := make([]*rmgutil.Block, 0, 256)
-	genesis := rmgutil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
+	blocks := make([]*provautil.Block, 0, 256)
+	genesis := provautil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
 	blocks = append(blocks, genesis)
 
 	// Load the remaining blocks.
@@ -102,7 +102,7 @@ func loadBlocks(t *testing.T, dataFile string, network wire.BitcoinNet) ([]*rmgu
 		}
 
 		// Deserialize and store the block.
-		block, err := rmgutil.NewBlockFromBytes(blockBytes)
+		block, err := provautil.NewBlockFromBytes(blockBytes)
 		if err != nil {
 			t.Errorf("Failed to parse block %v: %v", height, err)
 			return nil, err
@@ -139,7 +139,7 @@ type testContext struct {
 	db          database.DB
 	bucketDepth int
 	isWritable  bool
-	blocks      []*rmgutil.Block
+	blocks      []*provautil.Block
 }
 
 // keyPair houses a key/value pair.  It is used over maps so ordering can be

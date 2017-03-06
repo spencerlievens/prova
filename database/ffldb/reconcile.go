@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"hash/crc32"
 
-	"github.com/bitgo/rmgd/database"
+	"github.com/bitgo/prova/database"
 )
 
 // The serialized write cursor location format is:

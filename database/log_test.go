@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bitgo/rmgd/database"
+	"github.com/bitgo/prova/database"
 )
 
 // TestSetLogWriter ensures the

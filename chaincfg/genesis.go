@@ -7,8 +7,8 @@ package chaincfg
 import (
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/wire"
 )
 
 // genesisCoinbaseTx is the coinbase transaction for the genesis blocks for

@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/peer"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/peer"
+	"github.com/bitgo/prova/wire"
 	"github.com/btcsuite/go-socks/socks"
 )
 

@@ -7,11 +7,11 @@ package blockchain
 import (
 	"bytes"
 	"errors"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 	"math/big"
 	"reflect"
 	"testing"
@@ -988,7 +988,7 @@ func TestKeySetSerialization(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		threadTips   map[rmgutil.ThreadID]*wire.OutPoint
+		threadTips   map[provautil.ThreadID]*wire.OutPoint
 		lastKeyID    btcec.KeyID
 		totalSupply  uint64
 		adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
@@ -1010,9 +1010,9 @@ func TestKeySetSerialization(t *testing.T) {
 		},
 		{
 			name: "two keys",
-			threadTips: func() map[rmgutil.ThreadID]*wire.OutPoint {
-				threadTips := make(map[rmgutil.ThreadID]*wire.OutPoint)
-				threadTips[rmgutil.RootThread] = wire.NewOutPoint(newHashFromStr("00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048"), 1337)
+			threadTips: func() map[provautil.ThreadID]*wire.OutPoint {
+				threadTips := make(map[provautil.ThreadID]*wire.OutPoint)
+				threadTips[provautil.RootThread] = wire.NewOutPoint(newHashFromStr("00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048"), 1337)
 				return threadTips
 			}(),
 			lastKeyID:   btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0}),
@@ -1060,14 +1060,14 @@ func TestKeySetSerialization(t *testing.T) {
 				"unexpected error: %v", i, test.name, err)
 			continue
 		}
-		if test.threadTips[rmgutil.RootThread] != nil &&
-			(!threadTips[rmgutil.RootThread].Hash.IsEqual(
-				&test.threadTips[rmgutil.RootThread].Hash) ||
-				threadTips[rmgutil.RootThread].Index != test.threadTips[rmgutil.RootThread].Index) {
+		if test.threadTips[provautil.RootThread] != nil &&
+			(!threadTips[provautil.RootThread].Hash.IsEqual(
+				&test.threadTips[provautil.RootThread].Hash) ||
+				threadTips[provautil.RootThread].Index != test.threadTips[provautil.RootThread].Index) {
 			t.Errorf("deserializeKeySet #%d (%s) "+
 				"mismatched state - got %v, want %v", i,
-				test.name, threadTips[rmgutil.RootThread],
-				test.threadTips[rmgutil.RootThread])
+				test.name, threadTips[provautil.RootThread],
+				test.threadTips[provautil.RootThread])
 			continue
 		}
 		if lastKeyID != test.lastKeyID {

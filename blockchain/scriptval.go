@@ -6,9 +6,9 @@ package blockchain
 
 import (
 	"fmt"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 	"math"
 	"runtime"
 )
@@ -17,7 +17,7 @@ import (
 type txValidateItem struct {
 	txInIndex int                   // the index of the input to be validated
 	txIn      *wire.TxIn            // a transaction input, composed of outPoint, sigScript, and sequence
-	tx        *rmgutil.Tx           // the transaction to validate
+	tx        *provautil.Tx         // the transaction to validate
 	sigHashes *txscript.TxSigHashes // sighashes, as introduced with BIP0143, to be re-used with other inputs
 }
 
@@ -256,7 +256,7 @@ func newTxValidator(utxoView *UtxoViewpoint, keyView *KeyViewpoint, flags txscri
 
 // ValidateTransactionScripts validates the scripts for the passed transaction
 // using multiple goroutines.
-func ValidateTransactionScripts(tx *rmgutil.Tx, utxoView *UtxoViewpoint, keyView *KeyViewpoint, flags txscript.ScriptFlags, sigCache *txscript.SigCache, hashCache *txscript.HashCache) error {
+func ValidateTransactionScripts(tx *provautil.Tx, utxoView *UtxoViewpoint, keyView *KeyViewpoint, flags txscript.ScriptFlags, sigCache *txscript.SigCache, hashCache *txscript.HashCache) error {
 
 	// If the hashcache doesn't yet has the sighash midstate for this
 	// transaction, then we'll compute them now so we can re-use them
@@ -301,7 +301,7 @@ func ValidateTransactionScripts(tx *rmgutil.Tx, utxoView *UtxoViewpoint, keyView
 
 // checkBlockScripts executes and validates the scripts for all transactions in
 // the passed block using multiple goroutines.
-func checkBlockScripts(block *rmgutil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint, scriptFlags txscript.ScriptFlags, sigCache *txscript.SigCache, hashCache *txscript.HashCache) error {
+func checkBlockScripts(block *provautil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint, scriptFlags txscript.ScriptFlags, sigCache *txscript.SigCache, hashCache *txscript.HashCache) error {
 	// Collect all of the transaction inputs and required information for
 	// validation for all transactions in the block into a single slice.
 	numInputs := 0

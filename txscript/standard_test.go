@@ -10,10 +10,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
 )
 
 // decodeHex decodes the passed hex string and returns the resulting bytes.  It
@@ -43,8 +43,8 @@ func mustParseShortForm(script string) []byte {
 	return s
 }
 
-func newAddressProva(pkHash []byte, keyIDs []btcec.KeyID) rmgutil.Address {
-	addr, err := rmgutil.NewAddressProva(pkHash, keyIDs, &chaincfg.MainNetParams)
+func newAddressProva(pkHash []byte, keyIDs []btcec.KeyID) provautil.Address {
+	addr, err := provautil.NewAddressProva(pkHash, keyIDs, &chaincfg.MainNetParams)
 	if err != nil {
 		panic("invalid prova address in test source")
 	}
@@ -60,7 +60,7 @@ func TestExtractPkScriptAddrs(t *testing.T) {
 	tests := []struct {
 		name    string
 		script  []byte
-		addrs   []rmgutil.Address
+		addrs   []provautil.Address
 		reqSigs int
 		class   txscript.ScriptClass
 	}{
@@ -68,7 +68,7 @@ func TestExtractPkScriptAddrs(t *testing.T) {
 			name: "standard prova",
 			script: decodeHex("521435dbbf04bca061e49dace08f858d87" +
 				"75c0a57c8e030000015153ba"),
-			addrs: []rmgutil.Address{
+			addrs: []provautil.Address{
 				newAddressProva(decodeHex("35dbbf04bca061e49dace08f858d8775c0a57c8e"),
 					[]btcec.KeyID{0x10000, 1}),
 			},
@@ -121,29 +121,29 @@ func TestExtractPkScriptAddrs(t *testing.T) {
 	}
 }
 
-// bogusAddress implements the rmgutil.Address interface so the tests can ensure
+// bogusAddress implements the provautil.Address interface so the tests can ensure
 // unsupported address types are handled properly.
 type bogusAddress struct{}
 
 // EncodeAddress simply returns an empty string.  It exists to satsify the
-// rmgutil.Address interface.
+// provautil.Address interface.
 func (b *bogusAddress) EncodeAddress() string {
 	return ""
 }
 
 // ScriptAddress simply returns an empty byte slice.  It exists to satsify the
-// rmgutil.Address interface.
+// provautil.Address interface.
 func (b *bogusAddress) ScriptAddress() []byte {
 	return nil
 }
 
-// IsForNet lies blatantly to satisfy the rmgutil.Address interface.
+// IsForNet lies blatantly to satisfy the provautil.Address interface.
 func (b *bogusAddress) IsForNet(chainParams *chaincfg.Params) bool {
 	return true // why not?
 }
 
 // String simply returns an empty string.  It exists to satsify the
-// rmgutil.Address interface.
+// provautil.Address interface.
 func (b *bogusAddress) String() string {
 	return ""
 }
@@ -158,7 +158,7 @@ func TestPayToAddrScript(t *testing.T) {
 	t.Parallel()
 
 	// TCq7ZvyjTugZ3xDY8m1Mdgm95v4QmMpMfm3Fg8GCeE1uf
-	provaTest, err := rmgutil.NewAddressProva(
+	provaTest, err := provautil.NewAddressProva(
 		decodeHex("35dbbf04bca061e49dace08f858d8775c0a57c8e"),
 		[]btcec.KeyID{0x10000, 1}, &chaincfg.TestNet3Params)
 	if err != nil {
@@ -167,7 +167,7 @@ func TestPayToAddrScript(t *testing.T) {
 	}
 
 	tests := []struct {
-		in       rmgutil.Address
+		in       provautil.Address
 		expected string
 		err      error
 	}{
@@ -179,7 +179,7 @@ func TestPayToAddrScript(t *testing.T) {
 		},
 
 		// Supported address types with nil pointers.
-		{(*rmgutil.AddressProva)(nil), "", txscript.ErrUnsupportedAddress},
+		{(*provautil.AddressProva)(nil), "", txscript.ErrUnsupportedAddress},
 
 		// Unsupported address type.
 		{&bogusAddress{}, "", txscript.ErrUnsupportedAddress},
@@ -209,7 +209,7 @@ func TestMultiSigScript(t *testing.T) {
 	t.Parallel()
 
 	//  mainnet p2pk 13CG6SJ3yHUXo4Cr2RY4THLLJrNFuG3gUg
-	p2pkCompressedMain, err := rmgutil.NewAddressPubKey(decodeHex("02192d7"+
+	p2pkCompressedMain, err := provautil.NewAddressPubKey(decodeHex("02192d7"+
 		"4d0cb94344c9569c2e77901573d8d7903c3ebec3a957724895dca52c6b4"),
 		&chaincfg.MainNetParams)
 	if err != nil {
@@ -217,7 +217,7 @@ func TestMultiSigScript(t *testing.T) {
 			err)
 		return
 	}
-	p2pkCompressed2Main, err := rmgutil.NewAddressPubKey(decodeHex("03b0bd"+
+	p2pkCompressed2Main, err := provautil.NewAddressPubKey(decodeHex("03b0bd"+
 		"634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65"),
 		&chaincfg.MainNetParams)
 	if err != nil {
@@ -226,7 +226,7 @@ func TestMultiSigScript(t *testing.T) {
 		return
 	}
 
-	p2pkUncompressedMain, err := rmgutil.NewAddressPubKey(decodeHex("0411d"+
+	p2pkUncompressedMain, err := provautil.NewAddressPubKey(decodeHex("0411d"+
 		"b93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5c"+
 		"b2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b41"+
 		"2a3"), &chaincfg.MainNetParams)
@@ -237,13 +237,13 @@ func TestMultiSigScript(t *testing.T) {
 	}
 
 	tests := []struct {
-		keys      []*rmgutil.AddressPubKey
+		keys      []*provautil.AddressPubKey
 		nrequired int
 		expected  string
 		err       error
 	}{
 		{
-			[]*rmgutil.AddressPubKey{
+			[]*provautil.AddressPubKey{
 				p2pkCompressedMain,
 				p2pkCompressed2Main,
 			},
@@ -255,7 +255,7 @@ func TestMultiSigScript(t *testing.T) {
 			nil,
 		},
 		{
-			[]*rmgutil.AddressPubKey{
+			[]*provautil.AddressPubKey{
 				p2pkCompressedMain,
 				p2pkCompressed2Main,
 			},
@@ -267,7 +267,7 @@ func TestMultiSigScript(t *testing.T) {
 			nil,
 		},
 		{
-			[]*rmgutil.AddressPubKey{
+			[]*provautil.AddressPubKey{
 				p2pkCompressedMain,
 				p2pkCompressed2Main,
 			},
@@ -276,7 +276,7 @@ func TestMultiSigScript(t *testing.T) {
 			txscript.ErrBadNumRequired,
 		},
 		{
-			[]*rmgutil.AddressPubKey{
+			[]*provautil.AddressPubKey{
 				p2pkUncompressedMain,
 			},
 			1,
@@ -287,7 +287,7 @@ func TestMultiSigScript(t *testing.T) {
 			nil,
 		},
 		{
-			[]*rmgutil.AddressPubKey{
+			[]*provautil.AddressPubKey{
 				p2pkUncompressedMain,
 			},
 			2,

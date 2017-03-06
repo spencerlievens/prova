@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bitgo/rmgd/txscript"
+	"github.com/bitgo/prova/txscript"
 )
 
 // TestPushedData ensured the PushedData function extracts the expected data out

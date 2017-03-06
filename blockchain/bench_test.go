@@ -7,14 +7,14 @@ package blockchain_test
 import (
 	"testing"
 
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/provautil"
 )
 
 // BenchmarkIsCoinBase performs a simple benchmark against the IsCoinBase
 // function.
 func BenchmarkIsCoinBase(b *testing.B) {
-	tx, _ := rmgutil.NewBlock(&SomeBlock).Tx(1)
+	tx, _ := provautil.NewBlock(&SomeBlock).Tx(1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		blockchain.IsCoinBase(tx)

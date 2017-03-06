@@ -13,15 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 )
 
 func testSendOutputs(r *Harness, t *testing.T) {
-	genSpend := func(amt rmgutil.Amount) *chainhash.Hash {
+	genSpend := func(amt provautil.Amount) *chainhash.Hash {
 		// Grab a fresh address from the wallet.
 		addr, err := r.NewAddress()
 		if err != nil {
@@ -63,7 +63,7 @@ func testSendOutputs(r *Harness, t *testing.T) {
 
 	// First, generate a small spend which will require only a single
 	// input.
-	txid := genSpend(rmgutil.Amount(5 * rmgutil.AtomsPerGram))
+	txid := genSpend(provautil.Amount(5 * provautil.AtomsPerGram))
 
 	// Generate a single block, the transaction the wallet created should
 	// be found in this block.
@@ -75,7 +75,7 @@ func testSendOutputs(r *Harness, t *testing.T) {
 
 	// Next, generate a spend much greater than the block reward. This
 	// transaction should also have been mined properly.
-	txid = genSpend(rmgutil.Amount(500 * rmgutil.AtomsPerGram))
+	txid = genSpend(provautil.Amount(500 * provautil.AtomsPerGram))
 	blockHashes, err = r.Node.Generate(1)
 	if err != nil {
 		t.Fatalf("unable to generate single block: %v", err)
@@ -335,17 +335,17 @@ func testGenerateAndSubmitBlock(r *Harness, t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create script: %v", err)
 	}
-	output := wire.NewTxOut(rmgutil.AtomsPerGram, pkScript)
+	output := wire.NewTxOut(provautil.AtomsPerGram, pkScript)
 
 	const numTxns = 5
-	txns := make([]*rmgutil.Tx, 0, numTxns)
+	txns := make([]*provautil.Tx, 0, numTxns)
 	for i := 0; i < numTxns; i++ {
 		tx, err := r.CreateTransaction([]*wire.TxOut{output}, 10)
 		if err != nil {
 			t.Fatalf("unable to create tx: %v", err)
 		}
 
-		txns = append(txns, rmgutil.NewTx(tx))
+		txns = append(txns, provautil.NewTx(tx))
 	}
 
 	// Now generate a block with the default block version, and a zero'd
@@ -404,7 +404,7 @@ func testMemWalletReorg(r *Harness, t *testing.T) {
 	defer harness.TearDown()
 
 	// The internal wallet of this harness should now have 250 RMG.
-	expectedBalance := rmgutil.Amount(250 * rmgutil.AtomsPerGram)
+	expectedBalance := provautil.Amount(250 * provautil.AtomsPerGram)
 	walletBalance := harness.ConfirmedBalance()
 	if expectedBalance != walletBalance {
 		t.Fatalf("wallet balance incorrect: expected %v, got %v",
@@ -424,7 +424,7 @@ func testMemWalletReorg(r *Harness, t *testing.T) {
 	// The original wallet should now have a balance of 0 RMG as its entire
 	// chain should have been decimated in favor of the main harness'
 	// chain.
-	expectedBalance = rmgutil.Amount(0)
+	expectedBalance = provautil.Amount(0)
 	walletBalance = harness.ConfirmedBalance()
 	if expectedBalance != walletBalance {
 		t.Fatalf("wallet balance incorrect: expected %v, got %v",
@@ -445,7 +445,7 @@ func testMemWalletLockedOutputs(r *Harness, t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create script: %v", err)
 	}
-	outputAmt := rmgutil.Amount(50 * rmgutil.AtomsPerGram)
+	outputAmt := provautil.Amount(50 * provautil.AtomsPerGram)
 	output := wire.NewTxOut(int64(outputAmt), pkScript)
 	tx, err := r.CreateTransaction([]*wire.TxOut{output}, 10)
 	if err != nil {
@@ -527,7 +527,7 @@ func TestMain(m *testing.M) {
 func TestHarness(t *testing.T) {
 	// We should have (numMatureOutputs * 50 RMG) of mature unspendable
 	// outputs.
-	expectedBalance := rmgutil.Amount(numMatureOutputs * 50 * rmgutil.AtomsPerGram)
+	expectedBalance := provautil.Amount(numMatureOutputs * 50 * provautil.AtomsPerGram)
 	harnessBalance := mainHarness.ConfirmedBalance()
 	if harnessBalance != expectedBalance {
 		t.Fatalf("expected wallet balance of %v instead have %v",

@@ -14,7 +14,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/bitgo/rmgd/btcec"
+	"github.com/bitgo/prova/btcec"
 )
 
 // TestAddJacobian tests addition of points projected in Jacobian coordinates.

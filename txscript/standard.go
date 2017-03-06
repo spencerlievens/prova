@@ -5,10 +5,10 @@
 package txscript
 
 import (
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 )
 
 const (
@@ -164,7 +164,7 @@ func isProva(pops []parsedOpcode) bool {
 
 // IsProvaTx determines if a transaction is a standard prova transaction consisting
 // of only outputs to standard prova scripts and 0-value nulldata scripts.
-func IsProvaTx(tx *rmgutil.Tx) bool {
+func IsProvaTx(tx *provautil.Tx) bool {
 	msgTx := tx.MsgTx()
 
 	// An prova transaction must have at least one output.
@@ -219,7 +219,7 @@ func GetAdminDetailsMsgTx(msgTx *wire.MsgTx) (int, [][]parsedOpcode) {
 }
 
 // GetAdminDetails will read threadID and admin outputs from an admin transaction.
-func GetAdminDetails(tx *rmgutil.Tx) (int, [][]parsedOpcode) {
+func GetAdminDetails(tx *provautil.Tx) (int, [][]parsedOpcode) {
 	return GetAdminDetailsMsgTx(tx.MsgTx())
 }
 
@@ -232,8 +232,8 @@ func isProvaAdmin(pops []parsedOpcode) bool {
 	if pops[sLen-1].opcode.value != OP_CHECKTHREAD {
 		return false
 	}
-	threadID := rmgutil.ThreadID(asSmallInt(pops[0].opcode))
-	if threadID < rmgutil.RootThread || threadID > rmgutil.IssueThread {
+	threadID := provautil.ThreadID(asSmallInt(pops[0].opcode))
+	if threadID < provautil.RootThread || threadID > provautil.IssueThread {
 		return false
 	}
 	return true
@@ -241,7 +241,7 @@ func isProvaAdmin(pops []parsedOpcode) bool {
 
 // IsValidAdminOp returns true if the passed script is a valid admin
 // operation at the given thread.
-func IsValidAdminOp(pops []parsedOpcode, threadID rmgutil.ThreadID) bool {
+func IsValidAdminOp(pops []parsedOpcode, threadID provautil.ThreadID) bool {
 	// always expect two ops
 	// <OP_RETURN><OP_DATA>
 	if len(pops) != 2 {
@@ -261,14 +261,14 @@ func IsValidAdminOp(pops []parsedOpcode, threadID rmgutil.ThreadID) bool {
 	}
 	// check thread specific operations
 	switch threadID {
-	case rmgutil.RootThread:
+	case provautil.RootThread:
 		if op == AdminOpProvisionKeyAdd ||
 			op == AdminOpProvisionKeyRevoke ||
 			op == AdminOpIssueKeyAdd ||
 			op == AdminOpIssueKeyRevoke {
 			return true
 		}
-	case rmgutil.ProvisionThread:
+	case provautil.ProvisionThread:
 		if op == AdminOpValidateKeyAdd ||
 			op == AdminOpValidateKeyRevoke {
 			return true
@@ -280,7 +280,7 @@ func IsValidAdminOp(pops []parsedOpcode, threadID rmgutil.ThreadID) bool {
 				return true
 			}
 		}
-	case rmgutil.IssueThread:
+	case provautil.IssueThread:
 		return false
 	}
 	return false
@@ -477,9 +477,9 @@ func payToProvaScript(pubKeyHash []byte, keyIDs []btcec.KeyID) ([]byte, error) {
 
 // PayToAddrScript creates a new script to pay a transaction output to a the
 // specified address.
-func PayToAddrScript(addr rmgutil.Address) ([]byte, error) {
+func PayToAddrScript(addr provautil.Address) ([]byte, error) {
 	switch addr := addr.(type) {
-	case *rmgutil.AddressProva:
+	case *provautil.AddressProva:
 		if addr == nil {
 			return nil, ErrUnsupportedAddress
 		}
@@ -491,7 +491,7 @@ func PayToAddrScript(addr rmgutil.Address) ([]byte, error) {
 
 // ProvaThreadScript creates a new script to pay a transaction output to an
 // Prova Admin Thread.
-func ProvaThreadScript(threadID rmgutil.ThreadID) ([]byte, error) {
+func ProvaThreadScript(threadID provautil.ThreadID) ([]byte, error) {
 	return NewScriptBuilder().
 		AddInt64(int64(threadID)).
 		AddOp(OP_CHECKTHREAD).Script()
@@ -501,7 +501,7 @@ func ProvaThreadScript(threadID rmgutil.ThreadID) ([]byte, error) {
 // nrequired of the keys in pubkeys are required to have signed the transaction
 // for success.  An ErrBadNumRequired will be returned if nrequired is larger
 // than the number of keys provided.
-func MultiSigScript(pubkeys []*rmgutil.AddressPubKey, nrequired int) ([]byte, error) {
+func MultiSigScript(pubkeys []*provautil.AddressPubKey, nrequired int) ([]byte, error) {
 	if len(pubkeys) < nrequired {
 		return nil, ErrBadNumRequired
 	}
@@ -539,8 +539,8 @@ func PushedData(script []byte) ([][]byte, error) {
 // signatures associated with the passed PkScript.  Note that it only works for
 // 'standard' transaction script types.  Any data such as public keys which are
 // invalid are omitted from the results.
-func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (ScriptClass, []rmgutil.Address, int, error) {
-	var addrs []rmgutil.Address
+func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (ScriptClass, []provautil.Address, int, error) {
+	var addrs []provautil.Address
 	var requiredSigs int
 
 	// No valid addresses or required signatures if the script doesn't
@@ -561,7 +561,7 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 			btcec.KeyID(key0),
 			btcec.KeyID(key1),
 		}
-		addr, err := rmgutil.NewAddressProva(pops[1].data, keyIDs, chainParams)
+		addr, err := provautil.NewAddressProva(pops[1].data, keyIDs, chainParams)
 		if err == nil && err0 == nil && err1 == nil {
 			addrs = append(addrs, addr)
 		}

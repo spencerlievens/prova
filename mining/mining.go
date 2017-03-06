@@ -7,15 +7,15 @@ package mining
 import (
 	"time"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
 )
 
 // TxDesc is a descriptor about a transaction in a transaction source along with
 // additional metadata.
 type TxDesc struct {
 	// Tx is the transaction associated with the entry.
-	Tx *rmgutil.Tx
+	Tx *provautil.Tx
 
 	// Added is the time when the entry was added to the source pool.
 	Added time.Time

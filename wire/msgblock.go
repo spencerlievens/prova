@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
+	"github.com/bitgo/prova/chaincfg/chainhash"
 )
 
 // defaultTransactionAlloc is the default size used for the backing array

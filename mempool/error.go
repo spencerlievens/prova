@@ -5,8 +5,8 @@
 package mempool
 
 import (
-	"github.com/bitgo/rmgd/blockchain"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/wire"
 )
 
 // RuleError identifies a rule violation.  It is used to indicate that

@@ -7,13 +7,13 @@ package blockchain
 import (
 	"container/list"
 	"fmt"
-	"github.com/bitgo/rmgd/btcec"
-	"github.com/bitgo/rmgd/chaincfg"
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/rmgutil"
-	"github.com/bitgo/rmgd/txscript"
-	"github.com/bitgo/rmgd/wire"
+	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
 	"math/big"
 	"sort"
 	"sync"
@@ -94,7 +94,7 @@ func newBlockNode(blockHeader *wire.BlockHeader, blockHash *chainhash.Hash) *blo
 // is a normal block plus an expiration time to prevent caching the orphan
 // forever.
 type orphanBlock struct {
-	block      *rmgutil.Block
+	block      *provautil.Block
 	expiration time.Time
 }
 
@@ -205,7 +205,7 @@ type BlockChain struct {
 	// protected by the chain lock.
 
 	// threadTips hold latest transaction hash of the 3 admin threads.
-	threadTips map[rmgutil.ThreadID]*wire.OutPoint
+	threadTips map[provautil.ThreadID]*wire.OutPoint
 	// latest keyID is a strictly increasing counter, to avoid reuse of
 	// keyIDs.
 	lastKeyID btcec.KeyID
@@ -223,12 +223,12 @@ type BlockChain struct {
 	orphans      map[chainhash.Hash]*orphanBlock
 	prevOrphans  map[chainhash.Hash][]*orphanBlock
 	oldestOrphan *orphanBlock
-	blockCache   map[chainhash.Hash]*rmgutil.Block
+	blockCache   map[chainhash.Hash]*provautil.Block
 
 	// These fields are related to checkpoint handling.  They are protected
 	// by the chain lock.
 	nextCheckpoint  *chaincfg.Checkpoint
-	checkpointBlock *rmgutil.Block
+	checkpointBlock *provautil.Block
 
 	// The state is used as a fairly efficient way to cache information
 	// about the current best chain state that is returned to callers when
@@ -364,7 +364,7 @@ func (b *BlockChain) removeOrphanBlock(orphan *orphanBlock) {
 // It also imposes a maximum limit on the number of outstanding orphan
 // blocks and will remove the oldest received orphan block if the limit is
 // exceeded.
-func (b *BlockChain) addOrphanBlock(block *rmgutil.Block) {
+func (b *BlockChain) addOrphanBlock(block *provautil.Block) {
 	// Remove expired orphan blocks.
 	for _, oBlock := range b.orphans {
 		if time.Now().After(oBlock.expiration) {
@@ -476,7 +476,7 @@ func (b *BlockChain) loadBlockNode(dbTx database.Tx, hash *chainhash.Hash) (*blo
 // it.  The returned node will be nil if the genesis block is passed.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) getPrevNodeFromBlock(block *rmgutil.Block) (*blockNode, error) {
+func (b *BlockChain) getPrevNodeFromBlock(block *provautil.Block) (*blockNode, error) {
 	// Genesis block.
 	prevHash := &block.MsgBlock().Header.PrevBlock
 	if prevHash.IsEqual(zeroHash) {
@@ -760,7 +760,7 @@ func (b *BlockChain) getReorganizeNodes(node *blockNode) (*list.List, *list.List
 
 // dbMaybeStoreBlock stores the provided block in the database if it's not
 // already there.
-func dbMaybeStoreBlock(dbTx database.Tx, block *rmgutil.Block) error {
+func dbMaybeStoreBlock(dbTx database.Tx, block *provautil.Block) error {
 	hasBlock, err := dbTx.HasBlock(block.Hash())
 	if err != nil {
 		return err
@@ -783,7 +783,7 @@ func dbMaybeStoreBlock(dbTx database.Tx, block *rmgutil.Block) error {
 // it would be inefficient to repeat it.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint, stxos []spentTxOut) error {
+func (b *BlockChain) connectBlock(node *blockNode, block *provautil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint, stxos []spentTxOut) error {
 	// Make sure it's extending the end of the best chain.
 	prevHash := &block.MsgBlock().Header.PrevBlock
 	if !prevHash.IsEqual(b.bestNode.hash) {
@@ -916,7 +916,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *rmgutil.Block, utxoVie
 // the main (best) chain.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint) error {
+func (b *BlockChain) disconnectBlock(node *blockNode, block *provautil.Block, utxoView *UtxoViewpoint, keyView *KeyViewpoint) error {
 	// Make sure the node being disconnected is the end of the best chain.
 	if !node.hash.IsEqual(b.bestNode.hash) {
 		return AssertError("disconnectBlock must be called with the " +
@@ -939,7 +939,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, utxo
 	}
 
 	// Load the previous block since some details for it are needed below.
-	var prevBlock *rmgutil.Block
+	var prevBlock *provautil.Block
 	err = b.db.View(func(dbTx database.Tx) error {
 		var err error
 		prevBlock, err = dbFetchBlockByHash(dbTx, prevNode.hash)
@@ -1043,7 +1043,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *rmgutil.Block, utxo
 }
 
 // countSpentOutputs returns the number of utxos the passed block spends.
-func countSpentOutputs(block *rmgutil.Block) int {
+func countSpentOutputs(block *provautil.Block) int {
 	// Exclude the coinbase transaction since it can't spend anything.
 	var numSpent int
 	for _, tx := range block.Transactions()[1:] {
@@ -1080,7 +1080,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	// be loaded from the database during the reorg check phase below and
 	// then they are needed again when doing the actual database updates.
 	// Rather than doing two loads, cache the loaded data into these slices.
-	detachBlocks := make([]*rmgutil.Block, 0, detachNodes.Len())
+	detachBlocks := make([]*provautil.Block, 0, detachNodes.Len())
 	detachSpentTxOuts := make([][]spentTxOut, 0, detachNodes.Len())
 
 	// Disconnect all of the blocks back to the point of the fork.  This
@@ -1100,7 +1100,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	keyView.SetKeyIDs(b.aspKeyIdMap)
 	for e := detachNodes.Front(); e != nil; e = e.Next() {
 		n := e.Value.(*blockNode)
-		var block *rmgutil.Block
+		var block *provautil.Block
 		err := b.db.View(func(dbTx database.Tx) error {
 			var err error
 			block, err = dbFetchBlockByHash(dbTx, n.hash)
@@ -1272,7 +1272,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 //    modifying the state are avoided.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) connectBestChain(node *blockNode, block *rmgutil.Block, flags BehaviorFlags) (bool, error) {
+func (b *BlockChain) connectBestChain(node *blockNode, block *provautil.Block, flags BehaviorFlags) (bool, error) {
 	fastAdd := flags&BFFastAdd == BFFastAdd
 	dryRun := flags&BFDryRun == BFDryRun
 
@@ -1468,7 +1468,7 @@ func (b *BlockChain) BestSnapshot() *BestState {
 
 // ThreadTips
 // This function is safe for concurrent access.
-func (b *BlockChain) ThreadTips() map[rmgutil.ThreadID]*wire.OutPoint {
+func (b *BlockChain) ThreadTips() map[provautil.ThreadID]*wire.OutPoint {
 	b.stateLock.RLock()
 	threadTips := b.threadTips
 	b.stateLock.RUnlock()
@@ -1525,11 +1525,11 @@ type IndexManager interface {
 
 	// ConnectBlock is invoked when a new block has been connected to the
 	// main chain.
-	ConnectBlock(database.Tx, *rmgutil.Block, *UtxoViewpoint) error
+	ConnectBlock(database.Tx, *provautil.Block, *UtxoViewpoint) error
 
 	// DisconnectBlock is invoked when a block has been disconnected from
 	// the main chain.
-	DisconnectBlock(database.Tx, *rmgutil.Block, *UtxoViewpoint) error
+	DisconnectBlock(database.Tx, *provautil.Block, *UtxoViewpoint) error
 }
 
 // Config is a descriptor which specifies the blockchain instance configuration.
@@ -1625,7 +1625,7 @@ func New(config *Config) (*BlockChain, error) {
 		blocksPerRetarget:   int32(targetTimespan / targetTimePerBlock),
 		minMemoryNodes:      int32(targetTimespan / targetTimePerBlock),
 		bestNode:            nil,
-		threadTips:          make(map[rmgutil.ThreadID]*wire.OutPoint),
+		threadTips:          make(map[provautil.ThreadID]*wire.OutPoint),
 		lastKeyID:           btcec.KeyID(0),
 		totalSupply:         uint64(0),
 		adminKeySets:        make(map[btcec.KeySetType]btcec.PublicKeySet),
@@ -1634,7 +1634,7 @@ func New(config *Config) (*BlockChain, error) {
 		depNodes:            make(map[chainhash.Hash][]*blockNode),
 		orphans:             make(map[chainhash.Hash]*orphanBlock),
 		prevOrphans:         make(map[chainhash.Hash][]*orphanBlock),
-		blockCache:          make(map[chainhash.Hash]*rmgutil.Block),
+		blockCache:          make(map[chainhash.Hash]*provautil.Block),
 	}
 
 	// Initialize the chain state from the passed database.  When the db

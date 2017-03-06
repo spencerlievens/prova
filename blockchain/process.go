@@ -7,9 +7,9 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/bitgo/rmgd/chaincfg/chainhash"
-	"github.com/bitgo/rmgd/database"
-	"github.com/bitgo/rmgd/rmgutil"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/provautil"
 )
 
 // BehaviorFlags is a bitmask defining tweaks to the normal behavior when
@@ -125,7 +125,7 @@ func (b *BlockChain) processOrphans(hash *chainhash.Hash, flags BehaviorFlags) e
 // whether or not the block is an orphan.
 //
 // This function is safe for concurrent access.
-func (b *BlockChain) ProcessBlock(block *rmgutil.Block, flags BehaviorFlags) (bool, bool, error) {
+func (b *BlockChain) ProcessBlock(block *provautil.Block, flags BehaviorFlags) (bool, bool, error) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 
