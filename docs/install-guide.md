@@ -56,8 +56,6 @@ btcctl -u user -P pass -s 127.0.0.1:7001 generate 101
 
 For Prova in testnet mode, create a ~/testnet3/1 directory, use the following command line arguments to start the testnet node and connect to the remote node.
 
-If you are on the internal dev VPN you can connect to a testnet node running master at 10.151.51.76:18333
-
 ```
 rmgd
 --addpeer=dev-rmgd-01:17979
