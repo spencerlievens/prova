@@ -578,6 +578,7 @@ The following is an overview of the RPC methods which are implemented by Prova, 
 |#|Method|Safe for limited user?|Description|
 |---|------|----------|-----------|
 |1|[getadmininfo](#getadmininfo)|Y|Get info about the current admin state.|
+|1|[getaddresstxids](#getaddresstxids)|Y|Get transaction ids associated with given addresses|
 |2|[setvalidatekeys](#setvalidatekeys)|Y|Set the validate private keys.|
 
 <a name="ProvaMethodDetails" />
@@ -592,6 +593,19 @@ The following is an overview of the RPC methods which are implemented by Prova, 
 |Description|Get the latest admin state: unspent admin transaction outputs, net issuance, and admin keys.|
 |Returns|`{ (json object)`<br />&nbsp;`"hash": "data",  (string) the hex-encoded bytes of the best block hash`<br />&nbsp;`"height": n (numeric) the block height of the best block`<br />&nbsp;`"threadtips": [{ (array of json objects)`<br />&nbsp;&nbsp;`"id": n (numeric) the thread id`<br />&nbsp;&nbsp;`"name":  "data", (string) the thread name`<br />&nbsp;&nbsp;`"outpoint":  "txid:vout", (string) the unspent outpoint`<br />&nbsp;`}] `<br />&nbsp;`"totalsupply": n (numeric) the net value of admin issuance`<br />&nbsp;`"lastkeyid": n (numeric) the highest key id value ever provisioned`<br />&nbsp;`"rootkeys": (array of strings) the root pubKeys`<br />&nbsp;`"provisionkeys": (array of strings) the provision pubKeys`<br />&nbsp;`"issuekeys": (array of strings) the issue pubKeys`<br />&nbsp;`"validatekeys": (array of strings) the validate pubKeys`<br />&nbsp;`"aspkeys": [{ (array of json objects) `<br />&nbsp;&nbsp;`"pubkey":  "data", (string) the asp pubKey`<br />&nbsp;&nbsp;`"keyid":  n, (numeric) the ASP key id`<br />&nbsp;`}] `<br />`}`
 [Return to Overview](#ExtMethodOverview)<br />
+
+***
+
+<a name="getaddresstxids"></a>
+
+|   |   |
+|---|---|
+|Method|getaddresstxids|
+|Parameters|1. (json serialized arguments) {"addresses": (required array of strings) ["address",...], "start":n (optional numeric chain height), "end":n (optional numeric chain height)} |
+|Description|Get the transaction hashes for transactions associated with addresses. Chain height filtering is available for paging.|
+|Note|This method only returns transaction hashes present in the best chain|
+|Returns|`[ (json array of string)`<br />&nbsp;&nbsp;`"transactionhash", (string) hash of the transaction associated with address`<br />&nbsp;&nbsp;`...`<br />`]`|
+[Return to Overview](#MethodOverview)<br />
 
 ***
 
