@@ -146,7 +146,7 @@ The second output contains the admin operation: add the given public key to the 
 
 ### Issuance
 
-To issue new tokens, transactions on the issue thread include an output to a standard address with the issued value.  When adding funds, issue transactions have the special case that their output values are permitted to be greater than their input values.
+To issue new tokens, transactions on the issue thread include an output to a standard token output with the issued value.  When adding funds, issue transactions have the special case that the sum of their output value is permitted to be greater than the sum of their input value.
 
 Example:
 
@@ -156,6 +156,8 @@ ScriptSig 0: <issue-key-0> <issue-sig-0> <issue-key-1> <issue-sig-1>
 Output 0: <ISSUE_THREAD> OP_CHECK_THREAD
 Output 1: <standard token transfer output>
 ```
+
+Aside from the issue thread input, no other inputs are valid in an issue transaction.
 
 When de-issuing tokens, a standard key authorizes the spending value from a standard unspent output, then spends to an output that marks the tokens as permanently unspendable:
 
@@ -170,7 +172,7 @@ Output 0: <ISSUE THREAD> OP_CHECKTHREAD
 Output 1: OP_RETURN
 ```
 
-Fund removals must consume all funds of the unspent transaction output they are spending, no issue outputs or fees are valid.  The scriptSig authorizing the spend of a standard UTXO must be valid.
+The scriptSig authorizing the spend of a standard UTXO must be valid.  To allow for deissuing less than the full value of a UTXO, it is valid to also include standard outputs sending change value.
 
 ## Indexing
 
