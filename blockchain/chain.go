@@ -60,7 +60,7 @@ type blockNode struct {
 	inMainChain bool
 
 	// Some fields from block headers to aid in best chain selection.
-	version   int32
+	version   uint32
 	bits      uint32
 	timestamp time.Time
 
@@ -618,7 +618,7 @@ func (b *BlockChain) pruneBlockNodes() error {
 // starting with startNode are at least the minimum passed version.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) isMajorityVersion(minVer int32, startNode *blockNode, numRequired uint64) bool {
+func (b *BlockChain) isMajorityVersion(minVer uint32, startNode *blockNode, numRequired uint64) bool {
 	numFound := uint64(0)
 	iterNode := startNode
 	for i := uint64(0); i < b.chainParams.BlockUpgradeNumToCheck &&

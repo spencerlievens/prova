@@ -49,7 +49,7 @@ const MaxBlockHeaderPayload = 32 + (chainhash.HashSize * 2) + BlockValidatingPub
 // block (MsgBlock) and headers (MsgHeaders) messages.
 type BlockHeader struct {
 	// Version of the block.  This is not the same as the protocol version.
-	Version int32
+	Version uint32
 
 	// Hash of the previous block in the block chain.
 	PrevBlock chainhash.Hash
