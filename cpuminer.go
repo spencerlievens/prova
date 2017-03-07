@@ -222,14 +222,11 @@ func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight uint32,
 			// Non-blocking select to fall through
 		}
 
-		// Update the nonce and hash the block header.  Each
-		// hash is actually a double sha256 (two hashes), so
-		// increment the number of hashes completed for each
-		// attempt accordingly.
-		// TODO(prova) update this to reflect new hash function
+		// Update the nonce and hash the block header.  Increase
+		// the number of hashes to add a single SHA3 hash round.
 		header.Nonce = i
 		hash := header.BlockHash()
-		hashesCompleted += 2
+		hashesCompleted += 1
 
 		// The block is solved when the new block hash is less
 		// than the target difficulty.  Yay!
