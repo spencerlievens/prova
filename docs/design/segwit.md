@@ -6,7 +6,7 @@ When designing a new blockchain, the many lessons learned from Bitcoin over the 
 
 The Segregated Witness proposal consists of the following Bitcoin Improvement Proposals (BIP):
 
-| Name  | Description |  Bitcoin chain | RMG chain |
+| Name  | Description |  Bitcoin chain | Prova chain |
 | ------------- | ------------- | ------------- | ------------- |
 | [BIP 0141](https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki) | SegWit Consensus layer  | BIP9 | Partially adopted |
 | [BIP 0142](https://github.com/bitcoin/bips/blob/master/bip-0142.mediawiki) | Address Format | deferred | ignored |
@@ -49,7 +49,7 @@ The Prova chain does not need to keep backwards compatibility, hence, it can com
 
 ![Figure 2](segwit-fig2.png)
 
-Figure 2 shows how the RMG chain constructs merkle trees of TxIDs and TxIDWithSigs and then combines the merkle trees by hashing both roots into a new root, which is written to the block header.
+Figure 2 shows how the Prova chain constructs merkle trees of TxIDs and TxIDWithSigs and then combines the merkle trees by hashing both roots into a new root, which is written to the block header.
 
 ## Transaction Digest Algorithm
 

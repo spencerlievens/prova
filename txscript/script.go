@@ -665,7 +665,7 @@ func calcSignatureHashNew(subScript []parsedOpcode, sigHashes *TxSigHashes,
 
 	// In BIP 143, we would write the scriptCode of the input itself here.
 	// The script code can be relevant to certain hardware wallets.
-	// There is no use-case for this in the RMG chain.
+	// There is no use-case for this in the Prova chain.
 
 	// Next, add the input amount, and sequence number of the input being
 	// signed.
