@@ -1004,7 +1004,7 @@ func handleGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		return nil, &btcjson.RPCError{
 			Code: btcjson.ErrRPCInternal.Code,
 			Message: "No validate keys provided via " +
-				"--setvalidatekeys or RMGD_VALIDATE_KEYS " +
+				"--setvalidatekeys or PROVA_VALIDATE_KEYS " +
 				"environment variable",
 		}
 	}
@@ -3776,7 +3776,7 @@ func handleSetGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 		return nil, &btcjson.RPCError{
 			Code: btcjson.ErrRPCInternal.Code,
 			Message: "No validating priv keys specified " +
-				"via --setvalidatekeys or RMGD_VALIDATE_KEYS" +
+				"via --setvalidatekeys or PROVA_VALIDATE_KEYS" +
 				"env variable",
 		}
 	}

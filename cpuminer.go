@@ -40,7 +40,7 @@ const (
 
 	// validateKeysEnvironmentKey specifies the environment var name to
 	// look up when populating the validate keys of the CPU miner.
-	validateKeysEnvironmentKey = "RMGD_VALIDATE_KEYS"
+	validateKeysEnvironmentKey = "PROVA_VALIDATE_KEYS"
 )
 
 var (
