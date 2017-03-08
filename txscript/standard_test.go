@@ -496,6 +496,23 @@ var scriptClassTests = []scriptClassTest{
 			"3 CHECKSAFEMULTISIG",
 		class: txscript.NonStandardTy,
 	},
+	{
+		name: "standard prova script",
+		script: "2 DATA_20 0x433ec2ac1ffa1b7b7d027f564529c57197f" +
+			"9ae88 1 2 3 CHECKSAFEMULTISIG",
+		class: txscript.ProvaTy,
+	},
+	{
+		name: "prova script with additional key ids",
+		script: "2 DATA_20 0x433ec2ac1ffa1b7b7d027f564529c57197f" +
+			"9ae88 1 2 3 4 5 CHECKSAFEMULTISIG",
+		class: txscript.GeneralProvaTy,
+	},
+	{
+		name:   "prova admin script",
+		script: "0 CHECKTHREAD",
+		class:  txscript.ProvaAdminTy,
+	},
 }
 
 // TestScriptClass ensures all the scripts in scriptClassTests have the expected
@@ -528,26 +545,6 @@ func TestStringifyClass(t *testing.T) {
 			name:     "nonstandardty",
 			class:    txscript.NonStandardTy,
 			stringed: "nonstandard",
-		},
-		{
-			name:     "pubkey",
-			class:    txscript.PubKeyTy,
-			stringed: "pubkey",
-		},
-		{
-			name:     "pubkeyhash",
-			class:    txscript.PubKeyHashTy,
-			stringed: "pubkeyhash",
-		},
-		{
-			name:     "scripthash",
-			class:    txscript.ScriptHashTy,
-			stringed: "scripthash",
-		},
-		{
-			name:     "multisigty",
-			class:    txscript.MultiSigTy,
-			stringed: "multisig",
 		},
 		{
 			name:     "nulldataty",

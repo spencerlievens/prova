@@ -58,10 +58,6 @@ const (
 var scriptClassToName = []string{
 	// TODO(prova): clean up non-used types
 	NonStandardTy:  "nonstandard",
-	PubKeyTy:       "pubkey",
-	PubKeyHashTy:   "pubkeyhash",
-	ScriptHashTy:   "scripthash",
-	MultiSigTy:     "multisig",
 	NullDataTy:     "nulldata",
 	ProvaTy:        "safe_multisig",
 	GeneralProvaTy: "safe_multisig",
