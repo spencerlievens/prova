@@ -58,7 +58,7 @@ For Prova in testnet mode, create a ~/testnet3/1 directory, use the following co
 
 ```
 prova
---addpeer=dev-prova-01:17979
+--addpeer=$PEER_ADDRESS
 --addrindex
 --datadir=$YOUR_PATH_TO_DATA_DIRECTORY
 --listen=127.0.0.1:6001
@@ -74,31 +74,5 @@ These arguments will enable the tx and addr indexes, specify testnet and the dat
 
 ## Run Tests
 
-If you want to confirm that everything is working in your build, you can create a commandline alias to run all the package tests.
+To test an individual package, in the directory of the package run the command `go test -v`
 
-In your home directory (or wherever you would like), create a new file `rmgpackages`
-
-Edit the file to include the contents:
-
-```
-github.com/bitgo/prova/addrmgr
-github.com/bitgo/prova/blockchain
-github.com/bitgo/prova/btcec
-github.com/bitgo/prova/btcjson
-github.com/bitgo/prova/chaincfg
-github.com/bitgo/prova/database
-github.com/bitgo/prova/mempool
-github.com/bitgo/prova/peer
-github.com/bitgo/prova/provautil
-github.com/bitgo/prova/txscript
-github.com/bitgo/prova/wire
-github.com/bitgo/prova
-```
-
-Now edit your bash profile to include the alias to test, replacing `~/rmgpackages` with the path to where you placed the file.
-
-```
-alias rmgtest='cat ~/rmgpackages | grep -v \# | xargs go test'
-```
-
-Running this alias will run each package's tests. You can also use `go test -v` if you wish to see verbose results.
