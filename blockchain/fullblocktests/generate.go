@@ -83,9 +83,10 @@ type AcceptedBlock struct {
 	Height       uint32
 	IsMainChain  bool
 	IsOrphan     bool
+	ThreadTips   map[rmgutil.ThreadID]*wire.OutPoint
+	TotalSupply  uint64
 	AdminKeySets map[btcec.KeySetType]btcec.PublicKeySet
 	WspKeyIdMap  btcec.KeyIdMap
-	TotalSupply  uint64
 }
 
 // Ensure AcceptedBlock implements the TestInstance interface.
@@ -704,12 +705,20 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	//
 	// expectTipBlock creates a test instance that expects the provided
 	// block to be the current tip of the block chain.
-	lastAdminKeySets := btcec.DeepCopy(chaincfg.RegressionNetParams.AdminKeySets)
-	lastWspKeys := chaincfg.RegressionNetParams.WspKeyIdMap.DeepCopy()
+	lastAdminKeySets := chaincfg.RegressionNetParams.AdminKeySets
+	lastWspKeys := chaincfg.RegressionNetParams.WspKeyIdMap
 	lastTotalSupply := uint64(0)
+	lastThreadTips := make(map[rmgutil.ThreadID]*wire.OutPoint)
+	rootOut := makeSpendableOut(g.tip, 0, 0)
+	lastThreadTips[rmgutil.RootThread] = &rootOut.prevOut
+	provisionOut := makeSpendableOut(g.tip, 0, 1)
+	lastThreadTips[rmgutil.ProvisionThread] = &provisionOut.prevOut
+	issueOut := makeSpendableOut(g.tip, 0, 2)
+	lastThreadTips[rmgutil.IssueThread] = &issueOut.prevOut
+
 	acceptBlock := func(blockName string, block *wire.MsgBlock, isMainChain, isOrphan bool) TestInstance {
 		blockHeight := g.blockHeights[blockName]
-		return AcceptedBlock{blockName, block, blockHeight, isMainChain, isOrphan, lastAdminKeySets, lastWspKeys, lastTotalSupply}
+		return AcceptedBlock{blockName, block, blockHeight, isMainChain, isOrphan, lastThreadTips, lastTotalSupply, lastAdminKeySets, lastWspKeys}
 	}
 	rejectBlock := func(blockName string, block *wire.MsgBlock, code blockchain.ErrorCode) TestInstance {
 		blockHeight := g.blockHeights[blockName]
@@ -740,6 +749,14 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 			acceptBlock(g.tipName, g.tip, true, false),
 		})
 	}
+	assertThreadTip := func(threadId rmgutil.ThreadID, out spendableOut) {
+		threadTips := rmgutil.CopyThreadTips(lastThreadTips)
+		threadTips[threadId] = &out.prevOut
+		lastThreadTips = threadTips
+	}
+	assertTotalSupply := func(totalSupply uint64) {
+		lastTotalSupply = totalSupply
+	}
 	assertAdminKeys := func(keySetType btcec.KeySetType, adminKeys []btcec.PublicKey) {
 		adminKeySets := btcec.DeepCopy(lastAdminKeySets)
 		if adminKeys != nil {
@@ -753,9 +770,6 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 			wspKeys[keyID] = adminKey
 		}
 		lastWspKeys = wspKeys
-	}
-	assertTotalSupply := func(totalSupply uint64) {
-		lastTotalSupply = totalSupply
 	}
 	acceptedToSideChainWithExpectedTip := func(tipName string) {
 		tests = append(tests, []TestInstance{
@@ -772,13 +786,10 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	// Get the thread tips from genesis
 	var outs []*spendableOut
 	// start of ROOT THREAD
-	rootOut := makeSpendableOut(g.tip, 0, 0)
 	outs = append(outs, &rootOut)
 	// start of PROVISION THREAD
-	provisionOut := makeSpendableOut(g.tip, 0, 1)
 	outs = append(outs, &provisionOut)
 	// start of ISSUE THREAD
-	issueOut := makeSpendableOut(g.tip, 0, 2)
 	outs = append(outs, &issueOut)
 
 	// ---------------------------------------------------------------------
@@ -834,16 +845,20 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	// Provision an ISSUE key in b3 and check its there.
 	g.setTip("b1")
 	issueKeyAddTx = createAdminTx(outs[0], 0, txscript.AdminOpIssueKeyAdd, pubKey1)
+	rootThreadOut := makeSpendableOutForTx(issueKeyAddTx, 0)
 	g.nextBlock("b3", nil, additionalTx(issueKeyAddTx))
+	assertThreadTip(rmgutil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1})
 	accepted()
 
 	// Provision another two ISSUE keys and check three are there.
-	rootThreadOut := makeSpendableOutForTx(issueKeyAddTx, 0)
+
 	issueKeyAddTx2 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey2)
 	rootThreadOut = makeSpendableOutForTx(issueKeyAddTx2, 0)
 	issueKeyAddTx3 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey3)
+	rootThreadOut = makeSpendableOutForTx(issueKeyAddTx3, 0)
 	g.nextBlock("b4", nil, additionalTx(issueKeyAddTx2), additionalTx(issueKeyAddTx3))
+	assertThreadTip(rmgutil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1, *pubKey2, *pubKey3})
 	accepted()
 
@@ -854,22 +869,24 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	accepted()
 
 	// Revoke one ISSUE key again
-	rootThreadOut = makeSpendableOutForTx(issueKeyAddTx3, 0)
 	issueKeyRevokeTx1 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyRevoke, pubKey1)
 	// Also destroy some tokens
 	issueThreadOut := makeSpendableOutForTx(issueTx, 0)
 	issueTx2 := createIssueTx(&issueThreadOut, int64(0), outs[5])
+	rootThreadOut = makeSpendableOutForTx(issueKeyRevokeTx1, 0)
 	g.nextBlock("b6", nil, additionalTx(issueKeyRevokeTx1), additionalTx(issueTx2))
+	assertThreadTip(rmgutil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2})
 	assertTotalSupply(5000000000)
 	accepted()
 
 	// add provision keys
-	rootThreadOut = makeSpendableOutForTx(issueKeyRevokeTx1, 0)
 	provisionKeyAddTx1 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpProvisionKeyAdd, pubKey1)
 	rootThreadOut = makeSpendableOutForTx(provisionKeyAddTx1, 0)
 	provisionKeyAddTx2 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpProvisionKeyAdd, pubKey2)
+	rootThreadOut = makeSpendableOutForTx(provisionKeyAddTx2, 0)
 	g.nextBlock("b7", nil, additionalTx(provisionKeyAddTx1), additionalTx(provisionKeyAddTx2))
+	assertThreadTip(rmgutil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.ProvisionKeySet, []btcec.PublicKey{*pubKey1, *pubKey2})
 	accepted()
 
@@ -893,9 +910,10 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	g.nextBlock("b9", outs[8])
 	accepted()
 
-	rootThreadOut = makeSpendableOutForTx(provisionKeyAddTx2, 0)
 	adminKeyAddTx := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey1)
+	rootThreadOutFork := makeSpendableOutForTx(adminKeyAddTx, 0)
 	g.nextBlock("b10", nil, additionalTx(adminKeyAddTx))
+	assertThreadTip(rmgutil.RootThread, rootThreadOutFork)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1})
 	accepted()
 
@@ -916,6 +934,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	//
 	// The reorg should revent the provisioning of an ISSUE key in b10.
 	g.nextBlock("b12", outs[10])
+	assertThreadTip(rmgutil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2}) // The genesis admin state is valid.
 	accepted()
 
@@ -931,8 +950,9 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	// blocks for sidechains don't validate utxos or keysets yet
 	acceptedToSideChainWithExpectedTip("b12")
 
-	g.nextBlock("b14", outs[11])
 	// key is active again.
+	g.nextBlock("b14", outs[11])
+	assertThreadTip(rmgutil.RootThread, rootThreadOutFork)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1})
 	accepted()
 

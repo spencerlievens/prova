@@ -1286,11 +1286,8 @@ func (b *BlockChain) createChainState() error {
 	b.stateSnapshot = newBestState(b.bestNode, blockSize, numTxns, numTxns,
 		b.bestNode.timestamp)
 
-	b.adminKeySets = btcec.DeepCopy(b.chainParams.AdminKeySets)
+	b.adminKeySets = b.chainParams.AdminKeySets
 	b.wspKeyIdMap = b.chainParams.WspKeyIdMap
-	b.threadTips = make(map[rmgutil.ThreadID]*wire.OutPoint)
-	b.lastKeyID = btcec.KeyID(0)
-	b.totalSupply = uint64(0)
 
 	// Initiate the utxo set with the admin thread tips from the genesis
 	// coinbase.
@@ -1303,7 +1300,6 @@ func (b *BlockChain) createChainState() error {
 	utxoView.connectTransaction(genesisBlock.Transactions()[0], 0, stxos)
 
 	// Initiate admin thread tips
-	//threadTips := make(map[rmgutil.ThreadID]*chainhash.Hash)
 	b.threadTips[rmgutil.RootThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 0)
 	b.threadTips[rmgutil.ProvisionThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 1)
 	b.threadTips[rmgutil.IssueThread] = wire.NewOutPoint(genesisBlock.Transactions()[0].Hash(), 2)
