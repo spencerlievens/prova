@@ -31,6 +31,7 @@ The block size is added to the Prova header as it is important metadata and cons
 1. The 4-byte nonce is changed to an 8 byte nonce, eliminating the need for the extraNonce typically used in the coinbase.
 2. The 4-byte timestamp is changed to an 8 byte timestamp, solving the year 2106 issue.
 3. The transactions Merkle Root is altered to commit to both signature-covering and non-signature-covering versions of the transaction id hashes.
+4. The version number is changed from an int to a uint to reflect the expectation that version numbers should be positive.
 
 ## Header Serialization Changes
 
@@ -39,7 +40,7 @@ The serialization of the header must be changed to support the new field sizes a
 In Bitcoin, the header serialization is:
 
 ```
-[4-byte uint32 version]
+[4-byte int32 version]
 [32-byte previous block header hash]
 [32-byte merkle root hash]
 [4-byte uint32 time]
