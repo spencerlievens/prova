@@ -170,7 +170,6 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"sendrawtransaction":    handleSendRawTransaction,
 	"setgenerate":           handleSetGenerate,
 	"setvalidatekeys":       handleSetValidateKeys,
-	"signprovatransaction":  handleSignProvaTransaction,
 	"stop":                  handleStop,
 	"submitblock":           handleSubmitBlock,
 	"validateaddress":       handleValidateAddress,
@@ -269,7 +268,6 @@ var rpcLimited = map[string]struct{}{
 	"gettxout":              {},
 	"searchrawtransactions": {},
 	"sendrawtransaction":    {},
-	"signprovatransaction":  {},
 	"submitblock":           {},
 	"validateaddress":       {},
 	"verifymessage":         {},
@@ -773,123 +771,6 @@ func createTxRawResult(chainParams *chaincfg.Params, mtx *wire.MsgTx,
 	}
 
 	return txReply, nil
-}
-
-// handleSignProvaTransaction handles signprovatransaction commands.
-// Note: this signing method requires in-order signing.
-func handleSignProvaTransaction(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	c := cmd.(*btcjson.SignProvaTransactionCmd)
-
-	// Deserialize the transaction.
-	hexStr := c.HexTx
-	if len(hexStr)%2 != 0 {
-		hexStr = "0" + hexStr
-	}
-	serializedTx, err := hex.DecodeString(hexStr)
-	if err != nil {
-		return nil, rpcDecodeHexError(hexStr)
-	}
-	var mtx wire.MsgTx
-	err = mtx.Deserialize(bytes.NewReader(serializedTx))
-	if err != nil {
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCDeserialization,
-			Message: "TX decode failed: " + err.Error(),
-		}
-	}
-
-	if nil == c.PrivKeys || 0 == len(*c.PrivKeys) {
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCDeserialization,
-			Message: "no private keys provided",
-		}
-	}
-
-	lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
-		keys := make([]txscript.PrivateKey, len(*c.PrivKeys))
-		for i, strPrivKey := range *c.PrivKeys {
-			privKey, err := hex.DecodeString(strPrivKey)
-			if err != nil {
-				return nil, rpcDecodeHexError(strPrivKey)
-			}
-			key, _ := btcec.PrivKeyFromBytes(btcec.S256(), privKey)
-			keys[i] = txscript.PrivateKey{key, true}
-		}
-		return keys, nil
-	}
-
-	hashType := txscript.SigHashAll
-	for i, txIn := range mtx.TxIn {
-		// Try to fetch the transaction from the memory pool and if that fails,
-		// try the block database.
-		var prevMsgTx *wire.MsgTx
-		prevTxHash := txIn.PreviousOutPoint.Hash
-		tx, err := s.server.txMemPool.FetchTransaction(&prevTxHash)
-		if err != nil {
-			txIndex := s.server.txIndex
-			if txIndex == nil {
-				return nil, &btcjson.RPCError{
-					Code: btcjson.ErrRPCNoTxInfo,
-					Message: "The transaction index must be " +
-						"enabled to query the blockchain " +
-						"(specify --txindex)",
-				}
-			}
-
-			// Look up the location of the transaction.
-			blockRegion, err := txIndex.TxBlockRegion(&prevTxHash)
-			if err != nil {
-				context := "Failed to retrieve transaction location"
-				return nil, internalRPCError(err.Error(), context)
-			}
-			if blockRegion == nil {
-				return nil, rpcNoTxInfoError(&prevTxHash)
-			}
-
-			// Load the raw transaction bytes from the database.
-			var txBytes []byte
-			err = s.server.db.View(func(dbTx database.Tx) error {
-				var err error
-				txBytes, err = dbTx.FetchBlockRegion(blockRegion)
-				return err
-			})
-			if err != nil {
-				return nil, rpcNoTxInfoError(&prevTxHash)
-			}
-
-			// Deserialize the transaction
-			var msgTx wire.MsgTx
-			err = msgTx.Deserialize(bytes.NewReader(txBytes))
-			if err != nil {
-				context := "Failed to deserialize transaction"
-				return nil, internalRPCError(err.Error(), context)
-			}
-			prevMsgTx = &msgTx
-		} else {
-			prevMsgTx = tx.MsgTx()
-		}
-
-		txOut := prevMsgTx.TxOut[txIn.PreviousOutPoint.Index]
-
-		// Create signature for this input.
-		// We ignore the error here, as there no aspiration to sign all inputs,
-		// only the ones we hardcoded the keys for.
-		sigScript, _ := txscript.SignTxOutput(s.server.chainParams, &mtx,
-			i, txOut.Value, txOut.PkScript, hashType, txscript.KeyClosure(lookupKey),
-			nil, mtx.TxIn[i].SignatureScript)
-
-		mtx.TxIn[i].SignatureScript = sigScript
-	}
-
-	// Return the serialized and hex-encoded transaction.  Note that this
-	// is intentionally not directly returning because the first return
-	// value is a string and it would result in returning an empty string to
-	// the client instead of nothing (nil) in the case of an error.
-	mtxHex, err := messageToHex(&mtx)
-	if err != nil {
-		return nil, err
-	}
-	return mtxHex, nil
 }
 
 // handleDecodeRawTransaction handles decoderawtransaction commands.

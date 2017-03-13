@@ -85,21 +85,6 @@ func NewDecodeRawTransactionCmd(hexTx string) *DecodeRawTransactionCmd {
 	}
 }
 
-// SignProvaTransactionCmd defines the signprovatransaction JSON-RPC command.
-type SignProvaTransactionCmd struct {
-	HexTx    string
-	PrivKeys *[]string
-}
-
-// NewSignProvaTransactionCmd returns a new instance which can be used to issue
-// a signprovatransaction JSON-RPC command.
-func NewSignProvaTransactionCmd(hexTx string, privKeys *[]string) *SignProvaTransactionCmd {
-	return &SignProvaTransactionCmd{
-		HexTx:    hexTx,
-		PrivKeys: privKeys,
-	}
-}
-
 // DecodeScriptCmd defines the decodescript JSON-RPC command.
 type DecodeScriptCmd struct {
 	HexScript string
@@ -786,7 +771,6 @@ func init() {
 	MustRegisterCmd("searchrawtransactions", (*SearchRawTransactionsCmd)(nil), flags)
 	MustRegisterCmd("sendrawtransaction", (*SendRawTransactionCmd)(nil), flags)
 	MustRegisterCmd("setgenerate", (*SetGenerateCmd)(nil), flags)
-	MustRegisterCmd("signprovatransaction", (*SignProvaTransactionCmd)(nil), flags)
 	MustRegisterCmd("stop", (*StopCmd)(nil), flags)
 	MustRegisterCmd("submitblock", (*SubmitBlockCmd)(nil), flags)
 	MustRegisterCmd("validateaddress", (*ValidateAddressCmd)(nil), flags)

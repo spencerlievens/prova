@@ -102,12 +102,6 @@ var helpDescsEnUS = map[string]string{
 	"decoderawtransaction--synopsis": "Returns a JSON object representing the provided serialized, hex-encoded transaction.",
 	"decoderawtransaction-hextx":     "Serialized, hex-encoded transaction",
 
-	// SignProvaTransactionCmd help.
-	"signprovatransaction--synopsis": "Hex-encoded bytes of the serialized transaction",
-	"signprovatransaction-hextx":     "Serialized, hex-encoded transaction",
-	"signprovatransaction-privkeys":  "Hex-encoded 32-byte compressed keys",
-	"signprovatransaction--result0":  "Hex-encoded bytes of the serialized transaction",
-
 	// SetValidateKeysCmd help.
 	"setvalidatekeys--synopsis": "Sets the private keys to use to sign generated blocks",
 	"setvalidatekeys-privkeys":  "Hex-encoded 32 byte private keys",
@@ -671,7 +665,6 @@ var rpcResultTypes = map[string][]interface{}{
 	"sendrawtransaction":    {(*string)(nil)},
 	"setgenerate":           nil,
 	"setvalidatekeys":       nil,
-	"signprovatransaction":  {(*string)(nil)},
 	"stop":                  {(*string)(nil)},
 	"submitblock":           {nil, (*string)(nil)},
 	"validateaddress":       {(*btcjson.ValidateAddressChainResult)(nil)},
