@@ -26,12 +26,12 @@ const (
 )
 
 var (
-	btcdHomeDir           = provautil.AppDataDir("btcd", false)
+	provaHomeDir          = provautil.AppDataDir("prova", false)
 	btcctlHomeDir         = provautil.AppDataDir("btcctl", false)
 	btcwalletHomeDir      = provautil.AppDataDir("btcwallet", false)
 	defaultConfigFile     = filepath.Join(btcctlHomeDir, "btcctl.conf")
 	defaultRPCServer      = "localhost"
-	defaultRPCCertFile    = filepath.Join(btcdHomeDir, "rpc.cert")
+	defaultRPCCertFile    = filepath.Join(provaHomeDir, "rpc.cert")
 	defaultWalletCertFile = filepath.Join(btcwalletHomeDir, "rpc.cert")
 )
 
@@ -176,7 +176,7 @@ func loadConfig() (*config, []string, error) {
 	}
 
 	// Create the home directory if it doesn't already exist.
-	err := os.MkdirAll(btcdHomeDir, 0700)
+	err := os.MkdirAll(provaHomeDir, 0700)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(-1)
@@ -285,14 +285,14 @@ func createDefaultConfigFile(destinationPath string) error {
 	// Create the destination directory if it does not exists
 	os.MkdirAll(filepath.Dir(destinationPath), 0700)
 
-	// Read btcd.conf from its default path
-	btcdConfigPath := filepath.Join(btcdHomeDir, "btcd.conf")
-	btcdConfigFile, err := os.Open(btcdConfigPath)
+	// Read prova.conf from its default path
+	provaConfigPath := filepath.Join(provaHomeDir, "prova.conf")
+	provaConfigFile, err := os.Open(provaConfigPath)
 	if err != nil {
 		return err
 	}
-	defer btcdConfigFile.Close()
-	content, err := ioutil.ReadAll(btcdConfigFile)
+	defer provaConfigFile.Close()
+	content, err := ioutil.ReadAll(provaConfigFile)
 	if err != nil {
 		return err
 	}

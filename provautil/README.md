@@ -15,12 +15,6 @@ A comprehensive suite of tests is provided to ensure proper functionality.  See
 running a POSIX OS, you can run the `cov_report.sh` script for a real-time
 report.
 
-This package was developed for btcd, an alternative full-node implementation of
-bitcoin which is under active development by Conformal.  Although it was
-primarily written for btcd, this package has intentionally been designed so it
-can be used as a standalone package for any projects needing the functionality
-provided.
-
 ## Installation and Updating
 
 ```bash

@@ -47,9 +47,9 @@ For Prova in regtest simulating 2 nodes, create directories `~/regtest/1` and `~
 #!/bin/bash
 LOCAL=127.0.0.1
 nohup prova --listen=$LOCAL:6001 --rpcuser=user --rpcpass=pass --rpclisten=$LOCAL:7001 --datadir=$HOME/regtest/\
-1/ --connect=$LOCAL:6002 --regtest --txindex > $HOME/regtest/1/btcd.log 2>&1 &
+1/ --connect=$LOCAL:6002 --regtest --txindex > $HOME/regtest/1/prova.log 2>&1 &
 nohup prova --listen=$LOCAL:6002 --rpcuser=user --rpcpass=pass --rpclisten=$LOCAL:7002 --datadir=$HOME/regtest/\
-2/ --connect=$LOCAL:6001 --regtest > $HOME/regtest/2/btcd.log 2>&1 &
+2/ --connect=$LOCAL:6001 --regtest > $HOME/regtest/2/prova.log 2>&1 &
 sleep 1
 btcctl -u user -P pass -s 127.0.0.1:7001 generate 101
 ```

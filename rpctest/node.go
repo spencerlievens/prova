@@ -53,7 +53,7 @@ func newConfig(prefix, certFile, keyFile string, extra []string) (*nodeConfig, e
 		extra:     extra,
 		prefix:    prefix,
 
-		exe:      "btcd",
+		exe:      "prova",
 		endpoint: "ws",
 		certFile: certFile,
 		keyFile:  keyFile,
