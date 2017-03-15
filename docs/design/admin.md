@@ -64,9 +64,9 @@ A provision key is used to authorize and revoke ASP keys and validate keys. This
 
 ### Key IDs
 
-To enable shorter bare multisig style addresses, and as a defensive mechanism for potential use in future hard forks, Prova uses 4 byte key ids for ASP keys. These short IDs map back into a record on the chain of ASP public keys.
+To enable shorter bare multisig style addresses, and as a defensive mechanism for potential use in future hard forks, Prova uses 4-byte key ids for ASP keys. These short IDs map back into a record on the chain of ASP public keys.
 
-When an admin transaction adds an ASP public key to the list of authorized ASP keys, the transaction includes a 4 byte key id. The key id specified in the provisioning of a ASP key must be determined by incrementing the previous highest key id and incrementing it by one, or in the absence of a previous key id, it must be one.
+When an admin transaction adds an ASP public key to the list of authorized ASP keys, the transaction includes a 4-byte key id. The key id specified in the provisioning of a ASP key must be determined by incrementing the previous highest key id and incrementing it by one, or in the absence of a previous key id, it must be one.
 
 Key IDs are only relevant for ASP Keys, not validate Keys.
 
@@ -120,7 +120,7 @@ ASP_KEY_REVOKE <asp pub key> <key id>
 When encoded into a transaction, the operations and their keys will be represented as:
 
 ```
-<operation (1 byte)> <compressed public key (33 bytes)> <key id (only for ASPs): 4 bytes>
+<operation (1 byte)> <compressed public key (33-bytes)> <key id (only for ASPs): 4 bytes>
 ```
 
 ### Example Transaction
@@ -193,7 +193,6 @@ An interface is exposed on the set of these transactions and starting values tha
 - Admin transactions must have an associated admin operation, empty transactions are not valid.
 - Aside from issuance outputs, all admin transactions must have 0 value inputs and 0 value outputs.
 
-## Mempool Ordering
+## Memory Pool Ordering
 
 Any admin action should always takes precedence in the mempool.  This helps prevent a situation where the network is busy, potentially due to a DOS from a compromised co-signer key and the confirmation of the admin action takes longer than expected.
-
