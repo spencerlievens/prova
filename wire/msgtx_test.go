@@ -35,8 +35,8 @@ func TestTx(t *testing.T) {
 	}
 
 	// Ensure max payload is expected value for latest protocol version.
-	// Num addresses (varInt) + max allowed addresses.
-	wantPayload := uint32(1000 * 1000)
+	// The largest transaction size must be equal or less than blocksize.
+	wantPayload := uint32(2500 * 1000)
 	maxPayload := msg.MaxPayloadLength(pver)
 	if maxPayload != wantPayload {
 		t.Errorf("MaxPayloadLength: wrong max payload length for "+

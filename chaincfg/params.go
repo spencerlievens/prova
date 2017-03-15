@@ -155,10 +155,10 @@ type Params struct {
 	// Maximum upward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustUp int64
 
-	// Number of consecutive trailing blocks allowed
-	ChainTrailingSigKeyIdLimit int
+	// Maximum consecutive trailing blocks signed by a single validate key.
+	ChainTrailingSigKeyLimit int
 
-	// Percentage limit of blocks from a single sig key id allowed
+	// Maximum blocks signed by a single validate key, as a percentage.
 	ChainWindowShareLimit int
 }
 
@@ -194,7 +194,7 @@ var MainNetParams = Params{
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
-	TargetTimePerBlock:       time.Minute,         // 1 minute
+	TargetTimePerBlock:       time.Second * 150,   // 2.5 minutes
 	ReduceMinDifficulty:      false,
 	GenerateSupported:        false,
 
@@ -228,20 +228,20 @@ var MainNetParams = Params{
 	// address generation.
 	HDCoinType: 0,
 
-	// Number of blocks for the moving window of difficulty adjustment
+	// Number of blocks for the moving window of difficulty adjustment.
 	PowAveragingWindow: 17,
 
-	// Maximum downward adjustment in pow difficulty, as a percentage
+	// Maximum downward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustDown: 32,
 
-	// Maximum upward adjustment in pow difficulty, as a percentage
+	// Maximum upward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustUp: 16,
 
-	// Number of consecutive trailing blocks allowed
-	ChainTrailingSigKeyIdLimit: 2,
+	// Maximum consecutive trailing blocks signed by a single validate key.
+	ChainTrailingSigKeyLimit: 13,
 
-	// Percentage limit of blocks from a single sig key id allowed
-	ChainWindowShareLimit: 25,
+	// Maximum blocks signed by a single validate key, as a percentage.
+	ChainWindowShareLimit: 33,
 }
 
 // hexToBytes converts the passed hex string into bytes and will panic if there
@@ -382,7 +382,7 @@ var TestNet3Params = Params{
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
-	TargetTimePerBlock:       time.Minute,         // 1 minute
+	TargetTimePerBlock:       time.Second * 150,   // 2.5 minutes
 	ReduceMinDifficulty:      true,
 	GenerateSupported:        false,
 
@@ -416,20 +416,20 @@ var TestNet3Params = Params{
 	// address generation.
 	HDCoinType: 1,
 
-	// Number of blocks for the moving window of difficulty adjustment
+	// Number of blocks for the moving window of difficulty adjustment.
 	PowAveragingWindow: 17,
 
-	// Maximum downward adjustment in pow difficulty, as a percentage
+	// Maximum downward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustDown: 64,
 
-	// Maximum upward adjustment in pow difficulty, as a percentage
+	// Maximum upward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustUp: 64,
 
-	// Number of consecutive trailing blocks allowed
-	ChainTrailingSigKeyIdLimit: 45,
+	// Maximum consecutive trailing blocks signed by a single validate key.
+	ChainTrailingSigKeyLimit: 13,
 
-	// Percentage limit of blocks from a single sig key id allowed
-	ChainWindowShareLimit: 50,
+	// Maximum blocks signed by a single validate key, as a percentage.
+	ChainWindowShareLimit: 33,
 }
 
 // SimNetParams defines the network parameters for the simulation test Bitcoin
@@ -442,7 +442,7 @@ var TestNet3Params = Params{
 var SimNetParams = Params{
 	Name:        "simnet",
 	Net:         wire.SimNet,
-	DefaultPort: "18555",
+	DefaultPort: "10079",
 	DNSSeeds:    []string{}, // NOTE: There must NOT be any seeds.
 
 	// Chain parameters
@@ -453,7 +453,7 @@ var SimNetParams = Params{
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
-	TargetTimePerBlock:       time.Minute,         // 1 minutes
+	TargetTimePerBlock:       time.Second * 150,   // 2.5 minutes
 	ReduceMinDifficulty:      true,
 	GenerateSupported:        true,
 
@@ -495,8 +495,8 @@ var SimNetParams = Params{
 	// Maximum upward adjustment in pow difficulty, as a percentage
 	PowMaxAdjustUp: 16,
 
-	// Number of consecutive trailing blocks allowed
-	ChainTrailingSigKeyIdLimit: 2,
+	// Maximum consecutive trailing blocks signed by a single validate key.
+	ChainTrailingSigKeyLimit: 13,
 
 	// Percentage limit of blocks from a single sig key id allowed
 	ChainWindowShareLimit: 25,

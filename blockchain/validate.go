@@ -1210,7 +1210,7 @@ func (b *BlockChain) isValidateKeyRateLimited(node *blockNode, validatePubKey wi
 		}
 	}
 	// Check if there is a run of too many blocks from a generator.
-	if IsGenerationTrailingRateLimited(validatePubKey, prevPubKeys, b.chainParams.ChainTrailingSigKeyIdLimit) {
+	if IsGenerationTrailingRateLimited(validatePubKey, prevPubKeys, b.chainParams.ChainTrailingSigKeyLimit) {
 		return nil, true
 	}
 	// Check if there are too many blocks in a window from a generator.
