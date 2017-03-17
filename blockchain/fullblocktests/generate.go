@@ -449,7 +449,7 @@ func createSpendTx(spend *spendableOut, fee provautil.Amount) *wire.MsgTx {
 
 	// Use Account Service Key and Account Recovery Key to sign tx.
 	sigScript, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
-		0, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
+		0, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil)
 
 	spendTx.TxIn[0].SignatureScript = sigScript
 
@@ -470,7 +470,7 @@ func createAdminTx(spend *spendableOut, threadID provautil.ThreadID, op byte, pu
 		provaAdminScript(op, pubKey)))
 
 	sigScript, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
-		0, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
+		0, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil)
 
 	spendTx.TxIn[0].SignatureScript = sigScript
 
@@ -493,7 +493,7 @@ func createASPAdminTx(spend *spendableOut, op byte, pubKey *btcec.PublicKey,
 		provaAdminASPScript(op, pubKey, keyID)))
 
 	sigScript, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
-		0, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
+		0, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil)
 
 	spendTx.TxIn[0].SignatureScript = sigScript
 
@@ -536,12 +536,12 @@ func createIssueTx(thread *spendableOut, value int64, spend *spendableOut) *wire
 	}
 	// sign thread input
 	sigScript, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
-		0, int64(thread.amount), thread.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
+		0, int64(thread.amount), thread.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil)
 	spendTx.TxIn[0].SignatureScript = sigScript
 	if spend != nil {
 		// sign second input
 		sigScript2, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
-			1, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
+			1, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil)
 		spendTx.TxIn[1].SignatureScript = sigScript2
 	}
 	return spendTx

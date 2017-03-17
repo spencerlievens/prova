@@ -234,7 +234,7 @@ func (p *poolHarness) CreateSignedTx(inputs []spendableOutput, numOutputs uint32
 	// Sign the new transaction.
 	for i := range tx.TxIn {
 		sigScript, err := txscript.SignTxOutput(p.chainParams, tx,
-			i, tx.TxOut[i].Value, p.payScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
+			i, tx.TxOut[i].Value, p.payScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -275,7 +275,7 @@ func (p *poolHarness) CreateTxChain(firstOutput spendableOutput, numTxns uint32)
 
 		// Sign the new transaction.
 		sigScript, err := txscript.SignTxOutput(p.chainParams, tx,
-			0, tx.TxOut[0].Value, p.payScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil, nil)
+			0, tx.TxOut[0].Value, p.payScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil)
 		if err != nil {
 			return nil, err
 		}

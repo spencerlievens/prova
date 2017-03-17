@@ -7,13 +7,13 @@ package txscript_test
 import (
 	"bytes"
 	"encoding/hex"
-	"reflect"
-	"testing"
-
 	"github.com/bitgo/prova/btcec"
 	"github.com/bitgo/prova/chaincfg"
 	"github.com/bitgo/prova/provautil"
 	"github.com/bitgo/prova/txscript"
+	"github.com/bitgo/prova/wire"
+	"reflect"
+	"testing"
 )
 
 // decodeHex decodes the passed hex string and returns the resulting bytes.  It
@@ -116,6 +116,101 @@ func TestExtractPkScriptAddrs(t *testing.T) {
 			t.Errorf("ExtractPkScriptAddrs #%d (%s) unexpected "+
 				"script type - got %s, want %s", i, test.name,
 				class, test.class)
+			continue
+		}
+	}
+}
+
+// TestIsValidAdminOp tests the IsValidAdminOp function.
+func TestIsValidAdminOp(t *testing.T) {
+	// Create some dummy admin op output.
+	_, pubKey := btcec.PrivKeyFromBytes(btcec.S256(), []byte{
+		0x2b, 0x8c, 0x52, 0xb7, 0x7b, 0x32, 0x7c, 0x75,
+		0x5b, 0x9b, 0x37, 0x55, 0x00, 0xd3, 0xf4, 0xb2,
+		0xda, 0x9b, 0x0a, 0x1f, 0xf6, 0x5f, 0x68, 0x91,
+		0xd3, 0x11, 0xfe, 0x94, 0x29, 0x5b, 0xc2, 0x6a,
+	})
+	// provision key add
+	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed)
+	data[0] = txscript.AdminOpProvisionKeyAdd
+	copy(data[1:], pubKey.SerializeCompressed())
+	adminOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).AddData(data).Script()
+	adminOpTxOut := wire.TxOut{
+		Value:    0,
+		PkScript: adminOpPkScript,
+	}
+	// asp add
+	aspData := make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
+	aspData[0] = txscript.AdminOpASPKeyAdd
+	copy(aspData[1:], pubKey.SerializeCompressed())
+	btcec.KeyID(1).ToAddressFormat(aspData[1+btcec.PubKeyBytesLenCompressed:])
+	provOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).AddData(aspData).Script()
+	provOpTxOut := wire.TxOut{
+		Value:    0,
+		PkScript: provOpPkScript,
+	}
+	// create root tx out
+	rootPkScript, _ := txscript.ProvaThreadScript(provautil.RootThread)
+	rootTxOut := wire.TxOut{
+		Value:    0,
+		PkScript: rootPkScript,
+	}
+	// create provision tx out
+	provisionPkScript, _ := txscript.ProvaThreadScript(provautil.ProvisionThread)
+	provisionTxOut := wire.TxOut{
+		Value:    0, // 0 RMG
+		PkScript: provisionPkScript,
+	}
+
+	tests := []struct {
+		name    string
+		tx      wire.MsgTx
+		isValid bool
+	}{
+		{
+			name: "Typical admin transaction",
+			tx: wire.MsgTx{
+				TxOut: []*wire.TxOut{&rootTxOut, &adminOpTxOut},
+			},
+			isValid: true,
+		}, {
+			name: "Admin transaction adding asp",
+			tx: wire.MsgTx{
+				TxOut: []*wire.TxOut{&provisionTxOut, &provOpTxOut},
+			},
+			isValid: true,
+		}, {
+			name: "Admin transaction with operation on wrong thread",
+			tx: wire.MsgTx{
+				TxOut: []*wire.TxOut{&provisionTxOut, &adminOpTxOut},
+			},
+			isValid: false,
+		},
+	}
+
+	for _, test := range tests {
+		mtx := provautil.NewTx(&test.tx)
+		// Ensure standardness is as expected.
+		threadInt, adminOutputs := txscript.GetAdminDetails(mtx)
+		if threadInt < 0 {
+			t.Errorf("IsValidAdminOp (%s): non-admin thread "+
+				" when it should be", test.name)
+			continue
+		}
+		isValid := txscript.IsValidAdminOp(adminOutputs[0], provautil.ThreadID(threadInt))
+		if isValid == test.isValid {
+			// Test passes since function returned valid for an
+			// op which is intended to be valid.
+			continue
+		}
+		if isValid {
+			t.Errorf("IsValidAdminOp (%s): valid when "+
+				"it should not be", test.name)
+			continue
+		}
+		if !isValid {
+			t.Errorf("IsValidAdminOp (%s): invalid when "+
+				"it should be valid", test.name)
 			continue
 		}
 	}

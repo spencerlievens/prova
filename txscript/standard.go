@@ -331,33 +331,6 @@ func GetScriptClass(script []byte) ScriptClass {
 	return typeOfScript(pops)
 }
 
-// expectedInputs returns the number of arguments required by a script.
-// If the script is of unknown type such that the number can not be determined
-// then -1 is returned. We are an internal function and thus assume that class
-// is the real class of pops (and we can thus assume things that were determined
-// while finding out the type).
-func expectedInputs(pops []parsedOpcode, class ScriptClass) int {
-	switch class {
-	case ProvaTy:
-		fallthrough
-	case GeneralProvaTy:
-		// Standard Prova script first push is a small number for the number
-		// of (sig, pubkey) pairs. Unlike multisig Bitcoin scripts, Prova
-		// scripts use key hashes rather than keys, thus the keys must be
-		// included on redemption.
-		return asSmallInt(pops[0].opcode) * 2
-
-	case ProvaAdminTy:
-		//2 pubkeys + 2 sigs
-		return 4
-
-	case NullDataTy:
-		fallthrough
-	default:
-		return -1
-	}
-}
-
 // ScriptInfo houses information about a script pair that is determined by
 // CalcScriptInfo.
 type ScriptInfo struct {
@@ -375,59 +348,6 @@ type ScriptInfo struct {
 
 	// SigOps is the number of signature operations in the script pair.
 	SigOps int
-}
-
-// CalcScriptInfo returns a structure providing data about the provided script
-// pair.  It will error if the pair is in someway invalid such that they can not
-// be analysed, i.e. if they do not parse or the pkScript is not a push-only
-// script
-func CalcScriptInfo(sigScript, pkScript []byte, bip16 bool) (*ScriptInfo, error) {
-	sigPops, err := ParseScript(sigScript)
-	if err != nil {
-		return nil, err
-	}
-
-	pkPops, err := ParseScript(pkScript)
-	if err != nil {
-		return nil, err
-	}
-
-	// Push only sigScript makes little sense.
-	si := new(ScriptInfo)
-	si.PkScriptClass = typeOfScript(pkPops)
-
-	// Can't have a pkScript that doesn't just push data.
-	if !isPushOnly(sigPops) {
-		return nil, ErrStackNonPushOnly
-	}
-
-	si.ExpectedInputs = expectedInputs(pkPops, si.PkScriptClass)
-
-	// All entries pushed to stack (or are OP_RESERVED and exec will fail).
-	si.NumInputs = len(sigPops)
-
-	// Count sigops taking into account pay-to-script-hash.
-	if si.PkScriptClass == ScriptHashTy && bip16 {
-		// The pay-to-hash-script is the final data push of the
-		// signature script.
-		script := sigPops[len(sigPops)-1].data
-		shPops, err := ParseScript(script)
-		if err != nil {
-			return nil, err
-		}
-
-		shInputs := expectedInputs(shPops, typeOfScript(shPops))
-		if shInputs == -1 {
-			si.ExpectedInputs = -1
-		} else {
-			si.ExpectedInputs += shInputs
-		}
-		si.SigOps = getSigOpCount(shPops, true)
-	} else {
-		si.SigOps = getSigOpCount(pkPops, true)
-	}
-
-	return si, nil
 }
 
 // CalcMultiSigStats returns the number of public keys and signatures from

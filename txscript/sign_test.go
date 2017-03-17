@@ -50,23 +50,6 @@ func mkGetKey(keys map[string]addressToKey) txscript.KeyDB {
 	})
 }
 
-func mkGetScript(scripts map[string][]byte) txscript.ScriptDB {
-	if scripts == nil {
-		return txscript.ScriptClosure(func(addr provautil.Address) (
-			[]byte, error) {
-			return nil, errors.New("nope")
-		})
-	}
-	return txscript.ScriptClosure(func(addr provautil.Address) ([]byte,
-		error) {
-		script, ok := scripts[addr.EncodeAddress()]
-		if !ok {
-			return nil, errors.New("nope")
-		}
-		return script, nil
-	})
-}
-
 func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript []byte, pkScript []byte) error {
 	tx.TxIn[idx].SignatureScript = sigScript
 
@@ -134,10 +117,10 @@ func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript
 }
 
 func signAndCheck(msg string, tx *wire.MsgTx, idx int, inputAmt int64, pkScript []byte,
-	hashType txscript.SigHashType, kdb txscript.KeyDB, sdb txscript.ScriptDB,
+	hashType txscript.SigHashType, kdb txscript.KeyDB,
 	previousScript []byte) error {
 	sigScript, err := txscript.SignTxOutput(&chaincfg.TestNet3Params, tx,
-		idx, inputAmt, pkScript, hashType, kdb, sdb, nil)
+		idx, inputAmt, pkScript, hashType, kdb, nil)
 	if err != nil {
 		return fmt.Errorf("failed to sign output %s: %v", msg, err)
 	}
@@ -252,7 +235,7 @@ func TestSignTxOutput(t *testing.T) {
 		}
 
 		if err := signAndCheck(msg, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), nil, nil); err != nil {
+			hashType, txscript.KeyClosure(lookupKey), nil); err != nil {
 			t.Error(err)
 			break
 		}
@@ -297,7 +280,7 @@ func TestSignTxOutput(t *testing.T) {
 
 		sigScript, err := txscript.SignTxOutput(
 			&chaincfg.TestNet3Params, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), nil, nil)
+			hashType, txscript.KeyClosure(lookupKey), nil)
 		if err != nil {
 			t.Errorf("failed to sign output %s: %v", msg,
 				err)
@@ -320,7 +303,7 @@ func TestSignTxOutput(t *testing.T) {
 		// Sign with the other key and merge
 		sigScript, err = txscript.SignTxOutput(
 			&chaincfg.TestNet3Params, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), nil, sigScript)
+			hashType, txscript.KeyClosure(lookupKey), sigScript)
 		if err != nil {
 			t.Errorf("failed to sign output %s: %v", msg, err)
 			break
@@ -354,7 +337,7 @@ func TestSignTxOutput(t *testing.T) {
 		}
 
 		if err := signAndCheck(msg, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), nil, nil); err != nil {
+			hashType, txscript.KeyClosure(lookupKey), nil); err != nil {
 			t.Error(err)
 			break
 		}
@@ -379,7 +362,7 @@ func TestSignTxOutput(t *testing.T) {
 
 		sigScript, err := txscript.SignTxOutput(
 			&chaincfg.TestNet3Params, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), nil, nil)
+			hashType, txscript.KeyClosure(lookupKey), nil)
 		if err != nil {
 			t.Errorf("failed to sign output %s: %v", msg,
 				err)
@@ -402,7 +385,7 @@ func TestSignTxOutput(t *testing.T) {
 		// Sign with the other key and merge
 		sigScript, err = txscript.SignTxOutput(
 			&chaincfg.TestNet3Params, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), nil, sigScript)
+			hashType, txscript.KeyClosure(lookupKey), sigScript)
 		if err != nil {
 			t.Errorf("failed to sign output %s: %v", msg, err)
 			break
