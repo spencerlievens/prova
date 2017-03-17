@@ -258,7 +258,7 @@ func isDust(txOut *wire.TxOut, minRelayTxFee provautil.Amount) bool {
 // finalized, conforming to more stringent size constraints, having scripts
 // of recognized forms, and not containing "dust" outputs (those that are
 // so small it costs more to process them than they are worth).
-// TODO(prova): Notice that this code is a dupclicate of transaction
+// TODO(prova): Notice that this code is a duplicate of transaction
 // validation code in CheckTransactionSanity() of validate.go
 // TODO(prova): extract functionality into admin tx validator.
 func checkTransactionStandard(tx *provautil.Tx, height uint32,

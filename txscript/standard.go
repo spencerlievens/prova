@@ -82,7 +82,7 @@ func (t ScriptClass) String() string {
 // isGeneralProva returns true if the passed script is an Prova script (generalized m-of-n)
 func isGeneralProva(pops []parsedOpcode) bool {
 	// The absolute minimum is 3 keys:
-	// OP_2 <keyid> <keyid> <pubkey> OP_3 OP_CHECKMULTISIG
+	// OP_2 <pkhash> <keyid> <keyid> OP_3 OP_CHECKMULTISIG
 	sLen := len(pops)
 	if sLen < 6 {
 		return false
@@ -155,7 +155,7 @@ func isGeneralProva(pops []parsedOpcode) bool {
 	return true
 }
 
-// isProva returns true if the passed script is a 2 of 3 prova transaction.
+// isProva returns true if the passed script is a 2 of 3 Prova transaction.
 func isProva(pops []parsedOpcode) bool {
 	if len(pops) < 6 {
 		return false
