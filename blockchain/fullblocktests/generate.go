@@ -234,11 +234,10 @@ func makeTestGenerator(params *chaincfg.Params) (testGenerator, error) {
 }
 
 // standardCoinbaseScript returns a standard script suitable for use as the
-// signature script of the coinbase transaction of a new block.  In particular,
-// it starts with the block height that is required by version 2 blocks.
-func standardCoinbaseScript(blockHeight uint32, extraNonce uint64) ([]byte, error) {
-	return txscript.NewScriptBuilder().AddInt64(int64(blockHeight)).
-		AddInt64(int64(extraNonce)).Script()
+// signature script of the coinbase transaction of a new block.
+func standardCoinbaseScript() ([]byte, error) {
+	return txscript.NewScriptBuilder().AddData([]byte("/prova/")).
+		Script()
 }
 
 // provaThreadScript creates a new script to pay a transaction output to an
@@ -297,8 +296,7 @@ func opReturnScript() []byte {
 // subsidy based on the passed block height.  The coinbase signature script
 // conforms to the requirements of version 2 blocks.
 func (g *testGenerator) createCoinbaseTx(blockHeight uint32) *wire.MsgTx {
-	extraNonce := uint64(0)
-	coinbaseScript, err := standardCoinbaseScript(blockHeight, extraNonce)
+	coinbaseScript, err := standardCoinbaseScript()
 	if err != nil {
 		panic(err)
 	}
@@ -572,18 +570,13 @@ func (g *testGenerator) nextBlock(blockName string, spend *spendableOut, mungers
 	coinbaseTx := g.createCoinbaseTx(nextHeight)
 	txns := []*wire.MsgTx{coinbaseTx}
 	if spend != nil {
-		// Create the transaction with a fee of 1 atom for the
-		// miner and increase the coinbase subsidy accordingly.
-		fee := provautil.Amount(1)
-		coinbaseTx.TxOut[0].Value += int64(fee)
-
 		// Create a transaction that spends from the provided spendable
 		// output, then add it to the list of transactions to include in the
 		// block.
-		txns = append(txns, createSpendTx(spend, fee))
+		txns = append(txns, createSpendTx(spend, 0))
 	}
 
-	// Use a timestamp that is one second after the previous block unless
+	// Use a timestamp that is two minutes after the previous block unless
 	// this is the first block in which case the current time is used.
 	var ts time.Time
 	if nextHeight == 1 {
@@ -852,7 +845,6 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	accepted()
 
 	// Provision another two ISSUE keys and check three are there.
-
 	issueKeyAddTx2 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey2)
 	rootThreadOut = makeSpendableOutForTx(issueKeyAddTx2, 0)
 	issueKeyAddTx3 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey3)
@@ -863,6 +855,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	accepted()
 
 	// Issue some tokens here
+	// TODO(prova) improve and expand issue thread test.
 	issueTx := createIssueTx(outs[2], int64(10000000000), nil)
 	g.nextBlock("b5", nil, additionalTx(issueTx))
 	assertTotalSupply(10000000000)
@@ -870,14 +863,11 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	// Revoke one ISSUE key again
 	issueKeyRevokeTx1 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyRevoke, pubKey1)
-	// Also destroy some tokens
-	issueThreadOut := makeSpendableOutForTx(issueTx, 0)
-	issueTx2 := createIssueTx(&issueThreadOut, int64(0), outs[5])
 	rootThreadOut = makeSpendableOutForTx(issueKeyRevokeTx1, 0)
-	g.nextBlock("b6", nil, additionalTx(issueKeyRevokeTx1), additionalTx(issueTx2))
+	g.nextBlock("b6", nil, additionalTx(issueKeyRevokeTx1))
 	assertThreadTip(provautil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2})
-	assertTotalSupply(5000000000)
+	assertTotalSupply(10000000000)
 	accepted()
 
 	// add provision keys
@@ -980,7 +970,9 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	// Attempt to progress the chain past b14 with bad coinbase fee blocks.
 	g.setTip("b14")
-	g.nextBlock("b17", outs[12], changeCoinbaseValue(-1))
+	issuedCoinsSpend := makeSpendableOutForTx(issueTx, 1)
+	createSpendTx := createSpendTx(&issuedCoinsSpend, 1) // Fee: 1
+	g.nextBlock("b17", outs[12], additionalTx(createSpendTx), changeCoinbaseValue(0))
 	rejected(blockchain.ErrBadCoinbaseValue)
 
 	g.setTip("b14")

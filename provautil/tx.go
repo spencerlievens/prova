@@ -28,6 +28,11 @@ type Tx struct {
 	txIndex       int             // Position within a block or TxIndexUnknown
 }
 
+// IsCoinbase returns whether the transaction is a coinbase transaction.
+func (t *Tx) IsCoinbase() bool {
+	return t.txIndex == 0
+}
+
 // MsgTx returns the underlying wire.MsgTx for the transaction.
 func (t *Tx) MsgTx() *wire.MsgTx {
 	// Return the cached transaction.

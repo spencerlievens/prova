@@ -23,7 +23,7 @@ import (
 func TestCalcBlockSubsidy(t *testing.T) {
 	subsidy := blockchain.CalcBlockSubsidy(0, &chaincfg.MainNetParams)
 
-	if subsidy != 5000*provautil.AtomsPerGram {
+	if subsidy != 0*provautil.AtomsPerGram {
 		t.Errorf("TestCalcBlockSubsidy: inconsistent initial block "+
 			"subsidy %v", subsidy)
 	}

@@ -170,7 +170,7 @@ func (p *poolHarness) CreateCoinbaseTx(blockHeight uint32, numOutputs uint32) (*
 		SignatureScript: coinbaseScript,
 		Sequence:        wire.MaxTxInSequenceNum,
 	})
-	totalInput := blockchain.CalcBlockSubsidy(blockHeight, p.chainParams)
+	totalInput := int64(558) // 2 greater than network dust value of 556.
 	amountPerOutput := totalInput / int64(numOutputs)
 	remainder := totalInput - amountPerOutput*int64(numOutputs)
 	for i := uint32(0); i < numOutputs; i++ {

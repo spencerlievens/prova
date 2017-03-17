@@ -146,9 +146,9 @@ func TestFullBlocks(t *testing.T) {
 		}
 		if rerr.ErrorCode != item.RejectCode {
 			t.Fatalf("block %q (hash %s, height %d) does not have "+
-				"expected reject code -- got %v, want %v",
+				"expected reject code -- got %v %v, want %v",
 				item.Name, block.Hash(), blockHeight,
-				rerr.ErrorCode, item.RejectCode)
+				rerr.ErrorCode, rerr, item.RejectCode)
 		}
 	}
 

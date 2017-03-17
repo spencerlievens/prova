@@ -432,7 +432,7 @@ func checkTransactionStandard(tx *provautil.Tx, height uint32, timeSource blockc
 		// "dust".
 		if scriptClass == txscript.NullDataTy {
 			numNullDataOutputs++
-		} else if !hasAdminOut && isDust(txOut, minRelayTxFee) {
+		} else if !tx.IsCoinbase() && !hasAdminOut && isDust(txOut, minRelayTxFee) {
 			str := fmt.Sprintf("transaction output %d: payment "+
 				"of %d is dust", txInIndex, txOut.Value)
 			return txRuleError(wire.RejectDust, str)

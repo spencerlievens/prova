@@ -44,7 +44,7 @@ const (
 
 	// baseSubsidy is the starting subsidy amount for mined blocks.  This
 	// value is halved every SubsidyHalvingInterval blocks.
-	baseSubsidy = 5000 * provautil.AtomsPerGram
+	baseSubsidy = 0 * provautil.AtomsPerGram
 
 	// MaxAdminKeySetSize sets a limit for the size of admin key sets.
 	// When admin transactions are validated, the pubKeyScript is generated
