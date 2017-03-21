@@ -1226,10 +1226,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 		if err != nil {
 			return err
 		}
-		err = keyView.connectTransactions(block)
-		if err != nil {
-			return err
-		}
+		keyView.connectTransactions(block)
 
 		// Update the database and chain state.
 		err = b.connectBlock(n, block, utxoView, keyView, stxos)
@@ -1321,10 +1318,7 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *provautil.Block, f
 			if err != nil {
 				return false, err
 			}
-			err = keyView.connectTransactions(block)
-			if err != nil {
-				return false, err
-			}
+			keyView.connectTransactions(block)
 		}
 
 		// Connect the block to the main chain.

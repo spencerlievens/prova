@@ -18,6 +18,9 @@ func (keyMap KeyIdMap) Equal(v KeyIdMap) bool {
 		return false
 	}
 	for keyID, _ := range keyMap {
+		if keyMap[keyID] == nil || v[keyID] == nil {
+			return false
+		}
 		if !keyMap[keyID].IsEqual(v[keyID]) {
 			return false
 		}

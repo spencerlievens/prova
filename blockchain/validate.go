@@ -1458,10 +1458,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *provautil.Block, 
 	}
 
 	for _, tx := range transactions {
-		err = keyView.connectTransaction(tx, node.height)
-		if err != nil {
-			return err
-		}
+		keyView.connectTransaction(tx, node.height)
 	}
 
 	// Update the best hash for utxoView to include this block since all of its

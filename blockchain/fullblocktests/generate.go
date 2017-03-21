@@ -764,6 +764,13 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 		}
 		lastASPKeys = aspKeys
 	}
+	assertNotASPKey := func(adminKey *btcec.PublicKey, keyID btcec.KeyID) {
+		aspKeys := lastASPKeys.DeepCopy()
+		if aspKeys != nil {
+			delete(aspKeys, keyID)
+		}
+		lastASPKeys = aspKeys
+	}
 	acceptedToSideChainWithExpectedTip := func(tipName string) {
 		tests = append(tests, []TestInstance{
 			acceptBlock(g.tipName, g.tip, false, false),
@@ -854,20 +861,50 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1, *pubKey2, *pubKey3})
 	accepted()
 
-	// Issue some tokens here
-	// TODO(prova) improve and expand issue thread test.
-	issueTx := createIssueTx(outs[2], int64(10000000000), nil)
+	// Issue some tokens
+	issueTx := createIssueTx(outs[2], int64(8000000000), nil)
 	g.nextBlock("b5", nil, additionalTx(issueTx))
-	assertTotalSupply(10000000000)
+	assertTotalSupply(8000000000)
+	accepted()
+
+	// ---------------------------------------------------------------------
+	// Reorg tests for reverting issuance and destruction
+	// ---------------------------------------------------------------------
+	//
+	//
+	//   ... -> b5(+8) -> b7() -> b8() -> b9()
+	//                \-> b6(-8 +4)
+
+	// Destroy all issued tokens, create some others
+	issueThreadOut := makeSpendableOutForTx(issueTx, 0)
+	coinsToRevoke := makeSpendableOutForTx(issueTx, 1)
+	revokeTx := createIssueTx(&issueThreadOut, 0, &coinsToRevoke)
+	issueThreadOut = makeSpendableOutForTx(revokeTx, 0)
+	issueTxOnFork := createIssueTx(&issueThreadOut, int64(4000000000), nil)
+	g.nextBlock("b6", nil, additionalTx(revokeTx), additionalTx(issueTxOnFork))
+	assertTotalSupply(4000000000)
+	accepted()
+
+	g.setTip("b5")
+
+	g.nextBlock("b7", nil)
+	acceptedToSideChainWithExpectedTip("b6")
+
+	// reorg, things are back to normal
+	g.nextBlock("b8", nil)
+	assertTotalSupply(8000000000)
+	accepted()
+
+	// TODO(prova): revoke with change
+	g.nextBlock("b9", nil)
 	accepted()
 
 	// Revoke one ISSUE key again
 	issueKeyRevokeTx1 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyRevoke, pubKey1)
 	rootThreadOut = makeSpendableOutForTx(issueKeyRevokeTx1, 0)
-	g.nextBlock("b6", nil, additionalTx(issueKeyRevokeTx1))
+	g.nextBlock("b10", nil, additionalTx(issueKeyRevokeTx1))
 	assertThreadTip(provautil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2})
-	assertTotalSupply(10000000000)
 	accepted()
 
 	// add provision keys
@@ -875,34 +912,74 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	rootThreadOut = makeSpendableOutForTx(provisionKeyAddTx1, 0)
 	provisionKeyAddTx2 := createAdminTx(&rootThreadOut, 0, txscript.AdminOpProvisionKeyAdd, pubKey2)
 	rootThreadOut = makeSpendableOutForTx(provisionKeyAddTx2, 0)
-	g.nextBlock("b7", nil, additionalTx(provisionKeyAddTx1), additionalTx(provisionKeyAddTx2))
+	g.nextBlock("b11", nil, additionalTx(provisionKeyAddTx1), additionalTx(provisionKeyAddTx2))
 	assertThreadTip(provautil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.ProvisionKeySet, []btcec.PublicKey{*pubKey1, *pubKey2})
 	accepted()
 
 	// provision a keyID and check
-	keyId := btcec.KeyIDFromAddressBuffer([]byte{3, 0, 0, 0})
-	aspKeyIdAddTx := createASPAdminTx(outs[1], txscript.AdminOpASPKeyAdd, pubKey1, keyId)
-	g.nextBlock("b8", nil, additionalTx(aspKeyIdAddTx))
-	assertAdminKeys(btcec.ProvisionKeySet, []btcec.PublicKey{*pubKey1, *pubKey2})
-	assertASPKey(pubKey1, keyId)
+	aspKeyIdTx := createASPAdminTx(outs[1], txscript.AdminOpASPKeyAdd, pubKey1, btcec.KeyID(3))
+	g.nextBlock("b12", nil, additionalTx(aspKeyIdTx))
+	assertASPKey(pubKey1, btcec.KeyID(3))
+	accepted()
+
+	// ---------------------------------------------------------------------
+	// Reorg tests for keyID provisioning
+	// ---------------------------------------------------------------------
+	//
+	//   ... -> b12(+3) -> b14() -> b15() -> b16(+4)
+	//                 \-> b13(-3 +4)
+
+	provThreadOut := makeSpendableOutForTx(aspKeyIdTx, 0)
+	aspKeyIdTx1 := createASPAdminTx(&provThreadOut, txscript.AdminOpASPKeyRevoke, pubKey1, btcec.KeyID(3))
+	provThreadOut = makeSpendableOutForTx(aspKeyIdTx1, 0)
+	aspKeyIdTx2 := createASPAdminTx(&provThreadOut, txscript.AdminOpASPKeyAdd, pubKey2, btcec.KeyID(4))
+	g.nextBlock("b13", nil, additionalTx(aspKeyIdTx1), additionalTx(aspKeyIdTx2))
+	assertNotASPKey(pubKey1, btcec.KeyID(3))
+	assertASPKey(pubKey2, btcec.KeyID(4))
+	accepted()
+
+	g.setTip("b12")
+	g.nextBlock("b14", nil)
+	acceptedToSideChainWithExpectedTip("b13")
+
+	// reorg, things are back to normal
+	g.nextBlock("b15", nil)
+	assertASPKey(pubKey1, btcec.KeyID(3))
+	assertNotASPKey(pubKey2, btcec.KeyID(4))
+	accepted()
+
+	// provision keyID 4, make sure it is not market as used
+	provThreadOut = makeSpendableOutForTx(aspKeyIdTx, 0)
+	aspKeyIdTx = createASPAdminTx(&provThreadOut, txscript.AdminOpASPKeyAdd, pubKey2, btcec.KeyID(4))
+	g.nextBlock("b16", nil, additionalTx(aspKeyIdTx))
+	assertASPKey(pubKey2, btcec.KeyID(4))
+	accepted()
+
+	g.nextBlock("b17", nil)
+	accepted()
+
+	g.nextBlock("b18", nil)
+	accepted()
+
+	g.nextBlock("b19", nil)
 	accepted()
 
 	// ---------------------------------------------------------------------
 	// Basic forking and reorg tests.
 	// ---------------------------------------------------------------------
 	//
-	//   ... -> b9(8) -> b10()
+	//   ... -> b20(8) -> b21()
 	//
-	// A new key will be provisioned in b10, then the operation will be
+	// A new key will be provisioned in b21, then the operation will be
 	// reorged away.
 
-	g.nextBlock("b9", outs[8])
+	g.nextBlock("b20", outs[8])
 	accepted()
 
 	adminKeyAddTx := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey1)
 	rootThreadOutFork := makeSpendableOutForTx(adminKeyAddTx, 0)
-	g.nextBlock("b10", nil, additionalTx(adminKeyAddTx))
+	g.nextBlock("b21", nil, additionalTx(adminKeyAddTx))
 	assertThreadTip(provautil.RootThread, rootThreadOutFork)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1})
 	accepted()
@@ -910,38 +987,38 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	// Create a fork from b9.  There should not be a reorg since b10 was seen
 	// first.
 	//
-	//   ... -> b9(8) -> b10(9)
-	//               \-> b11(9)
-	g.setTip("b9")
-	g.nextBlock("b11", outs[9])
+	//   ... -> b20(8) -> b21(9)
+	//                \-> b22(9)
+	g.setTip("b20")
+	g.nextBlock("b22", outs[9])
 	// blocks on sidechains are not validated for utxos or keysets yet
-	acceptedToSideChainWithExpectedTip("b10")
+	acceptedToSideChainWithExpectedTip("b21")
 
 	// Extend b11 fork to make the alternative chain longer and force reorg.
 	//
-	//   ... -> b9(8) -> b10(9)
-	//               \-> b11(9) -> b12(10)
+	//   ... -> b20(8) -> b21(9)
+	//                \-> b22(9) -> b23(10)
 	//
-	// The reorg should revent the provisioning of an ISSUE key in b10.
-	g.nextBlock("b12", outs[10])
+	// The reorg should revent the provisioning of an ISSUE key in b21.
+	g.nextBlock("b23", outs[10])
 	assertThreadTip(provautil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2}) // The genesis admin state is valid.
 	accepted()
 
 	// Extend b2 fork twice to make first chain longer and force reorg.
 	//
-	//   ... -> b9(8) -> b10(9) -> b13(10) -> b14(11)
-	//               \-> b11(9) -> b12(10)
+	//   ... -> b20(8) -> b21(9) -> b24(10) -> b25(11)
+	//                \-> b22(9) -> b23(10)
 	//
 	// key provisioned in b10 will be back in admin set.
 	//
-	g.setTip("b10")
-	g.nextBlock("b13", outs[10])
+	g.setTip("b21")
+	g.nextBlock("b24", outs[10])
 	// blocks for sidechains don't validate utxos or keysets yet
-	acceptedToSideChainWithExpectedTip("b12")
+	acceptedToSideChainWithExpectedTip("b23")
 
 	// key is active again.
-	g.nextBlock("b14", outs[11])
+	g.nextBlock("b25", outs[11])
 	assertThreadTip(provautil.RootThread, rootThreadOutFork)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1})
 	accepted()
@@ -952,31 +1029,31 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	// Create a fork that double spends.
 	//
-	//   ... -> b9(8) -> b10(9) -> b13(10) -> b14(11)
-	//                                    \-> b15(10) -> b16(12)
-	//               \-> b11(9) -> b12(10)
+	//   ... -> b20(8) -> b21(9) -> b24(10) -> b25(11)
+	//                                    \-> b26(10) -> b27(12)
+	//                \-> b22(9) -> b23(10)
 	//
-	g.setTip("b13")
-	g.nextBlock("b15", outs[10])
+	g.setTip("b24")
+	g.nextBlock("b26", outs[10])
 	// blocks on sidechains are not validated for utxos or keysets yet
-	acceptedToSideChainWithExpectedTip("b14")
+	acceptedToSideChainWithExpectedTip("b25")
 
-	g.nextBlock("b16", outs[12])
+	g.nextBlock("b27", outs[12])
 	rejected(blockchain.ErrMissingTx) // now doublespend recognized.
 
 	// ---------------------------------------------------------------------
 	// Coinbase reward tests.
 	// ---------------------------------------------------------------------
 
-	// Attempt to progress the chain past b14 with bad coinbase fee blocks.
-	g.setTip("b14")
+	// Attempt to progress the chain past b25 with bad coinbase fee blocks.
+	g.setTip("b25")
 	issuedCoinsSpend := makeSpendableOutForTx(issueTx, 1)
 	createSpendTx := createSpendTx(&issuedCoinsSpend, 1) // Fee: 1
-	g.nextBlock("b17", outs[12], additionalTx(createSpendTx), changeCoinbaseValue(0))
+	g.nextBlock("b28", outs[12], additionalTx(createSpendTx), changeCoinbaseValue(0))
 	rejected(blockchain.ErrBadCoinbaseValue)
 
-	g.setTip("b14")
-	g.nextBlock("b18", outs[12], changeCoinbaseValue(1))
+	g.setTip("b25")
+	g.nextBlock("b29", outs[12], changeCoinbaseValue(1))
 	rejected(blockchain.ErrBadCoinbaseValue)
 
 	return tests, nil

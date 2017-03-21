@@ -93,7 +93,7 @@ func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript
 	// If script is Prova admin script, we replace the threadID with pubKeyHashes.
 	if txscript.TypeOfScript(pops) == txscript.ProvaAdminTy {
 		threadID, err := txscript.ExtractThreadID(pops)
-		keyHashes, err := keyView.GetAdminKeyHashes(threadID)
+		keyHashes := keyView.GetAdminKeyHashes(threadID)
 		pkScript, err = txscript.ThreadPkScript(keyHashes)
 		if err != nil {
 			return err

@@ -5,7 +5,6 @@
 package blockchain
 
 import (
-	"fmt"
 	"github.com/bitgo/prova/btcec"
 	"github.com/bitgo/prova/provautil"
 	"github.com/bitgo/prova/txscript"
@@ -70,18 +69,13 @@ func (view *KeyViewpoint) Keys() map[btcec.KeySetType]btcec.PublicKeySet {
 }
 
 // GetAdminKeyHashes returns pubKeyHashes according to the provided threadID.
-func (view *KeyViewpoint) GetAdminKeyHashes(threadID provautil.ThreadID) ([][]byte, error) {
-
-	if threadID > provautil.IssueThread {
-		return nil, fmt.Errorf("unknown threadID %v", threadID)
-	}
-
+func (view *KeyViewpoint) GetAdminKeyHashes(threadID provautil.ThreadID) [][]byte {
 	pubs := view.adminKeySets[btcec.KeySetType(threadID)]
 	hashes := make([][]byte, len(pubs))
 	for i, pubKey := range pubs {
 		hashes[i] = provautil.Hash160(pubKey.SerializeCompressed())
 	}
-	return hashes, nil
+	return hashes
 }
 
 // SetKeyIDs sets the mapping of keyIDs to ASP keys.
@@ -176,22 +170,17 @@ func (view *KeyViewpoint) applyAdminOp(isAddOp bool,
 
 // connectTransaction updates the view by processing all new admin operations in
 // the passed transaction.
-func (view *KeyViewpoint) connectTransaction(tx *provautil.Tx, blockHeight uint32) error {
+func (view *KeyViewpoint) connectTransaction(tx *provautil.Tx, blockHeight uint32) {
 	// Process the admin outputs that are part of this tx.
 	view.ProcessAdminOuts(tx, blockHeight)
-	return nil
 }
 
 // connectTransactions updates the view by processing all the admin operations
 // in created by all of the transactions in the passed block.
-func (view *KeyViewpoint) connectTransactions(block *provautil.Block) error {
+func (view *KeyViewpoint) connectTransactions(block *provautil.Block) {
 	for _, tx := range block.Transactions() {
-		err := view.connectTransaction(tx, block.Height())
-		if err != nil {
-			return err
-		}
+		view.connectTransaction(tx, block.Height())
 	}
-	return nil
 }
 
 // disconnectTransactions updates the view by undoing all admin operations in
@@ -230,11 +219,19 @@ func (view *KeyViewpoint) disconnectTransactions(block *provautil.Block) error {
 				for i := 0; i < len(adminOutputs); i++ {
 					isAddOp, keySetType, pubKey,
 						keyID := txscript.ExtractAdminOpData(adminOutputs[i])
-					isAddOp = !isAddOp
-					view.applyAdminOp(isAddOp, keySetType, pubKey, keyID)
-					// decrease lastKeyID counter, is an Add op is disconnected.
-					if keySetType == btcec.ASPKeySet && isAddOp {
-						view.lastKeyID = keyID - 1
+					if keySetType == btcec.ASPKeySet {
+						if isAddOp {
+							delete(view.aspKeyIdMap, keyID)
+							// decrease lastKeyID counter, if an Add OP is disconnected.
+							view.lastKeyID = keyID - 1
+						} else {
+							// do not increase lastKeyID if Revoke Op is disconnected.
+							// once used keyIds should stay used
+							view.aspKeyIdMap[keyID] = pubKey
+						}
+					} else {
+						// isAddOp is negatted, to revert the action
+						view.applyAdminOp(!isAddOp, keySetType, pubKey, keyID)
 					}
 				}
 			}

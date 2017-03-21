@@ -126,13 +126,7 @@ out:
 					v.sendResult(err)
 					break out
 				}
-				keyHashes, err := v.keyView.GetAdminKeyHashes(threadID)
-				if err != nil {
-					str := fmt.Sprintf("failed to get keys for threadID %v: %v", threadID, err)
-					err := ruleError(ErrScriptMalformed, str)
-					v.sendResult(err)
-					break out
-				}
+				keyHashes := v.keyView.GetAdminKeyHashes(threadID)
 				pkScript, err = txscript.ThreadPkScript(keyHashes)
 				if err != nil {
 					str := fmt.Sprintf("failed to replace threadID %s: %v", originTxHash, err)
