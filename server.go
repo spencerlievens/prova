@@ -537,12 +537,6 @@ func (sp *serverPeer) OnInv(p *peer.Peer, msg *wire.MsgInv) {
 	}
 }
 
-// OnHeaders is invoked when a peer receives a headers bitcoin
-// message.  The message is passed down to the block manager.
-func (sp *serverPeer) OnHeaders(p *peer.Peer, msg *wire.MsgHeaders) {
-	sp.server.blockManager.QueueHeaders(msg, sp)
-}
-
 // handleGetData is invoked when a peer receives a getdata bitcoin message and
 // is used to deliver block and transaction information.
 func (sp *serverPeer) OnGetData(p *peer.Peer, msg *wire.MsgGetData) {
@@ -1523,7 +1517,6 @@ func newPeerConfig(sp *serverPeer) *peer.Config {
 			OnTx:          sp.OnTx,
 			OnBlock:       sp.OnBlock,
 			OnInv:         sp.OnInv,
-			OnHeaders:     sp.OnHeaders,
 			OnGetData:     sp.OnGetData,
 			OnGetBlocks:   sp.OnGetBlocks,
 			OnGetHeaders:  sp.OnGetHeaders,

@@ -119,7 +119,6 @@ type config struct {
 	TestNet            bool          `long:"testnet" description:"Use the test network"`
 	RegressionTest     bool          `long:"regtest" description:"Use the regression test network"`
 	SimNet             bool          `long:"simnet" description:"Use the simulation test network"`
-	DisableCheckpoints bool          `long:"nocheckpoints" description:"Disable built-in checkpoints.  Don't do this unless you know what you're doing."`
 	DbType             string        `long:"dbtype" description:"Database backend to use for the Block Chain"`
 	Profile            string        `long:"profile" description:"Enable HTTP profiling on given port -- NOTE port must be between 1024 and 65536"`
 	CPUProfile         string        `long:"cpuprofile" description:"Write CPU profile to the specified file"`

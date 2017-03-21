@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/bitgo/prova/blockchain"
-	"github.com/bitgo/prova/chaincfg"
 	"github.com/bitgo/prova/chaincfg/chainhash"
 	"github.com/bitgo/prova/database"
 	"github.com/bitgo/prova/mempool"
@@ -25,11 +24,6 @@ import (
 
 const (
 	chanBufferSize = 50
-
-	// minInFlightBlocks is the minimum number of blocks that should be
-	// in the request queue for headers-first mode before requesting
-	// more.
-	minInFlightBlocks = 10
 
 	// blockDbNamePrefix is the prefix for the block database name.  The
 	// database type is appended to this value to form the full block
@@ -69,13 +63,6 @@ type blockMsg struct {
 type invMsg struct {
 	inv  *wire.MsgInv
 	peer *serverPeer
-}
-
-// headersMsg packages a bitcoin headers message and the peer it came from
-// together so the block handler has access to that information.
-type headersMsg struct {
-	headers *wire.MsgHeaders
-	peer    *serverPeer
 }
 
 // donePeerMsg signifies a newly disconnected peer to the block handler.
@@ -129,13 +116,6 @@ type pauseMsg struct {
 	unpause <-chan struct{}
 }
 
-// headerNode is used as a node in a list of headers that are linked together
-// between checkpoints.
-type headerNode struct {
-	height uint32
-	hash   *chainhash.Hash
-}
-
 // chainState tracks the state of the best chain as blocks are inserted.  This
 // is done because btcchain is currently not safe for concurrent access and the
 // block manager is typically quite busy processing block and inventory.
@@ -180,28 +160,6 @@ type blockManager struct {
 	chainState        chainState
 	wg                sync.WaitGroup
 	quit              chan struct{}
-
-	// The following fields are used for headers-first mode.
-	headersFirstMode bool
-	headerList       *list.List
-	startHeader      *list.Element
-	nextCheckpoint   *chaincfg.Checkpoint
-}
-
-// resetHeaderState sets the headers-first mode state to values appropriate for
-// syncing from a new peer.
-func (b *blockManager) resetHeaderState(newestHash *chainhash.Hash, newestHeight uint32) {
-	b.headersFirstMode = false
-	b.headerList.Init()
-	b.startHeader = nil
-
-	// When there is a next checkpoint, add an entry for the latest known
-	// block into the header pool.  This allows the next downloaded header
-	// to prove it links to the chain properly.
-	if b.nextCheckpoint != nil {
-		node := headerNode{height: newestHeight, hash: newestHash}
-		b.headerList.PushBack(&node)
-	}
 }
 
 // updateChainState updates the chain state associated with the block manager.
@@ -220,39 +178,6 @@ func (b *blockManager) updateChainState(newestHash *chainhash.Hash, newestHeight
 	} else {
 		b.chainState.pastMedianTime = medianTime
 	}
-}
-
-// findNextHeaderCheckpoint returns the next checkpoint after the passed height.
-// It returns nil when there is not one either because the height is already
-// later than the final checkpoint or some other reason such as disabled
-// checkpoints.
-func (b *blockManager) findNextHeaderCheckpoint(height uint32) *chaincfg.Checkpoint {
-	// There is no next checkpoint if checkpoints are disabled or there are
-	// none for this current network.
-	if cfg.DisableCheckpoints {
-		return nil
-	}
-	checkpoints := b.server.chainParams.Checkpoints
-	if len(checkpoints) == 0 {
-		return nil
-	}
-
-	// There is no next checkpoint if the height is already after the final
-	// checkpoint.
-	finalCheckpoint := &checkpoints[len(checkpoints)-1]
-	if height >= finalCheckpoint.Height {
-		return nil
-	}
-
-	// Find the next checkpoint.
-	nextCheckpoint := finalCheckpoint
-	for i := len(checkpoints) - 2; i >= 0; i-- {
-		if height >= checkpoints[i].Height {
-			break
-		}
-		nextCheckpoint = &checkpoints[i]
-	}
-	return nextCheckpoint
 }
 
 // startSync will choose the best peer among the available candidate peers to
@@ -304,36 +229,7 @@ func (b *blockManager) startSync(peers *list.List) {
 
 		bmgrLog.Infof("Syncing to block height %d from peer %v",
 			bestPeer.LastBlock(), bestPeer.Addr())
-
-		// When the current height is less than a known checkpoint we
-		// can use block headers to learn about which blocks comprise
-		// the chain up to the checkpoint and perform less validation
-		// for them.  This is possible since each header contains the
-		// hash of the previous header and a merkle root.  Therefore if
-		// we validate all of the received headers link together
-		// properly and the checkpoint hashes match, we can be sure the
-		// hashes for the blocks in between are accurate.  Further, once
-		// the full blocks are downloaded, the merkle root is computed
-		// and compared against the value in the header which proves the
-		// full block hasn't been tampered with.
-		//
-		// Once we have passed the final checkpoint, or checkpoints are
-		// disabled, use standard inv messages learn about the blocks
-		// and fully validate them.  Finally, regression test mode does
-		// not support the headers-first approach so do normal block
-		// downloads when in regression test mode.
-		if b.nextCheckpoint != nil &&
-			best.Height < b.nextCheckpoint.Height &&
-			!cfg.RegressionTest && !cfg.DisableCheckpoints {
-
-			bestPeer.PushGetHeadersMsg(locator, b.nextCheckpoint.Hash)
-			b.headersFirstMode = true
-			bmgrLog.Infof("Downloading headers for blocks %d to "+
-				"%d from peer %s", best.Height+1,
-				b.nextCheckpoint.Height, bestPeer.Addr())
-		} else {
-			bestPeer.PushGetBlocksMsg(locator, &zeroHash)
-		}
+		bestPeer.PushGetBlocksMsg(locator, &zeroHash)
 		b.syncPeer = bestPeer
 	} else {
 		bmgrLog.Warnf("No sync peer candidates available")
@@ -421,14 +317,9 @@ func (b *blockManager) handleDonePeerMsg(peers *list.List, sp *serverPeer) {
 	}
 
 	// Attempt to find a new peer to sync from if the quitting peer is the
-	// sync peer.  Also, reset the headers-first state if in headers-first
-	// mode so
+	// sync peer.
 	if b.syncPeer != nil && b.syncPeer == sp {
 		b.syncPeer = nil
-		if b.headersFirstMode {
-			best := b.chain.BestSnapshot()
-			b.resetHeaderState(best.Hash, best.Height)
-		}
 		b.startSync(peers)
 	}
 }
@@ -535,29 +426,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 		}
 	}
 
-	// When in headers-first mode, if the block matches the hash of the
-	// first header in the list of headers that are being fetched, it's
-	// eligible for less validation since the headers have already been
-	// verified to link together and are valid up to the next checkpoint.
-	// Also, remove the list entry for all blocks except the checkpoint
-	// since it is needed to verify the next round of headers links
-	// properly.
-	isCheckpointBlock := false
 	behaviorFlags := blockchain.BFNone
-	if b.headersFirstMode {
-		firstNodeEl := b.headerList.Front()
-		if firstNodeEl != nil {
-			firstNode := firstNodeEl.Value.(*headerNode)
-			if blockHash.IsEqual(firstNode.hash) {
-				behaviorFlags |= blockchain.BFFastAdd
-				if firstNode.hash.IsEqual(b.nextCheckpoint.Hash) {
-					isCheckpointBlock = true
-				} else {
-					b.headerList.Remove(firstNodeEl)
-				}
-			}
-		}
-	}
 
 	// Remove block from request maps. Either chain will know about it and
 	// so we shouldn't have any more instances of trying to fetch it, or we
@@ -662,201 +531,6 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 			go b.server.UpdatePeerHeights(blkHashUpdate, heightUpdate, bmsg.peer)
 		}
 	}
-
-	// Nothing more to do if we aren't in headers-first mode.
-	if !b.headersFirstMode {
-		return
-	}
-
-	// This is headers-first mode, so if the block is not a checkpoint
-	// request more blocks using the header list when the request queue is
-	// getting short.
-	if !isCheckpointBlock {
-		if b.startHeader != nil &&
-			len(bmsg.peer.requestedBlocks) < minInFlightBlocks {
-			b.fetchHeaderBlocks()
-		}
-		return
-	}
-
-	// This is headers-first mode and the block is a checkpoint.  When
-	// there is a next checkpoint, get the next round of headers by asking
-	// for headers starting from the block after this one up to the next
-	// checkpoint.
-	prevHeight := b.nextCheckpoint.Height
-	prevHash := b.nextCheckpoint.Hash
-	b.nextCheckpoint = b.findNextHeaderCheckpoint(prevHeight)
-	if b.nextCheckpoint != nil {
-		locator := blockchain.BlockLocator([]*chainhash.Hash{prevHash})
-		err := bmsg.peer.PushGetHeadersMsg(locator, b.nextCheckpoint.Hash)
-		if err != nil {
-			bmgrLog.Warnf("Failed to send getheaders message to "+
-				"peer %s: %v", bmsg.peer.Addr(), err)
-			return
-		}
-		bmgrLog.Infof("Downloading headers for blocks %d to %d from "+
-			"peer %s", prevHeight+1, b.nextCheckpoint.Height,
-			b.syncPeer.Addr())
-		return
-	}
-
-	// This is headers-first mode, the block is a checkpoint, and there are
-	// no more checkpoints, so switch to normal mode by requesting blocks
-	// from the block after this one up to the end of the chain (zero hash).
-	b.headersFirstMode = false
-	b.headerList.Init()
-	bmgrLog.Infof("Reached the final checkpoint -- switching to normal mode")
-	locator := blockchain.BlockLocator([]*chainhash.Hash{blockHash})
-	err = bmsg.peer.PushGetBlocksMsg(locator, &zeroHash)
-	if err != nil {
-		bmgrLog.Warnf("Failed to send getblocks message to peer %s: %v",
-			bmsg.peer.Addr(), err)
-		return
-	}
-}
-
-// fetchHeaderBlocks creates and sends a request to the syncPeer for the next
-// list of blocks to be downloaded based on the current list of headers.
-func (b *blockManager) fetchHeaderBlocks() {
-	// Nothing to do if there is no start header.
-	if b.startHeader == nil {
-		bmgrLog.Warnf("fetchHeaderBlocks called with no start header")
-		return
-	}
-
-	// Build up a getdata request for the list of blocks the headers
-	// describe.  The size hint will be limited to wire.MaxInvPerMsg by
-	// the function, so no need to double check it here.
-	gdmsg := wire.NewMsgGetDataSizeHint(uint(b.headerList.Len()))
-	numRequested := 0
-	for e := b.startHeader; e != nil; e = e.Next() {
-		node, ok := e.Value.(*headerNode)
-		if !ok {
-			bmgrLog.Warn("Header list node type is not a headerNode")
-			continue
-		}
-
-		iv := wire.NewInvVect(wire.InvTypeBlock, node.hash)
-		haveInv, err := b.haveInventory(iv)
-		if err != nil {
-			bmgrLog.Warnf("Unexpected failure when checking for "+
-				"existing inventory during header block "+
-				"fetch: %v", err)
-		}
-		if !haveInv {
-			b.requestedBlocks[*node.hash] = struct{}{}
-			b.syncPeer.requestedBlocks[*node.hash] = struct{}{}
-			gdmsg.AddInvVect(iv)
-			numRequested++
-		}
-		b.startHeader = e.Next()
-		if numRequested >= wire.MaxInvPerMsg {
-			break
-		}
-	}
-	if len(gdmsg.InvList) > 0 {
-		b.syncPeer.QueueMessage(gdmsg, nil)
-	}
-}
-
-// handleHeadersMsghandles headers messages from all peers.
-func (b *blockManager) handleHeadersMsg(hmsg *headersMsg) {
-	// The remote peer is misbehaving if we didn't request headers.
-	msg := hmsg.headers
-	numHeaders := len(msg.Headers)
-	if !b.headersFirstMode {
-		bmgrLog.Warnf("Got %d unrequested headers from %s -- "+
-			"disconnecting", numHeaders, hmsg.peer.Addr())
-		hmsg.peer.Disconnect()
-		return
-	}
-
-	// Nothing to do for an empty headers message.
-	if numHeaders == 0 {
-		return
-	}
-
-	// Process all of the received headers ensuring each one connects to the
-	// previous and that checkpoints match.
-	receivedCheckpoint := false
-	var finalHash *chainhash.Hash
-	for _, blockHeader := range msg.Headers {
-		blockHash := blockHeader.BlockHash()
-		finalHash = &blockHash
-
-		// Ensure there is a previous header to compare against.
-		prevNodeEl := b.headerList.Back()
-		if prevNodeEl == nil {
-			bmgrLog.Warnf("Header list does not contain a previous" +
-				"element as expected -- disconnecting peer")
-			hmsg.peer.Disconnect()
-			return
-		}
-
-		// Ensure the header properly connects to the previous one and
-		// add it to the list of headers.
-		node := headerNode{hash: &blockHash}
-		prevNode := prevNodeEl.Value.(*headerNode)
-		if prevNode.hash.IsEqual(&blockHeader.PrevBlock) {
-			node.height = prevNode.height + 1
-			e := b.headerList.PushBack(&node)
-			if b.startHeader == nil {
-				b.startHeader = e
-			}
-		} else {
-			bmgrLog.Warnf("Received block header that does not "+
-				"properly connect to the chain from peer %s "+
-				"-- disconnecting", hmsg.peer.Addr())
-			hmsg.peer.Disconnect()
-			return
-		}
-
-		// Verify the header at the next checkpoint height matches.
-		if node.height == b.nextCheckpoint.Height {
-			if node.hash.IsEqual(b.nextCheckpoint.Hash) {
-				receivedCheckpoint = true
-				bmgrLog.Infof("Verified downloaded block "+
-					"header against checkpoint at height "+
-					"%d/hash %s", node.height, node.hash)
-			} else {
-				bmgrLog.Warnf("Block header at height %d/hash "+
-					"%s from peer %s does NOT match "+
-					"expected checkpoint hash of %s -- "+
-					"disconnecting", node.height,
-					node.hash, hmsg.peer.Addr(),
-					b.nextCheckpoint.Hash)
-				hmsg.peer.Disconnect()
-				return
-			}
-			break
-		}
-	}
-
-	// When this header is a checkpoint, switch to fetching the blocks for
-	// all of the headers since the last checkpoint.
-	if receivedCheckpoint {
-		// Since the first entry of the list is always the final block
-		// that is already in the database and is only used to ensure
-		// the next header links properly, it must be removed before
-		// fetching the blocks.
-		b.headerList.Remove(b.headerList.Front())
-		bmgrLog.Infof("Received %v block headers: Fetching blocks",
-			b.headerList.Len())
-		b.progressLogger.SetLastLogTime(time.Now())
-		b.fetchHeaderBlocks()
-		return
-	}
-
-	// This header is not a checkpoint, so request the next batch of
-	// headers starting from the latest known header and ending with the
-	// next checkpoint.
-	locator := blockchain.BlockLocator([]*chainhash.Hash{finalHash})
-	err := hmsg.peer.PushGetHeadersMsg(locator, b.nextCheckpoint.Hash)
-	if err != nil {
-		bmgrLog.Warnf("Failed to send getheaders message to "+
-			"peer %s: %v", hmsg.peer.Addr(), err)
-		return
-	}
 }
 
 // haveInventory returns whether or not the inventory represented by the passed
@@ -943,11 +617,6 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 		// Add the inventory to the cache of known inventory
 		// for the peer.
 		imsg.peer.AddKnownInventory(iv)
-
-		// Ignore inventory when we're in headers-first mode.
-		if b.headersFirstMode {
-			continue
-		}
 
 		// Request the inventory if we don't already have it.
 		haveInv, err := b.haveInventory(iv)
@@ -1100,9 +769,6 @@ out:
 
 			case *invMsg:
 				b.handleInvMsg(msg)
-
-			case *headersMsg:
-				b.handleHeadersMsg(msg)
 
 			case *donePeerMsg:
 				b.handleDonePeerMsg(candidatePeers, msg.peer)
@@ -1290,18 +956,6 @@ func (b *blockManager) QueueInv(inv *wire.MsgInv, sp *serverPeer) {
 	b.msgChan <- &invMsg{inv: inv, peer: sp}
 }
 
-// QueueHeaders adds the passed headers message and peer to the block handling
-// queue.
-func (b *blockManager) QueueHeaders(headers *wire.MsgHeaders, sp *serverPeer) {
-	// No channel handling here because peers do not need to block on
-	// headers messages.
-	if atomic.LoadInt32(&b.shutdown) != 0 {
-		return
-	}
-
-	b.msgChan <- &headersMsg{headers: headers, peer: sp}
-}
-
 // DonePeer informs the blockmanager that a peer has disconnected.
 func (b *blockManager) DonePeer(sp *serverPeer) {
 	// Ignore if we are shutting down.
@@ -1384,7 +1038,6 @@ func newBlockManager(s *server, indexManager blockchain.IndexManager) (*blockMan
 		requestedBlocks: make(map[chainhash.Hash]struct{}),
 		progressLogger:  newBlockProgressLogger("Processed", bmgrLog),
 		msgChan:         make(chan interface{}, cfg.MaxPeers*3),
-		headerList:      list.New(),
 		quit:            make(chan struct{}),
 	}
 
@@ -1402,16 +1055,6 @@ func newBlockManager(s *server, indexManager blockchain.IndexManager) (*blockMan
 		return nil, err
 	}
 	best := bm.chain.BestSnapshot()
-	bm.chain.DisableCheckpoints(cfg.DisableCheckpoints)
-	if !cfg.DisableCheckpoints {
-		// Initialize the next checkpoint based on the current height.
-		bm.nextCheckpoint = bm.findNextHeaderCheckpoint(best.Height)
-		if bm.nextCheckpoint != nil {
-			bm.resetHeaderState(best.Hash, best.Height)
-		}
-	} else {
-		bmgrLog.Info("Checkpoints are disabled")
-	}
 
 	// Initialize the chain state now that the initial block node index has
 	// been generated.
