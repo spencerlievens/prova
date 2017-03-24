@@ -356,7 +356,7 @@ var TestNetParams = Params{
 	Name:        "testnet",
 	Net:         wire.TestNet,
 	DefaultPort: "17979",
-	DNSSeeds:    []string{},
+	DNSSeeds:    []string{"nodedns.rmgchain.info"},
 
 	// Chain parameters
 	GenesisBlock: &testNetGenesisBlock,
