@@ -409,8 +409,18 @@ func TestCheckTransactionOutputs(t *testing.T) {
 	payAddr, _ := provautil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
 	provaTxOut := wire.TxOut{
-		Value:    0, // 0 RMG
+		Value:    0, // 0 atoms
 		PkScript: provaPkScript,
+	}
+	// Create null txout
+	nullScript, err := txscript.NewScriptBuilder().
+		AddOp(txscript.OP_RETURN).Script()
+	if err != nil {
+		t.Fatalf("NewScriptBuilder: unexpected error: %v", err)
+	}
+	nullTxOut := wire.TxOut{
+		Value:    0, // 0 atoms
+		PkScript: nullScript,
 	}
 
 	// Create admin op to add provision key.
@@ -491,6 +501,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 		lastKeyID    btcec.KeyID
 		adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
 		aspKeyIdMap  btcec.KeyIdMap
+		isCoinbase   bool
 		isValid      bool
 		code         blockchain.ErrorCode
 	}{
@@ -695,6 +706,17 @@ func TestCheckTransactionOutputs(t *testing.T) {
 			isValid: false,
 			code:    blockchain.ErrInvalidTx,
 		},
+		{
+			name: "Spend to Coinbase null data output",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&nullTxOut},
+				LockTime: 0,
+			},
+			isCoinbase: true,
+			isValid:    true,
+		},
 	}
 
 	for _, test := range tests {
@@ -702,7 +724,11 @@ func TestCheckTransactionOutputs(t *testing.T) {
 		keyView.SetKeys(test.adminKeySets)
 		keyView.SetLastKeyID(test.lastKeyID)
 		keyView.SetKeyIDs(test.aspKeyIdMap)
-		err := blockchain.CheckTransactionOutputs(provautil.NewTx(&test.tx), keyView)
+		tx := provautil.NewTx(&test.tx)
+		if test.isCoinbase {
+			tx.SetIndex(0)
+		}
+		err := blockchain.CheckTransactionOutputs(tx, keyView)
 		if err == nil && test.isValid {
 			// Test passes since function returned valid for a
 			// transaction which is intended to be valid.

@@ -1085,10 +1085,18 @@ func CheckTransactionOutputs(tx *provautil.Tx, keyView *KeyViewpoint) error {
 	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
 	hasAdminOut := (threadInt >= 0)
 	if !hasAdminOut {
-		// This is not an admin transaction, all outputs should be prova type
-		// spending to active keyIDs
+		// When not an admin transaction, all outputs should be
+		// Prova type spending to active keyIDs. An exception is made
+		// for coinbase txs which may have null data outputs.
 		for i, txOut := range tx.MsgTx().TxOut {
-			output, _ := txscript.ParseScript(txOut.PkScript)
+			output, err := txscript.ParseScript(txOut.PkScript)
+			if err != nil {
+				return ruleError(ErrInvalidTx, fmt.Sprintf("%v", err))
+			}
+			scriptClass := txscript.TypeOfScript(output)
+			if tx.IsCoinbase() && scriptClass == txscript.NullDataTy {
+				continue
+			}
 			keyIDs, err := txscript.ExtractKeyIDs(output)
 			if err != nil {
 				return ruleError(ErrInvalidTx, fmt.Sprintf("%v", err))

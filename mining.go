@@ -764,6 +764,20 @@ mempoolLoop:
 	coinbaseTx.MsgTx().TxOut[0].Value += totalFees
 	txFees[0] = -totalFees
 
+	// Coinbase transactions that pay out zero value can avoid making new
+	// UTXOs by spending to a nullDataTy.  The header block size must be
+	// updated accordingly.
+	if coinbaseTx.MsgTx().TxOut[0].Value == 0 {
+		cbScriptByteLen := len(coinbaseTx.MsgTx().TxOut[0].PkScript)
+		nullScript, err := txscript.NewScriptBuilder().
+			AddOp(txscript.OP_RETURN).Script()
+		if err != nil {
+			return nil, err
+		}
+		blockSize -= uint32(cbScriptByteLen - len(nullScript))
+		coinbaseTx.MsgTx().TxOut[0].PkScript = nullScript
+	}
+
 	// Calculate the required difficulty for the block.  The timestamp
 	// is potentially adjusted to ensure it comes after the median time of
 	// the last several blocks per the chain consensus rules.

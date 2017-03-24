@@ -438,7 +438,7 @@ var TestNet3Params = Params{
 	ChainTrailingSigKeyLimit: 13,
 
 	// Maximum blocks signed by a single validate key, as a percentage.
-	ChainWindowShareLimit: 33,
+	ChainWindowShareLimit: 45,
 
 	// Maximum fee allowed in a single transaction, in atoms.
 	MaximumFeeAmount: 100000000,
@@ -511,7 +511,7 @@ var SimNetParams = Params{
 	ChainTrailingSigKeyLimit: 13,
 
 	// Percentage limit of blocks from a single sig key id allowed
-	ChainWindowShareLimit: 25,
+	ChainWindowShareLimit: 45,
 
 	// Maximum fee allowed in a single transaction, in atoms.
 	MaximumFeeAmount: 100000000,
