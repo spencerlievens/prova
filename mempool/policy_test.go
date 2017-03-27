@@ -297,7 +297,7 @@ func TestCheckTransactionStandard(t *testing.T) {
 	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
 	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 	addr, err := provautil.NewAddressProva(addrHash[:],
-		[]btcec.KeyID{keyId1, keyId2}, &chaincfg.TestNet3Params)
+		[]btcec.KeyID{keyId1, keyId2}, &chaincfg.TestNetParams)
 	if err != nil {
 		t.Fatalf("NewAddressPubKeyHash: unexpected error: %v", err)
 	}

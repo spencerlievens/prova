@@ -120,25 +120,25 @@ var regTestGenesisBlock = wire.MsgBlock{
 // TODO(prova): Make this a constant rather than computed, once genesis block is finalized
 var regTestGenesisHash = regTestGenesisBlock.Header.BlockHash()
 
-// testNet3GenesisHash is the hash of the first block in the block chain for the
-// test network (version 3).
+// testNetGenesisHash is the hash of the first block in the block chain for the
+// test network.
 // TODO(prova): Make this a constant rather than computed, once genesis block is finalized
-var testNet3GenesisHash = testNet3GenesisBlock.Header.BlockHash()
+var testNetGenesisHash = testNetGenesisBlock.Header.BlockHash()
 
-// testNet3GenesisMerkleRoot is the hash of the first transaction in the genesis
+// testNetGenesisMerkleRoot is the hash of the first transaction in the genesis
 // block for the test network (version 3).  It is the same as the merkle root
 // for the main network.
-var testNet3GenesisMerkleRoot = genesisMerkleRoot
+var testNetGenesisMerkleRoot = genesisMerkleRoot
 
-// testNet3GenesisBlock defines the genesis block of the block chain which
+// testNetGenesisBlock defines the genesis block of the block chain which
 // serves as the public transaction ledger for the test network (version 3).
-var testNet3GenesisBlock = wire.MsgBlock{
+var testNetGenesisBlock = wire.MsgBlock{
 	Header: wire.BlockHeader{
 		Version:    1,
-		PrevBlock:  chainhash.Hash{},          // 0000000000000000000000000000000000000000000000000000000000000000
-		MerkleRoot: testNet3GenesisMerkleRoot, // 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
-		Timestamp:  time.Unix(1477648033, 0),  // 2016-10-28 09:47:13 +0000 UTC
-		Bits:       0x2007ffff,                // 537395199 [07ffff0000000000000000000000000000000000000000000000000000000000]
+		PrevBlock:  chainhash.Hash{},         // 0000000000000000000000000000000000000000000000000000000000000000
+		MerkleRoot: testNetGenesisMerkleRoot, // 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
+		Timestamp:  time.Unix(1477648033, 0), // 2016-10-28 09:47:13 +0000 UTC
+		Bits:       0x2007ffff,               // 537395199 [07ffff0000000000000000000000000000000000000000000000000000000000]
 		Nonce:      6,
 	},
 	Transactions: []*wire.MsgTx{&genesisCoinbaseTx},

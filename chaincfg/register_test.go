@@ -57,8 +57,8 @@ func TestRegister(t *testing.T) {
 					err:    ErrDuplicateNet,
 				},
 				{
-					name:   "duplicate testnet3",
-					params: &TestNet3Params,
+					name:   "duplicate testnet",
+					params: &TestNetParams,
 					err:    ErrDuplicateNet,
 				},
 				{
@@ -73,7 +73,7 @@ func TestRegister(t *testing.T) {
 					valid: true,
 				},
 				{
-					magic: TestNet3Params.PubKeyHashAddrID,
+					magic: TestNetParams.PubKeyHashAddrID,
 					valid: true,
 				},
 				{
@@ -99,7 +99,7 @@ func TestRegister(t *testing.T) {
 					valid: true,
 				},
 				{
-					magic: TestNet3Params.ScriptHashAddrID,
+					magic: TestNetParams.ScriptHashAddrID,
 					valid: true,
 				},
 				{
@@ -126,8 +126,8 @@ func TestRegister(t *testing.T) {
 					err:  nil,
 				},
 				{
-					priv: TestNet3Params.HDPrivateKeyID[:],
-					want: TestNet3Params.HDPublicKeyID[:],
+					priv: TestNetParams.HDPrivateKeyID[:],
+					want: TestNetParams.HDPublicKeyID[:],
 					err:  nil,
 				},
 				{
@@ -169,7 +169,7 @@ func TestRegister(t *testing.T) {
 					valid: true,
 				},
 				{
-					magic: TestNet3Params.PubKeyHashAddrID,
+					magic: TestNetParams.PubKeyHashAddrID,
 					valid: true,
 				},
 				{
@@ -195,7 +195,7 @@ func TestRegister(t *testing.T) {
 					valid: true,
 				},
 				{
-					magic: TestNet3Params.ScriptHashAddrID,
+					magic: TestNetParams.ScriptHashAddrID,
 					valid: true,
 				},
 				{
@@ -237,8 +237,8 @@ func TestRegister(t *testing.T) {
 					err:    ErrDuplicateNet,
 				},
 				{
-					name:   "duplicate testnet3",
-					params: &TestNet3Params,
+					name:   "duplicate testnet",
+					params: &TestNetParams,
 					err:    ErrDuplicateNet,
 				},
 				{
@@ -258,7 +258,7 @@ func TestRegister(t *testing.T) {
 					valid: true,
 				},
 				{
-					magic: TestNet3Params.PubKeyHashAddrID,
+					magic: TestNetParams.PubKeyHashAddrID,
 					valid: true,
 				},
 				{
@@ -284,7 +284,7 @@ func TestRegister(t *testing.T) {
 					valid: true,
 				},
 				{
-					magic: TestNet3Params.ScriptHashAddrID,
+					magic: TestNetParams.ScriptHashAddrID,
 					valid: true,
 				},
 				{
@@ -311,8 +311,8 @@ func TestRegister(t *testing.T) {
 					err:  nil,
 				},
 				{
-					priv: TestNet3Params.HDPrivateKeyID[:],
-					want: TestNet3Params.HDPublicKeyID[:],
+					priv: TestNetParams.HDPrivateKeyID[:],
+					want: TestNetParams.HDPublicKeyID[:],
 					err:  nil,
 				},
 				{

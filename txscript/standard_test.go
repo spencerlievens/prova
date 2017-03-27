@@ -256,7 +256,7 @@ func TestPayToAddrScript(t *testing.T) {
 	// TCq7ZvyjTugZ3xDY8m1Mdgm95v4QmMpMfm3Fg8GCeE1uf
 	provaTest, err := provautil.NewAddressProva(
 		decodeHex("35dbbf04bca061e49dace08f858d8775c0a57c8e"),
-		[]btcec.KeyID{0x10000, 1}, &chaincfg.TestNet3Params)
+		[]btcec.KeyID{0x10000, 1}, &chaincfg.TestNetParams)
 	if err != nil {
 		t.Errorf("Unable to create prova address: %v", err)
 		return

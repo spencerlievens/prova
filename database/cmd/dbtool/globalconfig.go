@@ -34,7 +34,7 @@ var (
 type config struct {
 	DataDir        string `short:"b" long:"datadir" description:"Location of the Prova data directory"`
 	DbType         string `long:"dbtype" description:"Database backend to use for the Block Chain"`
-	TestNet3       bool   `long:"testnet" description:"Use the test network"`
+	TestNet        bool   `long:"testnet" description:"Use the test network"`
 	RegressionTest bool   `long:"regtest" description:"Use the regression test network"`
 	SimNet         bool   `long:"simnet" description:"Use the simulation test network"`
 }
@@ -60,18 +60,11 @@ func validDbType(dbType string) bool {
 	return false
 }
 
-// netName returns the name used when referring to a bitcoin network.  At the
-// time of writing, Prova currently places blocks for testnet version 3 in the
-// data and log directory "testnet", which does not match the Name field of the
-// chaincfg parameters.  This function can be used to override this directory name
-// as "testnet" when the passed active network matches wire.TestNet3.
-//
-// A proper upgrade to move the data and log directories for this network to
-// "testnet3" is planned for the future, at which point this function can be
-// removed and the network parameter's name used instead.
+// netName returns the name used when referring to a bitcoin network.
+// TODO(prova): only use chainParams.Name everywhere
 func netName(chainParams *chaincfg.Params) string {
 	switch chainParams.Net {
-	case wire.TestNet3:
+	case wire.TestNet:
 		return "testnet"
 	default:
 		return chainParams.Name
@@ -86,9 +79,9 @@ func setupGlobalConfig() error {
 	// Count number of network flags passed; assign active network params
 	// while we're at it
 	numNets := 0
-	if cfg.TestNet3 {
+	if cfg.TestNet {
 		numNets++
-		activeNetParams = &chaincfg.TestNet3Params
+		activeNetParams = &chaincfg.TestNetParams
 	}
 	if cfg.RegressionTest {
 		numNets++

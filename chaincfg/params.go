@@ -31,9 +31,9 @@ var (
 	// can have for the regression test network.
 	regressionPowLimit = powLimitFromStr("0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f")
 
-	// testNet3PowLimit is the highest proof of work value a block can have
+	// testNetPowLimit is the highest proof of work value a block can have
 	// for the test network (version 3).
-	testNet3PowLimit = powLimitFromStr("07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	testNetPowLimit = powLimitFromStr("07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 
 	// simNetPowLimit is the highest proof of work value a Bitcoin block
 	// can have for the simulation test network.  It is the value 2^255 - 1.
@@ -268,7 +268,7 @@ func hexToBytes(s string) []byte {
 // 3), this network is sometimes simply called "testnet".
 var RegressionNetParams = Params{
 	Name:        "regtest",
-	Net:         wire.TestNet,
+	Net:         wire.RegNet,
 	DefaultPort: "18444",
 	DNSSeeds:    []string{},
 
@@ -351,18 +351,16 @@ var RegressionNetParams = Params{
 	MaximumFeeAmount: 100000000,
 }
 
-// TestNet3Params defines the network parameters for the test Bitcoin network
-// (version 3).  Not to be confused with the regression test network, this
-// network is sometimes simply called "testnet".
-var TestNet3Params = Params{
-	Name:        "testnet3",
-	Net:         wire.TestNet3,
+// TestNetParams defines the network parameters for the test network.
+var TestNetParams = Params{
+	Name:        "testnet",
+	Net:         wire.TestNet,
 	DefaultPort: "17979",
 	DNSSeeds:    []string{},
 
 	// Chain parameters
-	GenesisBlock: &testNet3GenesisBlock,
-	GenesisHash:  &testNet3GenesisHash,
+	GenesisBlock: &testNetGenesisBlock,
+	GenesisHash:  &testNetGenesisHash,
 	AdminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
 		keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
 
@@ -387,7 +385,7 @@ var TestNet3Params = Params{
 		pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
 		return map[btcec.KeyID]*btcec.PublicKey{btcec.KeyID(1): pubKey1, btcec.KeyID(2): pubKey2}
 	}(),
-	PowLimit:                 testNet3PowLimit,
+	PowLimit:                 testNetPowLimit,
 	PowLimitBits:             0x2007ffff,
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
@@ -646,7 +644,7 @@ func powLimitFromStr(hexStr string) *big.Int {
 func init() {
 	// Register all default networks when the package is initialized.
 	mustRegister(&MainNetParams)
-	mustRegister(&TestNet3Params)
+	mustRegister(&TestNetParams)
 	mustRegister(&RegressionNetParams)
 	mustRegister(&SimNetParams)
 }

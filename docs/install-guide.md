@@ -39,7 +39,7 @@ After you install you should be able to do `go test`, `go install` and this will
 
 ## Run Prova
 
-To run Prova you will need a data directory to store the chain state. Create this directory where you like, like for testnet in your home directory you can create ~/testnet3/ - in this directory make a directory like `/1/` if you want to work with multiple chain states.
+To run Prova you will need a data directory to store the chain state. Create this directory where you like, like for testnet in your home directory you can create ~/testnet/ - in this directory make a directory like `/1/` if you want to work with multiple chain states.
 
 For Prova in regtest simulating 2 nodes, create directories `~/regtest/1` and `~/regtest/2` and the following test.sh bash script can run two nodes against each other in regtest.
 
@@ -54,7 +54,7 @@ sleep 1
 btcctl -u user -P pass -s 127.0.0.1:7001 generate 101
 ```
 
-For Prova in testnet mode, create a ~/testnet3/1 directory, use the following command line arguments to start the testnet node and connect to the remote node.
+For Prova in testnet mode, create a ~/testnet/1 directory, use the following command line arguments to start the testnet node and connect to the remote node.
 
 ```
 prova
