@@ -318,7 +318,7 @@ out:
 		for _, privKey := range m.validateKeys {
 			var validatePubKey wire.BlockValidatingPubKey
 			copy(validatePubKey[:wire.BlockValidatingPubKeySize], privKey.PubKey().SerializeCompressed()[:wire.BlockValidatingPubKeySize])
-			validateKeyErr, isRateLimited := m.server.blockManager.chain.IsValidateKeyRateLimited(validatePubKey)
+			isRateLimited, validateKeyErr := m.server.blockManager.chain.IsValidateKeyRateLimited(validatePubKey)
 			if validateKeyErr != nil || isRateLimited {
 				continue
 			}

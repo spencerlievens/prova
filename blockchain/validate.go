@@ -1181,7 +1181,7 @@ func CheckTransactionOutputs(tx *provautil.Tx, keyView *KeyViewpoint) error {
 
 // IsValidateKeyRateLimited determines whether using a specific pubkey in a
 // future possible chain extension would create a validate rate limit error.
-func (b *BlockChain) IsValidateKeyRateLimited(validatePubKey wire.BlockValidatingPubKey) (error, bool) {
+func (b *BlockChain) IsValidateKeyRateLimited(validatePubKey wire.BlockValidatingPubKey) (bool, error) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	return b.isValidateKeyRateLimited(b.bestNode, validatePubKey, true)
@@ -1189,7 +1189,7 @@ func (b *BlockChain) IsValidateKeyRateLimited(validatePubKey wire.BlockValidatin
 
 // isValidateKeyRateLimited determines whether or not a rate limiting violation
 // is present with a given validate key.
-func (b *BlockChain) isValidateKeyRateLimited(node *blockNode, validatePubKey wire.BlockValidatingPubKey, prospectiveInclusion bool) (error, bool) {
+func (b *BlockChain) isValidateKeyRateLimited(node *blockNode, validatePubKey wire.BlockValidatingPubKey, prospectiveInclusion bool) (bool, error) {
 	// Get the previous block generators to check rate limiting rules.
 	iterNode := node
 	prevPubKeys := []wire.BlockValidatingPubKey{}
@@ -1203,7 +1203,7 @@ func (b *BlockChain) isValidateKeyRateLimited(node *blockNode, validatePubKey wi
 		iterNode, err = b.getPrevNodeFromNode(iterNode)
 		if err != nil {
 			log.Errorf("getPrevNodeFromNode: %v", err)
-			return err, false
+			return false, err
 		}
 		if iterNode != nil {
 			prevPubKeys = append(prevPubKeys, iterNode.validatingPubKey)
@@ -1211,13 +1211,13 @@ func (b *BlockChain) isValidateKeyRateLimited(node *blockNode, validatePubKey wi
 	}
 	// Check if there is a run of too many blocks from a generator.
 	if IsGenerationTrailingRateLimited(validatePubKey, prevPubKeys, b.chainParams.ChainTrailingSigKeyLimit) {
-		return nil, true
+		return true, nil
 	}
 	// Check if there are too many blocks in a window from a generator.
 	if IsGenerationShareRateLimited(validatePubKey, prevPubKeys, b.chainParams.ChainWindowShareLimit) {
-		return nil, true
+		return true, nil
 	}
-	return nil, false
+	return false, nil
 }
 
 // checkConnectBlock performs several checks to confirm connecting the passed
@@ -1437,7 +1437,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *provautil.Block, 
 	}
 
 	// Check to see if there is a validate key rate limit breach.
-	err, isRateLimited := b.isValidateKeyRateLimited(node, blockHeader.ValidatingPubKey, false)
+	isRateLimited, err := b.isValidateKeyRateLimited(node, blockHeader.ValidatingPubKey, false)
 	if err != nil {
 		return err
 	}
