@@ -1051,6 +1051,11 @@ func CheckTransactionInputs(tx *provautil.Tx, txHeight uint32, utxoView *UtxoVie
 	if isIssueThread && txFeeInAtoms < 0 {
 		txFeeInAtoms = 0
 	}
+	if txFeeInAtoms > chainParams.MaximumFeeAmount {
+		str := fmt.Sprintf("transaction fee %v is greater than the "+
+			"maximum fee limit %v", txFeeInAtoms, chainParams.MaximumFeeAmount)
+		return 0, ruleError(ErrFeeTooHigh, str)
+	}
 	return txFeeInAtoms, nil
 }
 

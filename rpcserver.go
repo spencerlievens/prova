@@ -2065,6 +2065,8 @@ func chainErrToGBTErrString(err error) string {
 		return "bad-size-value"
 	case blockchain.ErrInvalidValidateKey:
 		return "invalid-validate-key"
+	case blockchain.ErrFeeTooHigh:
+		return "bad-txns-highfee"
 	}
 
 	return "rejected: " + err.Error()

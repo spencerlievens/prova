@@ -160,6 +160,9 @@ type Params struct {
 
 	// Maximum blocks signed by a single validate key, as a percentage.
 	ChainWindowShareLimit int
+
+	// Maximum fee allowed in a single transaction, in atoms.
+	MaximumFeeAmount int64
 }
 
 // MaxActualTimespan returns a timespan with the down-dampening factor applied.
@@ -242,6 +245,9 @@ var MainNetParams = Params{
 
 	// Maximum blocks signed by a single validate key, as a percentage.
 	ChainWindowShareLimit: 33,
+
+	// Maximum fee allowed in a single transaction, in atoms.
+	MaximumFeeAmount: 100000000,
 }
 
 // hexToBytes converts the passed hex string into bytes and will panic if there
@@ -339,6 +345,9 @@ var RegressionNetParams = Params{
 
 	// Maximum upward adjustment in pow difficulty, as a percentage
 	PowMaxAdjustUp: 16,
+
+	// Maximum fee allowed in a single transaction, in atoms.
+	MaximumFeeAmount: 100000000,
 }
 
 // TestNet3Params defines the network parameters for the test Bitcoin network
@@ -430,6 +439,9 @@ var TestNet3Params = Params{
 
 	// Maximum blocks signed by a single validate key, as a percentage.
 	ChainWindowShareLimit: 33,
+
+	// Maximum fee allowed in a single transaction, in atoms.
+	MaximumFeeAmount: 100000000,
 }
 
 // SimNetParams defines the network parameters for the simulation test Bitcoin
@@ -500,6 +512,9 @@ var SimNetParams = Params{
 
 	// Percentage limit of blocks from a single sig key id allowed
 	ChainWindowShareLimit: 25,
+
+	// Maximum fee allowed in a single transaction, in atoms.
+	MaximumFeeAmount: 100000000,
 }
 
 var (

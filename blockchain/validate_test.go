@@ -740,7 +740,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 func TestCheckTransactionInputs(t *testing.T) {
 	// Create some dummy, but otherwise standard, data for transactions.
 	prevOut := wire.TxOut{
-		Value:    400,
+		Value:    400000000,
 		PkScript: make([]byte, 20),
 	}
 	prevMsgTx := wire.MsgTx{
@@ -765,7 +765,7 @@ func TestCheckTransactionInputs(t *testing.T) {
 	// create issue tip tx
 	issuePkScript, _ := txscript.ProvaThreadScript(provautil.IssueThread)
 	issueTxOut := wire.TxOut{
-		Value:    0, // 0 RMG
+		Value:    0, // 0 atoms
 		PkScript: issuePkScript,
 	}
 	issueTipTx := provautil.NewTx(&wire.MsgTx{
@@ -791,10 +791,10 @@ func TestCheckTransactionInputs(t *testing.T) {
 		{
 			name: "destroy some coins.",
 			tx: wire.MsgTx{
-				Version: 1, // in values: 0      and 400
+				Version: 1, // in values: 0      and 400000000
 				TxIn:    []*wire.TxIn{&issueTxIn, &dummyTxIn},
 				TxOut: []*wire.TxOut{&issueTxOut, {
-					Value:    400,
+					Value:    400000000,
 					PkScript: []byte{txscript.OP_RETURN},
 				}},
 				LockTime: 0,
@@ -805,10 +805,10 @@ func TestCheckTransactionInputs(t *testing.T) {
 		{
 			name: "destroy more than input.",
 			tx: wire.MsgTx{
-				Version: 1, // in values: 0      and 400
+				Version: 1, // in values: 0      and 400000000
 				TxIn:    []*wire.TxIn{&issueTxIn, &dummyTxIn},
 				TxOut: []*wire.TxOut{&issueTxOut, {
-					Value:    500,
+					Value:    500000000,
 					PkScript: []byte{txscript.OP_RETURN},
 				}},
 				LockTime: 0,
@@ -820,13 +820,13 @@ func TestCheckTransactionInputs(t *testing.T) {
 		{
 			name: "destroy and issue in same tx.",
 			tx: wire.MsgTx{
-				Version: 1, // in values: 0      and 400
+				Version: 1, // in values: 0      and 400000000
 				TxIn:    []*wire.TxIn{&issueTxIn, &dummyTxIn},
 				TxOut: []*wire.TxOut{&issueTxOut, {
-					Value:    500, // destroy 500
+					Value:    500000000, // destroy 500000000
 					PkScript: []byte{txscript.OP_RETURN},
 				}, {
-					Value:    1000, // issue 1000
+					Value:    1000000, // issue 1000000000
 					PkScript: provaPkScript,
 				}},
 				LockTime: 0,
@@ -834,6 +834,33 @@ func TestCheckTransactionInputs(t *testing.T) {
 			height:  200,
 			isValid: false,
 			code:    blockchain.ErrInvalidAdminTx,
+		},
+		{
+			name: "tx pays a fee that does not exceed the limit.",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn:    []*wire.TxIn{&issueTxIn, &dummyTxIn},
+				TxOut: []*wire.TxOut{&issueTxOut, {
+					Value:    300000000,
+					PkScript: []byte{txscript.OP_RETURN},
+				}},
+			},
+			height:  200,
+			isValid: true,
+		},
+		{
+			name: "tx pays a fee that exceeds the fee limit.",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn:    []*wire.TxIn{&issueTxIn, &dummyTxIn},
+				TxOut: []*wire.TxOut{&issueTxOut, {
+					Value:    300000000 - 1,
+					PkScript: []byte{txscript.OP_RETURN},
+				}},
+			},
+			height:  200,
+			isValid: false,
+			code:    blockchain.ErrFeeTooHigh,
 		},
 	}
 

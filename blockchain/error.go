@@ -218,6 +218,10 @@ const (
 	// ErrInvalidAdminOp indicates an admin transaction contains an invalid
 	// operation according to current chain state.
 	ErrInvalidAdminOp
+
+	// ErrFeeTooHigh indicates a transaction fee exceeds the limit for
+	// fee paid.
+	ErrFeeTooHigh
 )
 
 // Map of ErrorCode values back to their constant names for pretty printing.
@@ -268,6 +272,7 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrInvalidValidateKey:   "ErrInvalidValidateKey",
 	ErrInvalidAdminTx:       "ErrInvalidAdminTx",
 	ErrInvalidAdminOp:       "ErrInvalidAdminOp",
+	ErrFeeTooHigh:           "ErrFeeTooHigh",
 }
 
 // String returns the ErrorCode as a human-readable name.
