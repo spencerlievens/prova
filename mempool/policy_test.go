@@ -323,19 +323,19 @@ func TestCheckTransactionStandard(t *testing.T) {
 	adminOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
 		AddData(data).Script()
 	adminOpTxOut := wire.TxOut{
-		Value:    0, // 0 RMG
+		Value:    0,
 		PkScript: adminOpPkScript,
 	}
 	// create root tx out
 	rootPkScript, _ := txscript.ProvaThreadScript(provautil.RootThread)
 	rootTxOut := wire.TxOut{
-		Value:    0, // 0 RMG
+		Value:    0,
 		PkScript: rootPkScript,
 	}
 	// create provision tx out
 	provisionPkScript, _ := txscript.ProvaThreadScript(provautil.ProvisionThread)
 	provisionTxOut := wire.TxOut{
-		Value:    0, // 0 RMG
+		Value:    0,
 		PkScript: provisionPkScript,
 	}
 
@@ -647,15 +647,15 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 	testSigScript := bytes.Repeat([]byte{0x00}, 4)
 	// Create some dummy admin op output.
 	adminOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
-		AddData(bytes.Repeat([]byte{0x00}, 4)).Script()
+		AddData(testSigScript).Script()
 	adminOpTxOut := wire.TxOut{
-		Value:    0, // 0 RMG
+		Value:    0,
 		PkScript: adminOpPkScript,
 	}
 	// create root tip tx
 	rootPkScript, _ := txscript.ProvaThreadScript(provautil.RootThread)
 	rootTxOut := wire.TxOut{
-		Value:    0, // 0 RMG
+		Value:    0,
 		PkScript: rootPkScript,
 	}
 	rootTipTx := provautil.NewTx(&wire.MsgTx{
@@ -673,7 +673,7 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 	// create provision tip tx
 	provisionPkScript, _ := txscript.ProvaThreadScript(provautil.ProvisionThread)
 	provisionTxOut := wire.TxOut{
-		Value:    0, // 0 RMG
+		Value:    0,
 		PkScript: provisionPkScript,
 	}
 	provisionTipTx := provautil.NewTx(&wire.MsgTx{
@@ -691,7 +691,7 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 	// create issue tip tx
 	issuePkScript, _ := txscript.ProvaThreadScript(provautil.IssueThread)
 	issueTxOut := wire.TxOut{
-		Value:    0, // 0 RMG
+		Value:    0,
 		PkScript: issuePkScript,
 	}
 	issueTipTx := provautil.NewTx(&wire.MsgTx{
@@ -706,13 +706,20 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 		SignatureScript:  testSigScript,
 		Sequence:         wire.MaxTxInSequenceNum,
 	}
+	// create issue with two outs
+	invalidIssueTipTx := provautil.NewTx(&wire.MsgTx{
+		Version:  1,
+		TxIn:     []*wire.TxIn{&coinbaseTxIn},
+		TxOut:    []*wire.TxOut{&provisionTxOut, &issueTxOut},
+		LockTime: 0,
+	})
 	// Create prova txout
 	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
 	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
 	payAddr, _ := provautil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
 	provaTxOut := wire.TxOut{
-		Value:    0, // 0 RMG
+		Value:    0,
 		PkScript: provaPkScript,
 	}
 	provaTx := provautil.NewTx(&wire.MsgTx{
@@ -727,12 +734,30 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 		SignatureScript:  testSigScript,
 		Sequence:         wire.MaxTxInSequenceNum,
 	}
+	// Create non-standard tx
+	nonStandardTx := provautil.NewTx(&wire.MsgTx{
+		Version: 1,
+		TxIn:    []*wire.TxIn{&provaTxIn},
+		TxOut: []*wire.TxOut{{
+			Value:    0,
+			PkScript: []byte{txscript.OP_2DIV},
+		}},
+		LockTime: 0,
+	})
+	nonStandardPrevOut := wire.OutPoint{Hash: *nonStandardTx.Hash(), Index: 0}
+	nonStandardTxIn := wire.TxIn{
+		PreviousOutPoint: nonStandardPrevOut,
+		SignatureScript:  testSigScript,
+		Sequence:         wire.MaxTxInSequenceNum,
+	}
 	// add all tips to utxoview
 	utxoView := blockchain.NewUtxoViewpoint()
 	utxoView.AddTxOuts(rootTipTx, 0)
 	utxoView.AddTxOuts(provisionTipTx, 0)
 	utxoView.AddTxOuts(issueTipTx, 0)
 	utxoView.AddTxOuts(provaTx, 0)
+	utxoView.AddTxOuts(nonStandardTx, 0)
+	utxoView.AddTxOuts(invalidIssueTipTx, 1)
 
 	tests := []struct {
 		name       string
@@ -809,6 +834,72 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 			},
 			height:     300000,
 			code:       wire.RejectInvalidAdmin,
+			isStandard: false,
+		},
+		{
+			name: "spend non-standard tx",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn:    []*wire.TxIn{&nonStandardTxIn},
+				TxOut: []*wire.TxOut{{
+					Value:    0,
+					PkScript: []byte{txscript.OP_2DIV},
+				}},
+				LockTime: 0,
+			},
+			height:     300000,
+			code:       wire.RejectNonstandard,
+			isStandard: false,
+		},
+		{
+			name: "spend admin thread at txIndex > 0",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn: []*wire.TxIn{{
+					PreviousOutPoint: wire.OutPoint{
+						Hash:  *invalidIssueTipTx.Hash(),
+						Index: 1,
+					},
+					SignatureScript: testSigScript,
+					Sequence:        wire.MaxTxInSequenceNum,
+				}},
+				TxOut:    []*wire.TxOut{&issueTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			code:       wire.RejectInvalidAdmin,
+			isStandard: false,
+		},
+		{
+			name: "odd number of sig scripts",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn: []*wire.TxIn{{
+					PreviousOutPoint: provisionPrevOut,
+					SignatureScript:  bytes.Repeat([]byte{0x00}, 3),
+					Sequence:         wire.MaxTxInSequenceNum,
+				}},
+				TxOut:    []*wire.TxOut{&provisionTxOut, &adminOpTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			code:       wire.RejectNonstandard,
+			isStandard: false,
+		},
+		{
+			name: "invalid script",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn: []*wire.TxIn{{
+					PreviousOutPoint: provisionPrevOut,
+					SignatureScript:  []byte{txscript.OP_PUSHDATA1, 2},
+					Sequence:         wire.MaxTxInSequenceNum,
+				}},
+				TxOut:    []*wire.TxOut{&provisionTxOut, &adminOpTxOut},
+				LockTime: 0,
+			},
+			height:     300000,
+			code:       wire.RejectNonstandard,
 			isStandard: false,
 		},
 	}

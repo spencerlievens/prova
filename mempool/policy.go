@@ -194,10 +194,8 @@ func checkInputsStandard(tx *provautil.Tx, utxoView *blockchain.UtxoViewpoint) e
 					"odd amount of sigPops %d", txInIndex, len(sigPops))
 				return txRuleError(wire.RejectNonstandard, str)
 			}
-			// TODO(prova): check 2 or more tuple
-			// TODO(prova): check each tuple to be pubKey + Sig
 			// check input position
-			if txInIndex != 0 {
+			if prevOut.Index != 0 {
 				str := fmt.Sprintf("transaction %v tried to spend admin "+
 					"thread transaction %v with input at position "+
 					"%d. Only input #0 may spend an admin threads.",
