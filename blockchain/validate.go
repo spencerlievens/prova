@@ -1060,13 +1060,21 @@ func CheckTransactionOutputs(tx *provautil.Tx, keyView *KeyViewpoint) error {
 		// When not an admin transaction, all outputs should be
 		// Prova type spending to active keyIDs. An exception is made
 		// for coinbase txs which may have null data outputs.
+		hasNullDataOutput := false
 		for i, txOut := range tx.MsgTx().TxOut {
 			output, err := txscript.ParseScript(txOut.PkScript)
 			if err != nil {
 				return ruleError(ErrInvalidTx, fmt.Sprintf("%v", err))
 			}
 			scriptClass := txscript.TypeOfScript(output)
-			if tx.IsCoinbase() && scriptClass == txscript.NullDataTy {
+			if txOut.Value == 0 && scriptClass == txscript.NullDataTy {
+				if !hasNullDataOutput {
+					hasNullDataOutput = true
+				} else {
+					str := fmt.Sprintf("nullData output at index %d"+
+						" exceeds nulldata output count limit", i)
+					return ruleError(ErrInvalidTx, str)
+				}
 				continue
 			}
 			keyIDs, err := txscript.ExtractKeyIDs(output)

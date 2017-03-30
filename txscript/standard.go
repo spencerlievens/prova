@@ -159,23 +159,30 @@ func isProva(pops []parsedOpcode) bool {
 		isGeneralProva(pops)
 }
 
-// IsProvaTx determines if a transaction is a standard prova transaction consisting
-// of only outputs to standard prova scripts and 0-value nulldata scripts.
+// IsProvaTx determines if a transaction is a standard prova transaction
+// consisting of only outputs to standard prova scripts and 0-value nulldata
+// scripts.
 func IsProvaTx(tx *provautil.Tx) bool {
 	msgTx := tx.MsgTx()
 
-	// An prova transaction must have at least one output.
+	// A Prova transaction must have at least one output.
 	if len(msgTx.TxOut) == 0 {
 		return false
 	}
 
+	hasNullOutput := false
 	for _, txOut := range msgTx.TxOut {
 		atoms := txOut.Value
 		pops, err := ParseScript(txOut.PkScript)
 		if err != nil {
 			return false
 		}
+		// NullData outputs are allowed, but only one, with zero value.
 		if isNullData(pops) {
+			if hasNullOutput {
+				return false
+			}
+			hasNullOutput = true
 			if atoms != 0 {
 				return false
 			}

@@ -708,7 +708,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 			code:    blockchain.ErrInvalidTx,
 		},
 		{
-			name: "Spend to Coinbase null data output",
+			name: "Spend to a single null data output",
 			tx: wire.MsgTx{
 				Version:  1,
 				TxIn:     []*wire.TxIn{&dummyTxIn},
@@ -717,6 +717,18 @@ func TestCheckTransactionOutputs(t *testing.T) {
 			},
 			isCoinbase: true,
 			isValid:    true,
+		},
+		{
+			name: "Spend to multiple null data outputs",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&nullTxOut, &nullTxOut},
+				LockTime: 0,
+			},
+			isCoinbase: true,
+			isValid:    false,
+			code:       blockchain.ErrInvalidTx,
 		},
 	}
 
