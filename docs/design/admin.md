@@ -184,7 +184,7 @@ An interface is exposed on the set of these transactions and starting values tha
 ## Validation Rules
 
 - An addition of a specially provisioned key may only occur once.  It is invalid to add an already provisioned key multiple times.
-- Admin transactions in the genesis block do not need to provide a meaningful input or script-sig, they are automatically valid.
+- Admin outputs in the genesis block are automatically valid.
 - Admin operations performed in the transaction must match the thread and be signed with two appropriate and matching keys: issue operations must be performed on the issue thread, etc.
 - Aside from the exceptions for issuance, no non-admin outputs and inputs are allowed in an admin transaction.
 - Issue transactions may not also de-issue tokens.

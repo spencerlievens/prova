@@ -9,7 +9,8 @@ mining
 
 ## Overview
 
-This package is currently a work in progress.
+
+Package mining defines data structures for the CPU miner.
 
 ## Installation and Updating
 

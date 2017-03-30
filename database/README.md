@@ -29,7 +29,7 @@ storage, and strict checksums in key areas to ensure data integrity.
 ## Feature Overview
 
 - Key/value metadata store
-- Bitcoin block storage
+- Block storage
 - Efficient retrieval of block headers and regions (transactions, scripts, etc)
 - Read-only and read-write transactions with both manual and managed modes
 - Nested buckets

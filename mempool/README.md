@@ -9,7 +9,8 @@ mempool
 
 ## Overview
 
-This package is currently a work in progress.
+Package mempool provides for the memory pool used in peer to peer transaction
+relaying.
 
 ## Installation and Updating
 

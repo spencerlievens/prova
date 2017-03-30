@@ -8,7 +8,7 @@ btcec
 (http://godoc.org/github.com/bitgo/prova/btcec)
 
 Package btcec implements elliptic curve cryptography needed for working with
-Bitcoin (secp256k1 only for now). It is designed so that it may be used with the
+Prova (secp256k1 only for now). It is designed so that it may be used with the
 standard crypto/ecdsa packages provided with go.  A comprehensive suite of test
 is provided to ensure proper functionality.  Package btcec was originally based
 on work from ThePiachu which is licensed under the same terms as Go, but it has
@@ -46,26 +46,6 @@ $ go get -u github.com/bitgo/prova/btcec
   (http://godoc.org/github.com/bitgo/prova/btcec#example-package--DecryptMessage)
   Demonstrates decrypting a message using a private key that is first parsed
   from raw bytes.
-
-## GPG Verification Key
-
-All official release tags are signed by Conformal so users can ensure the code
-has not been tampered with and is coming from the btcsuite developers.  To
-verify the signature perform the following:
-
-- Download the public key from the Conformal website at
-  https://opensource.conformal.com/GIT-GPG-KEY-conformal.txt
-
-- Import the public key into your GPG keyring:
-  ```bash
-  gpg --import GIT-GPG-KEY-conformal.txt
-  ```
-
-- Verify the release tag with the following command where `TAG_NAME` is a
-  placeholder for the specific tag:
-  ```bash
-  git tag -v TAG_NAME
-  ```
 
 ## License
 

@@ -8,13 +8,13 @@ chaincfg
 (http://godoc.org/github.com/bitgo/prova/chaincfg)
 
 Package chaincfg defines chain configuration parameters for the three standard
-Bitcoin networks and provides the ability for callers to define their own custom
-Bitcoin networks.
+Prova networks and provides the ability for callers to define their own custom
+Prova networks.
 
 Although this package was primarily written for btcd, it has intentionally been
 designed so it can be used as a standalone package for any projects needing to
-use parameters for the standard Bitcoin networks or for projects needing to
-define their own network.
+use parameters for the standard networks or for projects needing to define
+their own network.
 
 ## Sample Use
 
@@ -30,7 +30,7 @@ import (
 	"github.com/bitgo/prova/chaincfg"
 )
 
-var testnet = flag.Bool("testnet", false, "operate on the testnet Bitcoin network")
+var testnet = flag.Bool("testnet", false, "operate on the testnet Prova network")
 
 // By default (without -testnet), use mainnet.
 var chainParams = &chaincfg.MainNetParams
@@ -60,26 +60,6 @@ func main() {
 ```bash
 $ go get -u github.com/bitgo/prova/chaincfg
 ```
-
-## GPG Verification Key
-
-All official release tags are signed by Conformal so users can ensure the code
-has not been tampered with and is coming from the btcsuite developers.  To
-verify the signature perform the following:
-
-- Download the public key from the Conformal website at
-  https://opensource.conformal.com/GIT-GPG-KEY-conformal.txt
-
-- Import the public key into your GPG keyring:
-  ```bash
-  gpg --import GIT-GPG-KEY-conformal.txt
-  ```
-
-- Verify the release tag with the following command where `TAG_NAME` is a
-  placeholder for the specific tag:
-  ```bash
-  git tag -v TAG_NAME
-  ```
 
 ## License
 

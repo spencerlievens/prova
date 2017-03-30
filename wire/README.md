@@ -7,14 +7,13 @@ wire
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)]
 (http://godoc.org/github.com/bitgo/prova/wire)
 
-Package wire implements the bitcoin wire protocol.  A comprehensive suite of
+Package wire implements the Prova wire protocol.  A comprehensive suite of
 tests with 100% test coverage is provided to ensure proper functionality.
 
-There is an associated blog post about the release of this package
-[here](https://blog.conformal.com/btcwire-the-bitcoin-wire-protocol-package-from-btcd/).
+The Prova wire protocol is based on the Bitcoin peer to peer wire protocol.
 
 This package has intentionally been designed so it can be used as a standalone
-package for any projects needing to interface with bitcoin peers at the wire
+package for any projects needing to interface with Prova peers at the wire
 protocol level.
 
 ## Installation and Updating
@@ -87,26 +86,6 @@ from a remote peer is:
 		// Log and handle the error
 	}
 ```
-
-## GPG Verification Key
-
-All official release tags are signed by Conformal so users can ensure the code
-has not been tampered with and is coming from the btcsuite developers.  To
-verify the signature perform the following:
-
-- Download the public key from the Conformal website at
-  https://opensource.conformal.com/GIT-GPG-KEY-conformal.txt
-
-- Import the public key into your GPG keyring:
-  ```bash
-  gpg --import GIT-GPG-KEY-conformal.txt
-  ```
-
-- Verify the release tag with the following command where `TAG_NAME` is a
-  placeholder for the specific tag:
-  ```bash
-  git tag -v TAG_NAME
-  ```
 
 ## License
 
