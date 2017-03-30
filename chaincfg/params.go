@@ -191,8 +191,32 @@ var MainNetParams = Params{
 	DNSSeeds:    []string{},
 
 	// Chain parameters
-	GenesisBlock:             &genesisBlock,
-	GenesisHash:              &genesisHash,
+	GenesisBlock: &genesisBlock,
+	GenesisHash:  &genesisHash,
+	AdminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
+		keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
+
+		// Root keys
+		keySets[btcec.RootKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			"0351fe34a7869313aea20cd4f32d4c4c104a956e31914e52792edebb06ce706279",
+			"0296c5ba078b550b405da30cca259df13a3f42f8b0130665980317730cc8cf8e83",
+		)
+
+		// Validate keys
+		keySets[btcec.ValidateKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			"031337c51889ee346ee194238a8a1d9cf56ea3943544b17ca9328947099128bc17",
+			"031337e5f3edd3232bd0c1038416c113f0c0183abdc6d584ee33ac9b172bcba35c",
+			"031337f5db2a5ce6f8c2a97fedfc5e051751dfc5a89247261804bb13ba306d1df9",
+			"031337b5ac0e43f829f930e79494b587cc881e854f61198b5befa7ec188737058b",
+		)
+
+		return keySets
+	}(),
+	ASPKeyIdMap: func() btcec.KeyIdMap {
+		pubKey1, _ := btcec.ParsePubKey(hexToBytes("02bb4f88d0fa509aae16679dea651a5abda750515dc334c4b4f5cc271885535db9"), btcec.S256())
+		pubKey2, _ := btcec.ParsePubKey(hexToBytes("03afc00846b67084f30bec1752a3e4ba32c2831f2aeb27911225162c8c95481d9e"), btcec.S256())
+		return map[btcec.KeyID]*btcec.PublicKey{btcec.KeyID(1): pubKey1, btcec.KeyID(2): pubKey2}
+	}(),
 	PowLimit:                 mainPowLimit,
 	PowLimitBits:             0x1f07ffff,
 	CoinbaseMaturity:         100,
@@ -278,13 +302,13 @@ var RegressionNetParams = Params{
 	AdminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
 		keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
 
-		//root keys
+		// Root keys
 		keySets[btcec.RootKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
 			"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1", // priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
 			"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
 		)
 
-		//validate keys
+		// Validate keys
 		keySets[btcec.ValidateKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
 			"035f5103852bd7d9c9c28e44caf1f7188941e16295062ca4c89928a8ccff993cd3", // TODO(prova) add priv
 			"0265de49399e78020026219492e2a6e1a41e93591b87220ae8a2f3ebf3473dbeef", // TODO(prova) add priv
@@ -364,25 +388,27 @@ var TestNetParams = Params{
 	AdminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
 		keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
 
-		//root keys
+		// Root keys
 		keySets[btcec.RootKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
-			"025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1", // priv eaf02ca348c524e6392655ba4d29603cd1a7347d9d65cfe93ce1ebffdca22694
-			"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
+			"023cc2d11d97728d6d69d1d296513e12e0439c225b612f1a24e5d3b3a333d058aa",
+			"029cd0486fd4a5b260f956e1b16db17cd0e2f8914054b30eddda17950af7033855",
+			"03ecf113dd8476ab79a64c7b8eeaf30999744777ed8b31a91387fd76b0d798d9fd",
+			"03ce7f7ee8e5e01de741649b69655f168526ebb476e1fb8f250a825f824cf7b63e",
 		)
 
-		//validator keys
+		// Validate keys
 		keySets[btcec.ValidateKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
-			"035f5103852bd7d9c9c28e44caf1f7188941e16295062ca4c89928a8ccff993cd3", // TODO(prova) add priv
-			"0265de49399e78020026219492e2a6e1a41e93591b87220ae8a2f3ebf3473dbeef", // TODO(prova) add priv
-			"039cb94c99c4700918250c40fa35b7fa0a75a967c9366aa19b8fc354373368beef", // TODO(prova) add priv
-			"031337ab09070254638075c7b59643dce2d60c5260bf5841d2f8cc6f75f6790d4e", // TODO(prova) add priv
+			"031337b4828f61541f003634ebe6c55a9cca4d13c7fec34f2698939272a76b15b0",
+			"031337e5bbe1b43b283ab56d5ceb64c159b0b5abd5ab58edd7d0ccad5360a23130",
+			"031337b35bb33a8bfa9c190f617e139efef3d307bb1a981f17fd0ea6a42010f5ae",
+			"031337eeb34fd8eb0af9e171c448a66ea632311cfe8316f7aed49b954ac6c054f7",
 		)
 
 		return keySets
 	}(),
 	ASPKeyIdMap: func() btcec.KeyIdMap {
-		pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
-		pubKey2, _ := btcec.ParsePubKey(hexToBytes("038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202"), btcec.S256())
+		pubKey1, _ := btcec.ParsePubKey(hexToBytes("036bcc8bc2af28edd3b1b8d25baefa0f06dd4fc243da0587268b5899d5538fc8a6"), btcec.S256())
+		pubKey2, _ := btcec.ParsePubKey(hexToBytes("021497b39f2f32eeaa1083c52ee265d0fad85338fb82bf8c0ae4a1dbe746e4a45b"), btcec.S256())
 		return map[btcec.KeyID]*btcec.PublicKey{btcec.KeyID(1): pubKey1, btcec.KeyID(2): pubKey2}
 	}(),
 	PowLimit:                 testNetPowLimit,
