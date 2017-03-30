@@ -842,25 +842,25 @@ func TestCheckTransactionInputs(t *testing.T) {
 			},
 			height:  200,
 			isValid: false,
-			code:    blockchain.ErrInvalidAdminTx,
+			code:    blockchain.ErrSpendTooHigh,
 		},
 		{
-			name: "destroy and issue in same tx.",
+			name: "destroy and spend more than input in same tx.",
 			tx: wire.MsgTx{
 				Version: 1, // in values: 0      and 400000000
 				TxIn:    []*wire.TxIn{&issueTxIn, &dummyTxIn},
 				TxOut: []*wire.TxOut{&issueTxOut, {
-					Value:    500000000, // destroy 500000000
+					Value:    300000000, // destroy
 					PkScript: []byte{txscript.OP_RETURN},
 				}, {
-					Value:    1000000, // issue 1000000000
+					Value:    300000000, // change
 					PkScript: provaPkScript,
 				}},
 				LockTime: 0,
 			},
 			height:  200,
 			isValid: false,
-			code:    blockchain.ErrInvalidAdminTx,
+			code:    blockchain.ErrSpendTooHigh,
 		},
 		{
 			name: "tx pays a fee that does not exceed the limit.",
@@ -868,7 +868,7 @@ func TestCheckTransactionInputs(t *testing.T) {
 				Version: 1,
 				TxIn:    []*wire.TxIn{&issueTxIn, &dummyTxIn},
 				TxOut: []*wire.TxOut{&issueTxOut, {
-					Value:    300000000,
+					Value:    400000000 - 5000000,
 					PkScript: []byte{txscript.OP_RETURN},
 				}},
 			},

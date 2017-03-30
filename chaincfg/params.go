@@ -248,7 +248,7 @@ var MainNetParams = Params{
 	ChainWindowShareLimit: 33,
 
 	// Maximum fee allowed in a single transaction, in atoms.
-	MaximumFeeAmount: 100000000,
+	MaximumFeeAmount: 5000000,
 }
 
 // hexToBytes converts the passed hex string into bytes and will panic if there
@@ -348,7 +348,7 @@ var RegressionNetParams = Params{
 	PowMaxAdjustUp: 16,
 
 	// Maximum fee allowed in a single transaction, in atoms.
-	MaximumFeeAmount: 100000000,
+	MaximumFeeAmount: 5000000,
 }
 
 // TestNetParams defines the network parameters for the test network.
@@ -440,7 +440,7 @@ var TestNetParams = Params{
 	ChainWindowShareLimit: 45,
 
 	// Maximum fee allowed in a single transaction, in atoms.
-	MaximumFeeAmount: 100000000,
+	MaximumFeeAmount: 5000000,
 }
 
 // SimNetParams defines the network parameters for the simulation test Bitcoin
@@ -513,7 +513,7 @@ var SimNetParams = Params{
 	ChainWindowShareLimit: 45,
 
 	// Maximum fee allowed in a single transaction, in atoms.
-	MaximumFeeAmount: 100000000,
+	MaximumFeeAmount: 5000000,
 }
 
 var (

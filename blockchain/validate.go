@@ -252,35 +252,25 @@ func CheckTransactionSanity(tx *provautil.Tx) error {
 			} else {
 				// take care of issue thread
 				// If issuance/destruction tx, any non-nulldata outputs must be valid Prova scripts
-				isDestruction := len(msgTx.TxIn) > 1
 				if txOutIndex > 0 {
-					pops := adminOutputs[txOutIndex-1]
-					scriptType := txscript.TypeOfScript(pops)
-					if len(pops) == 1 {
+					isDestruction := len(msgTx.TxIn) > 1
+					if scriptClass == txscript.NullDataTy {
 						if !isDestruction {
-							str := fmt.Sprintf("issue thread transaction %v "+
-								"tries to issue and destroy at the same "+
-								"time.", tx.Hash)
+							str := fmt.Sprintf("issue transaction %v tries to destroy funds", tx.Hash)
 							return ruleError(ErrInvalidAdminTx, str)
 						}
-						if scriptType != txscript.NullDataTy {
+						if atoms == 0 {
 							str := fmt.Sprintf("admin issue transaction %v "+
-								"has invalid output #%d.", tx.Hash, txOutIndex)
+								"trying to destroy 0 at output "+
+								"#%d.", tx.Hash, txOutIndex)
 							return ruleError(ErrInvalidAdminTx, str)
-						} else {
-							if atoms == 0 {
-								str := fmt.Sprintf("admin issue transaction %v "+
-									"trying to destroy 0 at output "+
-									"#%d.", tx.Hash, txOutIndex)
-								return ruleError(ErrInvalidAdminTx, str)
-							}
 						}
 					} else {
-						if scriptType != txscript.ProvaTy &&
-							scriptType != txscript.GeneralProvaTy {
+						if scriptClass != txscript.ProvaTy &&
+							scriptClass != txscript.GeneralProvaTy {
 							str := fmt.Sprintf("admin issue transaction %v "+
-								"expected to have prova output at %d, "+
-								"but found %x.", tx.Hash, txOutIndex, pops)
+								"expected to have prova output at %d"+
+								"but found %x.", tx.Hash, txOutIndex)
 							return ruleError(ErrInvalidAdminTx, str)
 						}
 						if atoms == 0 {
@@ -1003,39 +993,20 @@ func CheckTransactionInputs(tx *provautil.Tx, txHeight uint32, utxoView *UtxoVie
 	}
 
 	isIssueThread := false
+	isDestruction := false
 	if hasAdminOut {
 		threadId := provautil.ThreadID(threadInt)
 		if threadId == provautil.IssueThread {
 			isIssueThread = true // we should make exception for in/out check
+			isDestruction = len(tx.MsgTx().TxIn) > 1
 		}
 	}
+
 	// Ensure the transaction does not spend more than its inputs.
 	if totalAtomsIn < totalAtomsOut {
-		if isIssueThread {
-			// To be able to issue tokens, the out <= in rule is lifted for
-			// issue thread transactions.
-
-			// Yet, we need to make sure the transaction doesn't destroy more than
-			// it's inputs, otherwise totalSupply calculation will be faulty.
-
-			// Calculate the total destroyed amount for this transaction.  It is
-			// safe to ignore overflow and out of range errors here because those
-			// error conditions would have already been caught by
-			// checkTransactionSanity.
-			var totalAtomsDestroyed int64
-			for _, txOut := range tx.MsgTx().TxOut {
-				pops, _ := txscript.ParseScript(txOut.PkScript)
-				if txscript.TypeOfScript(pops) == txscript.NullDataTy {
-					totalAtomsDestroyed += txOut.Value
-				}
-			}
-			if totalAtomsIn < totalAtomsDestroyed {
-				str := fmt.Sprintf("admin transaction %v is trying to destroy "+
-					"%v which is more than inputs %v.", txHash,
-					totalAtomsDestroyed, totalAtomsIn)
-				return 0, ruleError(ErrInvalidAdminTx, str)
-			}
-		} else {
+		if !isIssueThread || isDestruction {
+			// To be able to issue tokens, the out <= in rule is lifted ONLY for
+			// issue transactions (which are not destructions).
 			str := fmt.Sprintf("total value of all transaction inputs for "+
 				"transaction %v is %v which is less than the amount "+
 				"spent of %v", txHash, totalAtomsIn, totalAtomsOut)
@@ -1112,7 +1083,7 @@ func CheckTransactionOutputs(tx *provautil.Tx, keyView *KeyViewpoint) error {
 	threadId := provautil.ThreadID(threadInt)
 	if threadId == provautil.IssueThread {
 		for i, output := range adminOutputs {
-			if len(output) > 1 {
+			if len(output) > 2 {
 				keyIDs, err := txscript.ExtractKeyIDs(output)
 				if err != nil {
 					return ruleError(ErrInvalidTx, fmt.Sprintf("%v", err))
