@@ -107,12 +107,6 @@ type Params struct {
 	// block.
 	TargetTimePerBlock time.Duration
 
-	// ReduceMinDifficulty defines whether the network should reduce the
-	// minimum required difficulty after a long enough period of time has
-	// passed without finding a block.  This is really only useful for test
-	// networks and should not be set on a main network.
-	ReduceMinDifficulty bool
-
 	// GenerateSupported specifies whether or not CPU mining is allowed.
 	GenerateSupported bool
 
@@ -134,10 +128,8 @@ type Params struct {
 	RelayNonStdTxs bool
 
 	// Address encoding magics
-	PubKeyHashAddrID byte // First byte of a P2PKH address
-	ScriptHashAddrID byte // First byte of a P2SH address
-	ProvaAddrID      byte // First byte of an Prova address
-	PrivateKeyID     byte // First byte of a WIF private key
+	ProvaAddrID  byte // First byte of an Prova address
+	PrivateKeyID byte // First byte of a WIF private key
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID [4]byte
@@ -183,6 +175,18 @@ func (p Params) AveragingWindowTimespan() time.Duration {
 	return time.Duration(p.PowAveragingWindow) * p.TargetTimePerBlock
 }
 
+// hexToBytes converts the passed hex string into bytes and will panic if there
+// is an error.  This is only provided for the hard-coded constants so errors in
+// the source code can be detected. It will only (and must only) be called with
+// hard-coded values.
+func hexToBytes(s string) []byte {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		panic("invalid hex in source file: " + s)
+	}
+	return b
+}
+
 // MainNetParams defines the network parameters for the main Bitcoin network.
 var MainNetParams = Params{
 	Name:        "mainnet",
@@ -223,7 +227,6 @@ var MainNetParams = Params{
 	SubsidyReductionInterval: 210000,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
 	TargetTimePerBlock:       time.Second * 150,   // 2.5 minutes
-	ReduceMinDifficulty:      false,
 	GenerateSupported:        false,
 
 	// Checkpoints ordered from oldest to newest.
@@ -243,10 +246,8 @@ var MainNetParams = Params{
 	RelayNonStdTxs: false,
 
 	// Address encoding magics
-	PubKeyHashAddrID: 0x00, // starts with 1
-	ScriptHashAddrID: 0x05, // starts with 3
-	PrivateKeyID:     0x80, // starts with 5 (uncompressed) or K (compressed)
-	ProvaAddrID:      0x33, // starts with G
+	PrivateKeyID: 0x80, // starts with 5 (uncompressed) or K (compressed)
+	ProvaAddrID:  0x33, // starts with G
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x88, 0xad, 0xe4}, // starts with xprv
@@ -275,25 +276,12 @@ var MainNetParams = Params{
 	MaximumFeeAmount: 5000000,
 }
 
-// hexToBytes converts the passed hex string into bytes and will panic if there
-// is an error.  This is only provided for the hard-coded constants so errors in
-// the source code can be detected. It will only (and must only) be called with
-// hard-coded values.
-func hexToBytes(s string) []byte {
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		panic("invalid hex in source file: " + s)
-	}
-	return b
-}
-
 // RegressionNetParams defines the network parameters for the regression test
-// Bitcoin network.  Not to be confused with the test Bitcoin network (version
-// 3), this network is sometimes simply called "testnet".
+// Bitcoin network.  Not to be confused with the test Bitcoin network.
 var RegressionNetParams = Params{
 	Name:        "regtest",
 	Net:         wire.RegNet,
-	DefaultPort: "18444",
+	DefaultPort: "18989",
 	DNSSeeds:    []string{},
 
 	// Chain parameters
@@ -329,11 +317,7 @@ var RegressionNetParams = Params{
 	SubsidyReductionInterval: 150,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
 	TargetTimePerBlock:       time.Minute,         // 1 minute
-	ReduceMinDifficulty:      true,
 	GenerateSupported:        true,
-
-	// Checkpoints ordered from oldest to newest.
-	Checkpoints: nil,
 
 	// Enforce current block version once majority of the network has
 	// upgraded.
@@ -349,10 +333,8 @@ var RegressionNetParams = Params{
 	RelayNonStdTxs: true,
 
 	// Address encoding magics
-	PubKeyHashAddrID: 0x6f, // starts with m or n
-	ScriptHashAddrID: 0xc4, // starts with 2
-	ProvaAddrID:      0x58, // starts with T
-	PrivateKeyID:     0xef, // starts with 9 (uncompressed) or c (compressed)
+	ProvaAddrID:  0x58, // starts with T
+	PrivateKeyID: 0xef, // starts with 9 (uncompressed) or c (compressed)
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x35, 0x83, 0x94}, // starts with tprv
@@ -417,7 +399,6 @@ var TestNetParams = Params{
 	SubsidyReductionInterval: 210000,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
 	TargetTimePerBlock:       time.Second * 150,   // 2.5 minutes
-	ReduceMinDifficulty:      true,
 	GenerateSupported:        false,
 
 	// Checkpoints ordered from oldest to newest.
@@ -437,10 +418,8 @@ var TestNetParams = Params{
 	RelayNonStdTxs: true,
 
 	// Address encoding magics
-	PubKeyHashAddrID: 0x6f, // starts with m or n
-	ScriptHashAddrID: 0xc4, // starts with 2
-	PrivateKeyID:     0xef, // starts with 9 (uncompressed) or c (compressed)
-	ProvaAddrID:      0x58, // starts with T
+	PrivateKeyID: 0xef, // starts with 9 (uncompressed) or c (compressed)
+	ProvaAddrID:  0x58, // starts with T
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x35, 0x83, 0x94}, // starts with tprv
@@ -491,7 +470,6 @@ var SimNetParams = Params{
 	SubsidyReductionInterval: 210000,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
 	TargetTimePerBlock:       time.Second * 150,   // 2.5 minutes
-	ReduceMinDifficulty:      true,
 	GenerateSupported:        true,
 
 	// Checkpoints ordered from oldest to newest.
@@ -511,9 +489,7 @@ var SimNetParams = Params{
 	RelayNonStdTxs: true,
 
 	// Address encoding magics
-	PubKeyHashAddrID: 0x3f, // starts with S
-	ScriptHashAddrID: 0x7b, // starts with s
-	PrivateKeyID:     0x64, // starts with 4 (uncompressed) or F (compressed)
+	PrivateKeyID: 0x64, // starts with 4 (uncompressed) or F (compressed)
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x20, 0xb9, 0x00}, // starts with sprv
@@ -576,8 +552,6 @@ func Register(params *Params) error {
 		return ErrDuplicateNet
 	}
 	registeredNets[params.Net] = struct{}{}
-	pubKeyHashAddrIDs[params.PubKeyHashAddrID] = struct{}{}
-	scriptHashAddrIDs[params.ScriptHashAddrID] = struct{}{}
 	if params.ProvaAddrID != 0 {
 		provaAddrIDs[params.ProvaAddrID] = struct{}{}
 	}

@@ -568,28 +568,10 @@ func dbRemoveAddrIndexEntries(bucket internalBucket, addrKey [addrKeySize]byte, 
 // returned for unsupported types.
 func addrToKey(addr provautil.Address) ([addrKeySize]byte, error) {
 	switch addr := addr.(type) {
-	case *provautil.AddressPubKeyHash:
-		var result [addrKeySize]byte
-		result[0] = addrKeyTypePubKeyHash
-		copy(result[1:], addr.Hash160()[:])
-		return result, nil
-
 	case *provautil.AddressProva:
 		var result [addrKeySize]byte
 		result[0] = addrKeyTypePubKeyHash
 		copy(result[1:], addr.ScriptAddress()[:])
-		return result, nil
-
-	case *provautil.AddressScriptHash:
-		var result [addrKeySize]byte
-		result[0] = addrKeyTypeScriptHash
-		copy(result[1:], addr.Hash160()[:])
-		return result, nil
-
-	case *provautil.AddressPubKey:
-		var result [addrKeySize]byte
-		result[0] = addrKeyTypePubKeyHash
-		copy(result[1:], addr.AddressPubKeyHash().Hash160()[:])
 		return result, nil
 	}
 

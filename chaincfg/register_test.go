@@ -12,12 +12,10 @@ import (
 // network.  This is necessary to test the registration of and
 // lookup of encoding magics from the network.
 var mockNetParams = Params{
-	Name:             "mocknet",
-	Net:              1<<32 - 1,
-	PubKeyHashAddrID: 0x9f,
-	ScriptHashAddrID: 0xf9,
-	HDPrivateKeyID:   [4]byte{0x01, 0x02, 0x03, 0x04},
-	HDPublicKeyID:    [4]byte{0x05, 0x06, 0x07, 0x08},
+	Name:           "mocknet",
+	Net:            1<<32 - 1,
+	HDPrivateKeyID: [4]byte{0x01, 0x02, 0x03, 0x04},
+	HDPublicKeyID:  [4]byte{0x05, 0x06, 0x07, 0x08},
 }
 
 func TestRegister(t *testing.T) {
@@ -67,58 +65,6 @@ func TestRegister(t *testing.T) {
 					err:    ErrDuplicateNet,
 				},
 			},
-			p2pkhMagics: []magicTest{
-				{
-					magic: MainNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: TestNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: RegressionNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: SimNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: mockNetParams.PubKeyHashAddrID,
-					valid: false,
-				},
-				{
-					magic: 0xFF,
-					valid: false,
-				},
-			},
-			p2shMagics: []magicTest{
-				{
-					magic: MainNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: TestNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: RegressionNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: SimNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: mockNetParams.ScriptHashAddrID,
-					valid: false,
-				},
-				{
-					magic: 0xFF,
-					valid: false,
-				},
-			},
 			hdMagics: []hdTest{
 				{
 					priv: MainNetParams.HDPrivateKeyID[:],
@@ -163,58 +109,6 @@ func TestRegister(t *testing.T) {
 					err:    nil,
 				},
 			},
-			p2pkhMagics: []magicTest{
-				{
-					magic: MainNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: TestNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: RegressionNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: SimNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: mockNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: 0xFF,
-					valid: false,
-				},
-			},
-			p2shMagics: []magicTest{
-				{
-					magic: MainNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: TestNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: RegressionNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: SimNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: mockNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: 0xFF,
-					valid: false,
-				},
-			},
 			hdMagics: []hdTest{
 				{
 					priv: mockNetParams.HDPrivateKeyID[:],
@@ -250,58 +144,6 @@ func TestRegister(t *testing.T) {
 					name:   "duplicate mocknet",
 					params: &mockNetParams,
 					err:    ErrDuplicateNet,
-				},
-			},
-			p2pkhMagics: []magicTest{
-				{
-					magic: MainNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: TestNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: RegressionNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: SimNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: mockNetParams.PubKeyHashAddrID,
-					valid: true,
-				},
-				{
-					magic: 0xFF,
-					valid: false,
-				},
-			},
-			p2shMagics: []magicTest{
-				{
-					magic: MainNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: TestNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: RegressionNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: SimNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: mockNetParams.ScriptHashAddrID,
-					valid: true,
-				},
-				{
-					magic: 0xFF,
-					valid: false,
 				},
 			},
 			hdMagics: []hdTest{

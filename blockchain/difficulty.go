@@ -162,39 +162,6 @@ func (b *BlockChain) calcEasiestDifficulty(bits uint32, duration time.Duration) 
 	return b.chainParams.PowLimitBits
 }
 
-// findPrevTestNetDifficulty returns the difficulty of the previous block which
-// did not have the special testnet minimum difficulty rule applied.
-//
-// This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) findPrevTestNetDifficulty(startNode *blockNode) (uint32, error) {
-	// Search backwards through the chain for the last block without
-	// the special rule applied.
-	iterNode := startNode
-	for iterNode != nil && int32(iterNode.height)%b.blocksPerRetarget != 0 &&
-		iterNode.bits == b.chainParams.PowLimitBits {
-
-		// Get the previous block node.  This function is used over
-		// simply accessing iterNode.parent directly as it will
-		// dynamically create previous block nodes as needed.  This
-		// helps allow only the pieces of the chain that are needed
-		// to remain in memory.
-		var err error
-		iterNode, err = b.getPrevNodeFromNode(iterNode)
-		if err != nil {
-			log.Errorf("getPrevNodeFromNode: %v", err)
-			return 0, err
-		}
-	}
-
-	// Return the found difficulty or the minimum difficulty if no
-	// appropriate block was found.
-	lastBits := b.chainParams.PowLimitBits
-	if iterNode != nil {
-		lastBits = iterNode.bits
-	}
-	return lastBits, nil
-}
-
 // calcNextRequiredDifficulty calculates the required difficulty for the block
 // after the passed previous block node based on the difficulty retarget rules.
 // This function differs from the exported CalcNextRequiredDifficulty in that

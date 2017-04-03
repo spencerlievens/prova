@@ -854,16 +854,6 @@ func UpdateBlockTime(msgBlock *wire.MsgBlock, bManager *blockManager,
 	}
 	msgBlock.Header.Timestamp = newTimestamp
 
-	// If running on a network that requires recalculating the difficulty,
-	// do so now.
-	if activeNetParams.ReduceMinDifficulty {
-		difficulty, err := bManager.chain.CalcNextRequiredDifficulty()
-		if err != nil {
-			return err
-		}
-		msgBlock.Header.Bits = difficulty
-	}
-
 	// Re-sign the block, since we updated the block time
 	msgBlock.Header.Sign(validateKey)
 

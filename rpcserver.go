@@ -137,7 +137,6 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"createrawtransaction":  handleCreateRawTransaction,
 	"debuglevel":            handleDebugLevel,
 	"decoderawtransaction":  handleDecodeRawTransaction,
-	"decodescript":          handleDecodeScript,
 	"generate":              handleGenerate,
 	"getaddednodeinfo":      handleGetAddedNodeInfo,
 	"getaddresstxids":       handleGetAddressTxIds,
@@ -175,7 +174,6 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"submitblock":           handleSubmitBlock,
 	"validateaddress":       handleValidateAddress,
 	"verifychain":           handleVerifyChain,
-	"verifymessage":         handleVerifyMessage,
 }
 
 // list of commands that we recognize, but for which there is no support because
@@ -577,8 +575,6 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		// the network encoded with the address matches the network the
 		// server is currently on.
 		switch addr.(type) {
-		case *provautil.AddressPubKeyHash:
-		case *provautil.AddressScriptHash:
 		default:
 			return nil, &btcjson.RPCError{
 				Code:    btcjson.ErrRPCInvalidAddressOrKey,
@@ -804,52 +800,6 @@ func handleDecodeRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		Vout:     createVoutList(&mtx, s.server.chainParams, nil),
 	}
 	return txReply, nil
-}
-
-// handleDecodeScript handles decodescript commands.
-func handleDecodeScript(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	c := cmd.(*btcjson.DecodeScriptCmd)
-
-	// Convert the hex script to bytes.
-	hexStr := c.HexScript
-	if len(hexStr)%2 != 0 {
-		hexStr = "0" + hexStr
-	}
-	script, err := hex.DecodeString(hexStr)
-	if err != nil {
-		return nil, rpcDecodeHexError(hexStr)
-	}
-
-	// The disassembled string will contain [error] inline if the script
-	// doesn't fully parse, so ignore the error here.
-	disbuf, _ := txscript.DisasmString(script)
-
-	// Get information about the script.
-	// Ignore the error here since an error means the script couldn't parse
-	// and there is no additinal information about it anyways.
-	scriptClass, addrs, reqSigs, _ := txscript.ExtractPkScriptAddrs(script,
-		s.server.chainParams)
-	addresses := make([]string, len(addrs))
-	for i, addr := range addrs {
-		addresses[i] = addr.EncodeAddress()
-	}
-
-	// Convert the script itself to a pay-to-script-hash address.
-	p2sh, err := provautil.NewAddressScriptHash(script, s.server.chainParams)
-	if err != nil {
-		context := "Failed to convert script to pay-to-script-hash"
-		return nil, internalRPCError(err.Error(), context)
-	}
-
-	// Generate and return the reply.
-	reply := btcjson.DecodeScriptResult{
-		Asm:       disbuf,
-		ReqSigs:   int32(reqSigs),
-		Type:      scriptClass.String(),
-		Addresses: addresses,
-		P2sh:      p2sh.EncodeAddress(),
-	}
-	return reply, nil
 }
 
 // handleGenerate handles generate commands.
@@ -2306,6 +2256,7 @@ func handleGetNetworkHashPS(s *rpcServer, cmd interface{}, closeChan <-chan stru
 	// blocks.  When the passed value is negative, use the last block the
 	// difficulty changed as the starting height.  Also make sure the
 	// starting height is not before the beginning of the chain.
+	// TODO(prova): adjust this calculation for the rolling difficulty avg.
 	numBlocks := int32(120)
 	if c.Blocks != nil {
 		numBlocks = int32(*c.Blocks)
@@ -3801,70 +3752,6 @@ func handleVerifyChain(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 
 	err := verifyChain(s, checkLevel, uint32(checkDepth))
 	return err == nil, nil
-}
-
-// handleVerifyMessage implements the verifymessage command.
-func handleVerifyMessage(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	c := cmd.(*btcjson.VerifyMessageCmd)
-
-	// Decode the provided address.
-	addr, err := provautil.DecodeAddress(c.Address, activeNetParams.Params)
-	if err != nil {
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCInvalidAddressOrKey,
-			Message: "Invalid address or key: " + err.Error(),
-		}
-	}
-
-	// Only P2PKH addresses are valid for signing.
-	if _, ok := addr.(*provautil.AddressPubKeyHash); !ok {
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCType,
-			Message: "Address is not a pay-to-pubkey-hash address",
-		}
-	}
-
-	// Decode base64 signature.
-	sig, err := base64.StdEncoding.DecodeString(c.Signature)
-	if err != nil {
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCParse.Code,
-			Message: "Malformed base64 encoding: " + err.Error(),
-		}
-	}
-
-	// Validate the signature - this just shows that it was valid at all.
-	// we will compare it with the key next.
-	var buf bytes.Buffer
-	wire.WriteVarString(&buf, 0, "Bitcoin Signed Message:\n")
-	wire.WriteVarString(&buf, 0, c.Message)
-	expectedMessageHash := chainhash.DoubleHashB(buf.Bytes())
-	pk, wasCompressed, err := btcec.RecoverCompact(btcec.S256(), sig,
-		expectedMessageHash)
-	if err != nil {
-		// Mirror Bitcoin Core behavior, which treats error in
-		// RecoverCompact as invalid signature.
-		return false, nil
-	}
-
-	// Reconstruct the pubkey hash.
-	btcPK := (*btcec.PublicKey)(pk)
-	var serializedPK []byte
-	if wasCompressed {
-		serializedPK = btcPK.SerializeCompressed()
-	} else {
-		serializedPK = btcPK.SerializeUncompressed()
-	}
-	address, err := provautil.NewAddressPubKey(serializedPK,
-		activeNetParams.Params)
-	if err != nil {
-		// Again mirror Bitcoin Core behavior, which treats error in public key
-		// reconstruction as invalid signature.
-		return false, nil
-	}
-
-	// Return boolean if addresses match.
-	return address.EncodeAddress() == c.Address, nil
 }
 
 // rpcServer holds the items the rpc server may need to access (config,
