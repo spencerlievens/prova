@@ -13,7 +13,7 @@ import (
 
 const (
 	// ProtocolVersion is the latest protocol version this package supports.
-	ProtocolVersion uint32 = 70012
+	ProtocolVersion uint32 = 70013
 
 	// MultipleAddressVersion is the protocol version which added multiple
 	// addresses per message (pver >= MultipleAddressVersion).
@@ -36,6 +36,10 @@ const (
 	// with a relay flag (pver >= BIP0037Version).
 	BIP0037Version uint32 = 70001
 
+	// RejectVersion is the protocol version which added a new reject
+	// message.
+	RejectVersion uint32 = 70002
+
 	// BIP0111Version is the protocol version which added the SFNodeBloom
 	// service flag.
 	BIP0111Version uint32 = 70011
@@ -44,9 +48,9 @@ const (
 	// sendheaders message.
 	SendHeadersVersion uint32 = 70012
 
-	// RejectVersion is the protocol version which added a new reject
-	// message.
-	RejectVersion uint32 = 70002
+	// FeeFilterVersion is the protocol version which added a new
+	// feefilter message.
+	FeeFilterVersion uint32 = 70013
 )
 
 // ServiceFlag identifies services supported by a bitcoin peer.
