@@ -47,7 +47,7 @@ const (
 	defaultMaxRPCWebsockets      = 25
 	defaultMaxRPCConcurrentReqs  = 20
 	defaultDbType                = "ffldb"
-	defaultFreeTxRelayLimit      = 15.0
+	defaultFreeTxRelayLimit      = 150.0
 	defaultBlockMinSize          = 500000
 	defaultBlockMaxSize          = 750000
 	blockMaxSizeMin              = 1000
