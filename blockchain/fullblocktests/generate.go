@@ -478,9 +478,14 @@ func createAdminTx(spend *spendableOut, threadID provautil.ThreadID, op byte, pu
 	return spendTx
 }
 
+type AspOp struct {
+	Op     byte
+	PubKey *btcec.PublicKey
+	KeyID  btcec.KeyID
+}
+
 // createASPAdminTx creates an admin tx that provisions a keyID
-func createASPAdminTx(spend *spendableOut, op byte, pubKey *btcec.PublicKey,
-	keyID btcec.KeyID) *wire.MsgTx {
+func createASPAdminTx(spend *spendableOut, ops []AspOp) *wire.MsgTx {
 	spendTx := wire.NewMsgTx()
 	spendTx.AddTxIn(&wire.TxIn{
 		PreviousOutPoint: spend.prevOut,
@@ -490,8 +495,10 @@ func createASPAdminTx(spend *spendableOut, op byte, pubKey *btcec.PublicKey,
 	txValue := int64(0) // how much the tx is spending. 0 for admin tx.
 	spendTx.AddTxOut(wire.NewTxOut(txValue,
 		provaThreadScript(provautil.ProvisionThread)))
-	spendTx.AddTxOut(wire.NewTxOut(txValue,
-		provaAdminASPScript(op, pubKey, keyID)))
+	for _, op := range ops {
+		spendTx.AddTxOut(wire.NewTxOut(txValue,
+			provaAdminASPScript(op.Op, op.PubKey, op.KeyID)))
+	}
 
 	sigScript, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
 		0, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKey), nil)
@@ -919,7 +926,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	accepted()
 
 	// provision a keyID and check
-	aspKeyIdTx := createASPAdminTx(outs[1], txscript.AdminOpASPKeyAdd, pubKey1, btcec.KeyID(3))
+	aspKeyIdTx := createASPAdminTx(outs[1], []AspOp{{txscript.AdminOpASPKeyAdd, pubKey1, btcec.KeyID(3)}})
 	g.nextBlock("b12", nil, additionalTx(aspKeyIdTx))
 	assertASPKey(pubKey1, btcec.KeyID(3))
 	accepted()
@@ -932,9 +939,9 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	//                 \-> b13(-3 +4)
 
 	provThreadOut := makeSpendableOutForTx(aspKeyIdTx, 0)
-	aspKeyIdTx1 := createASPAdminTx(&provThreadOut, txscript.AdminOpASPKeyRevoke, pubKey1, btcec.KeyID(3))
+	aspKeyIdTx1 := createASPAdminTx(&provThreadOut, []AspOp{{txscript.AdminOpASPKeyRevoke, pubKey1, btcec.KeyID(3)}})
 	provThreadOut = makeSpendableOutForTx(aspKeyIdTx1, 0)
-	aspKeyIdTx2 := createASPAdminTx(&provThreadOut, txscript.AdminOpASPKeyAdd, pubKey2, btcec.KeyID(4))
+	aspKeyIdTx2 := createASPAdminTx(&provThreadOut, []AspOp{{txscript.AdminOpASPKeyAdd, pubKey2, btcec.KeyID(4)}})
 	g.nextBlock("b13", nil, additionalTx(aspKeyIdTx1), additionalTx(aspKeyIdTx2))
 	assertNotASPKey(pubKey1, btcec.KeyID(3))
 	assertASPKey(pubKey2, btcec.KeyID(4))
@@ -952,15 +959,32 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	// provision keyID 4, make sure it is not market as used
 	provThreadOut = makeSpendableOutForTx(aspKeyIdTx, 0)
-	aspKeyIdTx = createASPAdminTx(&provThreadOut, txscript.AdminOpASPKeyAdd, pubKey2, btcec.KeyID(4))
+	aspKeyIdTx = createASPAdminTx(&provThreadOut, []AspOp{
+		{txscript.AdminOpASPKeyAdd, pubKey2, btcec.KeyID(4)},
+	})
 	g.nextBlock("b16", nil, additionalTx(aspKeyIdTx))
 	assertASPKey(pubKey2, btcec.KeyID(4))
 	accepted()
 
-	g.nextBlock("b17", nil)
-	accepted()
+	// try to provision same keyID 2 times in one tx
+	provThreadOut = makeSpendableOutForTx(aspKeyIdTx, 0)
+	invalidAspKeyIdTx := createASPAdminTx(&provThreadOut, []AspOp{
+		{txscript.AdminOpASPKeyAdd, pubKey2, btcec.KeyID(5)},
+		{txscript.AdminOpASPKeyAdd, pubKey1, btcec.KeyID(5)},
+	})
+	g.nextBlock("b17", nil, additionalTx(invalidAspKeyIdTx))
+	rejected(blockchain.ErrInvalidAdminOp)
 
-	g.nextBlock("b18", nil)
+	// provision 2 consecutive keyIDs in one tx
+	g.setTip("b16")
+	provThreadOut = makeSpendableOutForTx(aspKeyIdTx, 0)
+	aspKeyIdTx2 = createASPAdminTx(&provThreadOut, []AspOp{
+		{txscript.AdminOpASPKeyAdd, pubKey2, btcec.KeyID(5)},
+		{txscript.AdminOpASPKeyAdd, pubKey1, btcec.KeyID(6)},
+	})
+	g.nextBlock("b18", nil, additionalTx(aspKeyIdTx2))
+	assertASPKey(pubKey2, btcec.KeyID(5))
+	assertASPKey(pubKey1, btcec.KeyID(6))
 	accepted()
 
 	g.nextBlock("b19", nil)

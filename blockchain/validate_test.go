@@ -130,8 +130,8 @@ func TestCheckTransactionSanity(t *testing.T) {
 	}
 
 	// Create prova txout
-	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
-	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	keyId1 := btcec.KeyID(1)
+	keyId2 := btcec.KeyID(2)
 	payAddr, _ := provautil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
 	provaTxOut := wire.TxOut{
@@ -405,8 +405,8 @@ func TestCheckTransactionOutputs(t *testing.T) {
 		Sequence:         wire.MaxTxInSequenceNum,
 	}
 	// Create prova txout
-	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
-	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	keyId1 := btcec.KeyID(1)
+	keyId2 := btcec.KeyID(2)
 	payAddr, _ := provautil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
 	provaTxOut := wire.TxOut{
@@ -461,7 +461,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 		PkScript: adminOpRevProvPkScript,
 	}
 	// Create admin op to add keyID.
-	keyID := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	keyID := btcec.KeyID(2)
 	data = make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
 	data[0] = txscript.AdminOpASPKeyAdd
 	copy(data[1:], pubKey.SerializeCompressed())
@@ -469,8 +469,27 @@ func TestCheckTransactionOutputs(t *testing.T) {
 	adminOpAspPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
 		AddData(data).Script()
 	adminOpAspTxOut := wire.TxOut{
-		Value:    0, // 0 RMG
+		Value:    0,
 		PkScript: adminOpAspPkScript,
+	}
+	// Create admin op to add next key ID
+	btcec.KeyID(3).ToAddressFormat(data[1+btcec.PubKeyBytesLenCompressed:])
+	adminOpAsp2PkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+		AddData(data).Script()
+	adminOpAsp2TxOut := wire.TxOut{
+		Value:    0,
+		PkScript: adminOpAsp2PkScript,
+	}
+	// dummy asp script
+	data = make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
+	data[0] = txscript.AdminOpASPKeyAdd
+	copy(data[1:], bytes.Repeat([]byte{0x00}, btcec.PubKeyBytesLenCompressed))
+	keyID.ToAddressFormat(data[1+btcec.PubKeyBytesLenCompressed:])
+	dummyOpAspPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+		AddData(data).Script()
+	dummyOpAspTxOut := wire.TxOut{
+		Value:    0,
+		PkScript: dummyOpAspPkScript,
 	}
 	// Create admin op to revoke keyID.
 	data = make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
@@ -515,8 +534,8 @@ func TestCheckTransactionOutputs(t *testing.T) {
 				LockTime: 0,
 			},
 			aspKeyIdMap: func() btcec.KeyIdMap {
-				keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
-				keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+				keyId1 := btcec.KeyID(1)
+				keyId2 := btcec.KeyID(2)
 				return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey, keyId2: pubKey}
 			}(),
 			isValid: true,
@@ -530,7 +549,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 				LockTime: 0,
 			},
 			aspKeyIdMap: func() btcec.KeyIdMap {
-				keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
+				keyId1 := btcec.KeyID(1)
 				return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey}
 			}(),
 			isValid: false,
@@ -650,7 +669,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpAspTxOut},
 				LockTime: 0,
 			},
-			lastKeyID: btcec.KeyID(65535),
+			lastKeyID: btcec.KeyID(1),
 			isValid:   true,
 		},
 		{
@@ -666,6 +685,29 @@ func TestCheckTransactionOutputs(t *testing.T) {
 			code:      blockchain.ErrInvalidTx,
 		},
 		{
+			name: "provision keyID 2 times in same tx.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpAspTxOut, &dummyOpAspTxOut},
+				LockTime: 0,
+			},
+			lastKeyID: btcec.KeyID(1),
+			isValid:   false,
+			code:      blockchain.ErrInvalidAdminOp,
+		},
+		{
+			name: "provision 2 increcemental keyIDs in same tx.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpAspTxOut, &adminOpAsp2TxOut},
+				LockTime: 0,
+			},
+			lastKeyID: btcec.KeyID(1),
+			isValid:   true,
+		},
+		{
 			name: "Add an existing keyID.",
 			tx: wire.MsgTx{
 				Version:  1,
@@ -674,7 +716,23 @@ func TestCheckTransactionOutputs(t *testing.T) {
 				LockTime: 0,
 			},
 			aspKeyIdMap: func() btcec.KeyIdMap {
-				keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+				keyId1 := btcec.KeyID(2)
+				pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+				return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey1}
+			}(),
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminOp,
+		},
+		{
+			name: "Revoke same keyID multiple times in one tx.",
+			tx: wire.MsgTx{
+				Version:  1,
+				TxIn:     []*wire.TxIn{&dummyTxIn},
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpAspRevTxOut, &adminOpAspRevTxOut},
+				LockTime: 0,
+			},
+			aspKeyIdMap: func() btcec.KeyIdMap {
+				keyId1 := btcec.KeyID(2)
 				pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
 				return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey1}
 			}(),
@@ -701,7 +759,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 				LockTime: 0,
 			},
 			aspKeyIdMap: func() btcec.KeyIdMap {
-				keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+				keyId2 := btcec.KeyID(2)
 				return map[btcec.KeyID]*btcec.PublicKey{keyId2: pubKey}
 			}(),
 			isValid: false,
@@ -789,8 +847,8 @@ func TestCheckTransactionInputs(t *testing.T) {
 	}
 	prevTx := provautil.NewTx(&prevMsgTx)
 	// Create prova px script
-	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{1, 0, 0, 0})
-	keyId2 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
+	keyId1 := btcec.KeyID(1)
+	keyId2 := btcec.KeyID(2)
 	payAddr, _ := provautil.NewAddressProva(make([]byte, 20), []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
 	provaPkScript, _ := txscript.PayToAddrScript(payAddr)
 	// spend prevTx

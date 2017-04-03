@@ -1106,31 +1106,38 @@ func CheckTransactionOutputs(tx *provautil.Tx, keyView *KeyViewpoint) error {
 		}
 		return nil
 	}
+	// lastKeyId is a counter to validate intra-tx state changes
+	// lastKeyId verifies that add operations are strictly increasing
+	lastKeyId := keyView.LastKeyID()
+	// revokedMap is holding intra-tx state changes
+	// revokedMap prevents 2 operations on the same keyID in one tx
+	revokedMap := make(map[btcec.KeyID]bool)
 	for i := 0; i < len(adminOutputs); i++ {
 		isAddOp, keySetType, pubKey,
 			keyID := txscript.ExtractAdminOpData(adminOutputs[i])
 		if keySetType == btcec.ASPKeySet {
 			// TODO(prova): check pubKey collisions
-			// TODO(prova): check strictly increasing keyID
 			if isAddOp {
+				lastKeyId++
 				if keyView.aspKeyIdMap[keyID] != nil {
 					str := fmt.Sprintf("keyID %v added in transaction %v "+
 						"exists already in admin set. Operation "+
 						"rejected.", keyID, tx.Hash())
 					return ruleError(ErrInvalidAdminOp, str)
 				}
-				if keyID != keyView.LastKeyID()+1 {
+				if keyID != lastKeyId {
 					str := fmt.Sprintf("keyID %v added in transaction %v "+
 						"rejected. should be %v ", keyID, tx.Hash(), keyView.LastKeyID()+1)
 					return ruleError(ErrInvalidAdminOp, str)
 				}
 			} else {
-				if keyView.aspKeyIdMap[keyID] == nil {
+				if keyView.aspKeyIdMap[keyID] == nil || revokedMap[keyID] {
 					str := fmt.Sprintf("keyID %v can not be revoked in "+
 						"transaction %v. It does not exist in admin set.",
 						keyID, tx.Hash())
 					return ruleError(ErrInvalidAdminOp, str)
 				}
+				revokedMap[keyID] = true
 			}
 		} else {
 			keySet := keyView.adminKeySets[keySetType]
@@ -1349,6 +1356,10 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *provautil.Block, 
 		if err != nil {
 			return err
 		}
+
+		// Apply all the transformations of the admin state which are
+		// not provably invalid.
+		keyView.connectTransaction(tx, node.height)
 	}
 
 	// The total output values of the coinbase transaction must not exceed
@@ -1448,10 +1459,6 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *provautil.Block, 
 		if err != nil {
 			return err
 		}
-	}
-
-	for _, tx := range transactions {
-		keyView.connectTransaction(tx, node.height)
 	}
 
 	// Update the best hash for utxoView to include this block since all of its
