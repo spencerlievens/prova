@@ -699,18 +699,6 @@ func (b *BlockChain) calcPastMedianTime(startNode *blockNode) (time.Time, error)
 	return medianTimestamp, nil
 }
 
-// CalcPastMedianTime calculates the median time of the previous few blocks
-// prior to, and including, the end of the current best chain.  It is primarily
-// used to ensure new blocks have sane timestamps.
-//
-// This function is safe for concurrent access.
-func (b *BlockChain) CalcPastMedianTime() (time.Time, error) {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
-
-	return b.calcPastMedianTime(b.bestNode)
-}
-
 // getReorganizeNodes finds the fork point between the main chain and the passed
 // node and returns a list of block nodes that would need to be detached from
 // the main chain and a list of block nodes that would need to be attached to
