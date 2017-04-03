@@ -28,9 +28,9 @@ const (
 
 var (
 	provaHomeDir          = provautil.AppDataDir("prova", false)
-	btcctlHomeDir         = provautil.AppDataDir("btcctl", false)
+	provactlHomeDir       = provautil.AppDataDir("provactl", false)
 	btcwalletHomeDir      = provautil.AppDataDir("btcwallet", false)
-	defaultConfigFile     = filepath.Join(btcctlHomeDir, "btcctl.conf")
+	defaultConfigFile     = filepath.Join(provactlHomeDir, "provactl.conf")
 	defaultRPCServer      = "localhost"
 	defaultRPCCertFile    = filepath.Join(provaHomeDir, "rpc.cert")
 	defaultWalletCertFile = filepath.Join(btcwalletHomeDir, "rpc.cert")
@@ -89,7 +89,7 @@ func listCommands() {
 	}
 }
 
-// config defines the configuration options for btcctl.
+// config defines the configuration options for provactl.
 //
 // See loadConfig for details on the configuration load process.
 type config struct {
@@ -147,7 +147,7 @@ func normalizeAddress(addr string, useTestNet, useSimNet, useWallet bool) string
 func cleanAndExpandPath(path string) string {
 	// Expand initial ~ to OS specific home directory.
 	if strings.HasPrefix(path, "~") {
-		homeDir := filepath.Dir(btcctlHomeDir)
+		homeDir := filepath.Dir(provactlHomeDir)
 		path = strings.Replace(path, "~", homeDir, 1)
 	}
 

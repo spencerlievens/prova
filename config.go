@@ -57,7 +57,7 @@ const (
 )
 
 var (
-	btcdHomeDir        = provautil.AppDataDir("btcd", false)
+	btcdHomeDir        = provautil.AppDataDir("prova", false)
 	defaultConfigFile  = filepath.Join(btcdHomeDir, defaultConfigFilename)
 	defaultDataDir     = filepath.Join(btcdHomeDir, defaultDataDirname)
 	knownDbTypes       = database.SupportedDrivers()

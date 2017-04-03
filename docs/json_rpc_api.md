@@ -132,7 +132,7 @@ authenticated will cause the websocket to be closed immediately.
 <a name="CLIUtil" />
 ### 4. Command-line Utility
 
-Prova comes with a separate utility named `btcctl` which can be used to issue
+Prova comes with a separate utility named `provactl` which can be used to issue
 these RPC commands via HTTP POST requests to Prova after configuring it with the
 information in the [Authentication](#Authentication) section above.  It can also
 be used to communicate with any server/daemon/service which provides a JSON-RPC
