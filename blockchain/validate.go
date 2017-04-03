@@ -1137,6 +1137,12 @@ func CheckTransactionOutputs(tx *provautil.Tx, keyView *KeyViewpoint) error {
 						keyID, tx.Hash())
 					return ruleError(ErrInvalidAdminOp, str)
 				}
+				if !keyView.aspKeyIdMap[keyID].IsEqual(pubKey) {
+					str := fmt.Sprintf("pubKey %v can not be revoked in "+
+						"transaction %v. It does not match admin state.",
+						pubKey.SerializeCompressed(), tx.Hash())
+					return ruleError(ErrInvalidAdminOp, str)
+				}
 				revokedMap[keyID] = true
 			}
 		} else {

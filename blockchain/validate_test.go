@@ -716,9 +716,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 				LockTime: 0,
 			},
 			aspKeyIdMap: func() btcec.KeyIdMap {
-				keyId1 := btcec.KeyID(2)
-				pubKey1, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
-				return map[btcec.KeyID]*btcec.PublicKey{keyId1: pubKey1}
+				return map[btcec.KeyID]*btcec.PublicKey{keyID: pubKey}
 			}(),
 			isValid: false,
 			code:    blockchain.ErrInvalidAdminOp,
@@ -747,6 +745,24 @@ func TestCheckTransactionOutputs(t *testing.T) {
 				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpAspRevTxOut},
 				LockTime: 0,
 			},
+			isValid: false,
+			code:    blockchain.ErrInvalidAdminOp,
+		},
+		{
+			name: "Revoke a keyID with non-matching pubKey.",
+			tx: wire.MsgTx{
+				Version: 1,
+				TxIn:    []*wire.TxIn{&dummyTxIn},
+				// this admin op revokes keyID 65536 ( []byte{0, 0, 1, 0} )
+				// this admin op revokes pubKey 038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202
+				TxOut:    []*wire.TxOut{&rootTxOut, &adminOpAspRevTxOut},
+				LockTime: 0,
+			},
+			aspKeyIdMap: func() btcec.KeyIdMap {
+				// keyID 65536 ( []byte{0, 0, 1, 0} )
+				bogusPubKey, _ := btcec.ParsePubKey(hexToBytes("025ceeba2ab4a635df2c0301a3d773da06ac5a18a7c3e0d09a795d7e57d233edf1"), btcec.S256())
+				return map[btcec.KeyID]*btcec.PublicKey{keyID: bogusPubKey}
+			}(),
 			isValid: false,
 			code:    blockchain.ErrInvalidAdminOp,
 		},
