@@ -3,15 +3,13 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package txscript_test
+package txscript
 
 import (
 	"errors"
 	"io"
 	"os"
 	"testing"
-
-	"github.com/bitgo/prova/txscript"
 )
 
 func TestSetLogWriter(t *testing.T) {
@@ -49,7 +47,7 @@ func TestSetLogWriter(t *testing.T) {
 
 	t.Logf("Running %d tests", len(tests))
 	for i, test := range tests {
-		err := txscript.SetLogWriter(test.w, test.level)
+		err := SetLogWriter(test.w, test.level)
 		if err != nil {
 			if err.Error() != test.expected.Error() {
 				t.Errorf("SetLogWriter #%d (%s) wrong result\n"+

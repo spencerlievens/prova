@@ -3,7 +3,7 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package txscript_test
+package txscript
 
 import (
 	"bytes"
@@ -18,7 +18,6 @@ import (
 
 	"github.com/bitgo/prova/chaincfg/chainhash"
 	"github.com/bitgo/prova/provautil"
-	. "github.com/bitgo/prova/txscript"
 	"github.com/bitgo/prova/wire"
 )
 
@@ -103,7 +102,12 @@ func parseShortForm(script string) ([]byte, error) {
 			builder.AddInt64(num)
 			continue
 		} else if bts, err := parseHex(tok); err == nil {
-			builder.TstConcatRawScript(bts)
+			// Concatenate the bytes manually since the test code
+			// intentionally creates scripts that are too large and
+			// would cause the builder to error otherwise.
+			if builder.err == nil {
+				builder.script = append(builder.script, bts...)
+			}
 		} else if len(tok) >= 2 &&
 			tok[0] == '\'' && tok[len(tok)-1] == '\'' {
 			builder.AddFullData([]byte(tok[1 : len(tok)-1]))
@@ -697,7 +701,7 @@ func TestCalcSignatureHash(t *testing.T) {
 		}
 
 		subScript, _ := hex.DecodeString(test[1].(string))
-		parsedScript, err := TstParseScript(subScript)
+		parsedScript, err := ParseScript(subScript)
 		if err != nil {
 			t.Errorf("TestCalcSignatureHash failed test #%d: "+
 				"Failed to parse sub-script: %v", i, err)
@@ -705,7 +709,7 @@ func TestCalcSignatureHash(t *testing.T) {
 		}
 
 		hashType := SigHashType(testVecF64ToUint32(test[3].(float64)))
-		hash := TstCalcSignatureHash(parsedScript, hashType, tx,
+		hash := calcSignatureHash(parsedScript, hashType, tx,
 			int(test[2].(float64)))
 
 		expectedHash, _ := chainhash.NewHashFromStr(test[4].(string))

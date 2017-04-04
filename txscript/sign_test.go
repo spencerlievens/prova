@@ -3,32 +3,76 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package txscript_test
+package txscript
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/bitgo/prova/blockchain"
 	"github.com/bitgo/prova/btcec"
 	"github.com/bitgo/prova/chaincfg"
 	"github.com/bitgo/prova/chaincfg/chainhash"
 	"github.com/bitgo/prova/provautil"
-	"github.com/bitgo/prova/txscript"
 	"github.com/bitgo/prova/wire"
 	"testing"
 )
 
-// hexToBytes converts the passed hex string into bytes and will panic if there
-// is an error.  This is only provided for the hard-coded constants so errors in
-// the source code can be detected. It will only (and must only) be called with
-// hard-coded values.
-func hexToBytes(s string) []byte {
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		panic("invalid hex in source file: " + s)
+// KeyViewpoint represents a view into the set of admin keys from a specific
+// point of view in the chain. For example, it could be for the end of the main
+// chain, some point in the history of the main chain, or down a side chain.
+type keyViewpoint struct {
+	threadTips   map[provautil.ThreadID]*wire.OutPoint
+	lastKeyID    btcec.KeyID
+	totalSupply  uint64
+	adminKeySets map[btcec.KeySetType]btcec.PublicKeySet
+	aspKeyIdMap  btcec.KeyIdMap
+}
+
+// NewKeyViewpoint returns a new empty key view.
+func newKeyViewpoint() *keyViewpoint {
+	return &keyViewpoint{
+		threadTips:   make(map[provautil.ThreadID]*wire.OutPoint),
+		lastKeyID:    btcec.KeyID(0),
+		totalSupply:  uint64(0),
+		adminKeySets: make(map[btcec.KeySetType]btcec.PublicKeySet),
+		aspKeyIdMap:  make(map[btcec.KeyID]*btcec.PublicKey),
 	}
-	return b
+}
+
+// SetKeyIDs sets the mapping of keyIDs to ASP keys.
+func (view *keyViewpoint) SetKeyIDs(aspKeyIdMap btcec.KeyIdMap) {
+	if aspKeyIdMap != nil {
+		view.aspKeyIdMap = aspKeyIdMap.DeepCopy()
+	}
+}
+
+// SetKeys sets the admin key sets at the position in the chain the view
+// curretly represents.
+func (view *keyViewpoint) SetKeys(keys map[btcec.KeySetType]btcec.PublicKeySet) {
+	if keys != nil {
+		view.adminKeySets = btcec.DeepCopy(keys)
+	}
+}
+
+// LookupKeyIDs returns pubKeyHashes for all registered KeyIDs
+func (view *keyViewpoint) LookupKeyIDs(keyIDs []btcec.KeyID) map[btcec.KeyID][]byte {
+	keyIdMap := make(map[btcec.KeyID][]byte)
+	for _, keyID := range keyIDs {
+		pubKey := view.aspKeyIdMap[keyID]
+		if pubKey != nil {
+			keyIdMap[keyID] = provautil.Hash160(pubKey.SerializeCompressed())
+		}
+	}
+	return keyIdMap
+}
+
+// GetAdminKeyHashes returns pubKeyHashes according to the provided threadID.
+func (view *keyViewpoint) GetAdminKeyHashes(threadID provautil.ThreadID) [][]byte {
+	pubs := view.adminKeySets[btcec.KeySetType(threadID)]
+	hashes := make([][]byte, len(pubs))
+	for i, pubKey := range pubs {
+		hashes[i] = provautil.Hash160(pubKey.SerializeCompressed())
+	}
+	return hashes
 }
 
 type addressToKey struct {
@@ -36,18 +80,18 @@ type addressToKey struct {
 	compressed bool
 }
 
-func mkGetKey(keys map[string]addressToKey) txscript.KeyDB {
+func mkGetKey(keys map[string]addressToKey) KeyDB {
 	if keys == nil {
-		return txscript.KeyClosure(func(addr provautil.Address) ([]txscript.PrivateKey, error) {
+		return KeyClosure(func(addr provautil.Address) ([]PrivateKey, error) {
 			return nil, errors.New("nope")
 		})
 	}
-	return txscript.KeyClosure(func(addr provautil.Address) ([]txscript.PrivateKey, error) {
+	return KeyClosure(func(addr provautil.Address) ([]PrivateKey, error) {
 		a2k, ok := keys[addr.EncodeAddress()]
 		if !ok {
 			return nil, errors.New("nope")
 		}
-		return []txscript.PrivateKey{txscript.PrivateKey{a2k.key, a2k.compressed}}, nil
+		return []PrivateKey{PrivateKey{a2k.key, a2k.compressed}}, nil
 	})
 }
 
@@ -55,11 +99,11 @@ func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript
 	tx.TxIn[idx].SignatureScript = sigScript
 
 	// Before passing the script to the VM, we check whether it is an Prova script.
-	pops, err := txscript.ParseScript(pkScript)
+	pops, err := ParseScript(pkScript)
 	if err != nil {
 		return fmt.Errorf("failed to parse script %s: %v", msg, err)
 	}
-	keyView := blockchain.NewKeyViewpoint()
+	keyView := newKeyViewpoint()
 
 	//key ids
 	keyId1 := btcec.KeyIDFromAddressBuffer([]byte{0, 0, 1, 0})
@@ -81,28 +125,28 @@ func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript
 
 	keyView.SetKeys(keySets)
 	// If script is Prova script, we replace all keyIDs with pubKeyHashes.
-	if txscript.TypeOfScript(pops) == txscript.ProvaTy {
-		keyIDs, err := txscript.ExtractKeyIDs(pops)
+	if TypeOfScript(pops) == ProvaTy {
+		keyIDs, err := ExtractKeyIDs(pops)
 		keyIdMap := keyView.LookupKeyIDs(keyIDs)
-		txscript.ReplaceKeyIDs(pops, keyIdMap)
-		pkScript, err = txscript.UnparseScript(pops)
+		ReplaceKeyIDs(pops, keyIdMap)
+		pkScript, err = UnparseScript(pops)
 		if err != nil {
 			return err
 		}
 	}
 
 	// If script is Prova admin script, we replace the threadID with pubKeyHashes.
-	if txscript.TypeOfScript(pops) == txscript.ProvaAdminTy {
-		threadID, err := txscript.ExtractThreadID(pops)
+	if TypeOfScript(pops) == ProvaAdminTy {
+		threadID, err := ExtractThreadID(pops)
 		keyHashes := keyView.GetAdminKeyHashes(threadID)
-		pkScript, err = txscript.ThreadPkScript(keyHashes)
+		pkScript, err = ThreadPkScript(keyHashes)
 		if err != nil {
 			return err
 		}
 	}
 
-	vm, err := txscript.NewEngine(pkScript, tx, idx,
-		txscript.ScriptBip16|txscript.ScriptVerifyDERSignatures, nil, nil, inputAmt)
+	vm, err := NewEngine(pkScript, tx, idx,
+		ScriptBip16|ScriptVerifyDERSignatures, nil, nil, inputAmt)
 	if err != nil {
 		return fmt.Errorf("failed to make script engine for %s: %v",
 			msg, err)
@@ -118,9 +162,9 @@ func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript
 }
 
 func signAndCheck(msg string, tx *wire.MsgTx, idx int, inputAmt int64, pkScript []byte,
-	hashType txscript.SigHashType, kdb txscript.KeyDB,
+	hashType SigHashType, kdb KeyDB,
 	previousScript []byte) error {
-	sigScript, err := txscript.SignTxOutput(&chaincfg.TestNetParams, tx,
+	sigScript, err := SignTxOutput(&chaincfg.TestNetParams, tx,
 		idx, inputAmt, pkScript, hashType, kdb, nil)
 	if err != nil {
 		return fmt.Errorf("failed to sign output %s: %v", msg, err)
@@ -196,7 +240,7 @@ func TestSignTxOutput(t *testing.T) {
 		0xda, 0x9b, 0x0a, 0x1f, 0xf6, 0x5f, 0x68, 0x91,
 		0xd3, 0x11, 0xfe, 0x94, 0x29, 0x5b, 0xc2, 0x6a,
 	})
-	hashType := txscript.SigHashAll
+	hashType := SigHashAll
 	for i := range tx.TxIn {
 		msg := fmt.Sprintf("%d:%d", hashType, i)
 
@@ -219,7 +263,7 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 
-		scriptPkScript, err := txscript.PayToAddrScript(
+		scriptPkScript, err := PayToAddrScript(
 			addr)
 		if err != nil {
 			t.Errorf("failed to make script pkscript for "+
@@ -227,16 +271,16 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 
-		lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
-			return []txscript.PrivateKey{
-				txscript.PrivateKey{key1, true},
-				txscript.PrivateKey{key2, true},
-				txscript.PrivateKey{key3, true},
+		lookupKey := func(a provautil.Address) ([]PrivateKey, error) {
+			return []PrivateKey{
+				PrivateKey{key1, true},
+				PrivateKey{key2, true},
+				PrivateKey{key3, true},
 			}, nil
 		}
 
 		if err := signAndCheck(msg, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), nil); err != nil {
+			hashType, KeyClosure(lookupKey), nil); err != nil {
 			t.Error(err)
 			break
 		}
@@ -265,7 +309,7 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 
-		scriptPkScript, err := txscript.PayToAddrScript(
+		scriptPkScript, err := PayToAddrScript(
 			addr)
 		if err != nil {
 			t.Errorf("failed to make script pkscript for "+
@@ -273,15 +317,15 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 
-		lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
-			return []txscript.PrivateKey{
-				txscript.PrivateKey{key1, true},
+		lookupKey := func(a provautil.Address) ([]PrivateKey, error) {
+			return []PrivateKey{
+				PrivateKey{key1, true},
 			}, nil
 		}
 
-		sigScript, err := txscript.SignTxOutput(
+		sigScript, err := SignTxOutput(
 			&chaincfg.TestNetParams, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), nil)
+			hashType, KeyClosure(lookupKey), nil)
 		if err != nil {
 			t.Errorf("failed to sign output %s: %v", msg,
 				err)
@@ -295,16 +339,16 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 
-		lookupKey = func(a provautil.Address) ([]txscript.PrivateKey, error) {
-			return []txscript.PrivateKey{
-				txscript.PrivateKey{key2, true},
+		lookupKey = func(a provautil.Address) ([]PrivateKey, error) {
+			return []PrivateKey{
+				PrivateKey{key2, true},
 			}, nil
 		}
 
 		// Sign with the other key and merge
-		sigScript, err = txscript.SignTxOutput(
+		sigScript, err = SignTxOutput(
 			&chaincfg.TestNetParams, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), sigScript)
+			hashType, KeyClosure(lookupKey), sigScript)
 		if err != nil {
 			t.Errorf("failed to sign output %s: %v", msg, err)
 			break
@@ -324,21 +368,21 @@ func TestSignTxOutput(t *testing.T) {
 		threadID := provautil.ThreadID(i)
 		msg := fmt.Sprintf("%d:%d", hashType, i)
 
-		scriptPkScript, err := txscript.ProvaThreadScript(threadID)
+		scriptPkScript, err := ProvaThreadScript(threadID)
 		if err != nil {
 			t.Errorf("failed to make pkscript "+
 				"for %s: %v", msg, err)
 		}
 
-		lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
-			return []txscript.PrivateKey{
-				txscript.PrivateKey{key1, true},
-				txscript.PrivateKey{key2, true},
+		lookupKey := func(a provautil.Address) ([]PrivateKey, error) {
+			return []PrivateKey{
+				PrivateKey{key1, true},
+				PrivateKey{key2, true},
 			}, nil
 		}
 
 		if err := signAndCheck(msg, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), nil); err != nil {
+			hashType, KeyClosure(lookupKey), nil); err != nil {
 			t.Error(err)
 			break
 		}
@@ -349,21 +393,21 @@ func TestSignTxOutput(t *testing.T) {
 		threadID := provautil.ThreadID(i)
 		msg := fmt.Sprintf("%d:%d", hashType, i)
 
-		scriptPkScript, err := txscript.ProvaThreadScript(threadID)
+		scriptPkScript, err := ProvaThreadScript(threadID)
 		if err != nil {
 			t.Errorf("failed to make pkscript "+
 				"for %s: %v", msg, err)
 		}
 
-		lookupKey := func(a provautil.Address) ([]txscript.PrivateKey, error) {
-			return []txscript.PrivateKey{
-				txscript.PrivateKey{key1, true},
+		lookupKey := func(a provautil.Address) ([]PrivateKey, error) {
+			return []PrivateKey{
+				PrivateKey{key1, true},
 			}, nil
 		}
 
-		sigScript, err := txscript.SignTxOutput(
+		sigScript, err := SignTxOutput(
 			&chaincfg.TestNetParams, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), nil)
+			hashType, KeyClosure(lookupKey), nil)
 		if err != nil {
 			t.Errorf("failed to sign output %s: %v", msg,
 				err)
@@ -377,16 +421,16 @@ func TestSignTxOutput(t *testing.T) {
 			break
 		}
 
-		lookupKey = func(a provautil.Address) ([]txscript.PrivateKey, error) {
-			return []txscript.PrivateKey{
-				txscript.PrivateKey{key2, true},
+		lookupKey = func(a provautil.Address) ([]PrivateKey, error) {
+			return []PrivateKey{
+				PrivateKey{key2, true},
 			}, nil
 		}
 
 		// Sign with the other key and merge
-		sigScript, err = txscript.SignTxOutput(
+		sigScript, err = SignTxOutput(
 			&chaincfg.TestNetParams, tx, i, inputAmounts[i], scriptPkScript,
-			hashType, txscript.KeyClosure(lookupKey), sigScript)
+			hashType, KeyClosure(lookupKey), sigScript)
 		if err != nil {
 			t.Errorf("failed to sign output %s: %v", msg, err)
 			break
@@ -412,7 +456,7 @@ type tstInput struct {
 type tstSigScript struct {
 	name               string
 	inputs             []tstInput
-	hashType           txscript.SigHashType
+	hashType           SigHashType
 	compress           bool
 	scriptAtWrongIndex bool
 }
@@ -464,7 +508,7 @@ var sigScriptTests = []tstSigScript{
 				indexOutOfRange:    false,
 			},
 		},
-		hashType:           txscript.SigHashAll,
+		hashType:           SigHashAll,
 		compress:           false,
 		scriptAtWrongIndex: false,
 	},
@@ -484,7 +528,7 @@ var sigScriptTests = []tstSigScript{
 				indexOutOfRange:    false,
 			},
 		},
-		hashType:           txscript.SigHashAll,
+		hashType:           SigHashAll,
 		compress:           false,
 		scriptAtWrongIndex: false,
 	},
@@ -498,7 +542,7 @@ var sigScriptTests = []tstSigScript{
 				indexOutOfRange:    false,
 			},
 		},
-		hashType:           txscript.SigHashAll,
+		hashType:           SigHashAll,
 		compress:           true,
 		scriptAtWrongIndex: false,
 	},
@@ -518,7 +562,7 @@ var sigScriptTests = []tstSigScript{
 				indexOutOfRange:    false,
 			},
 		},
-		hashType:           txscript.SigHashAll,
+		hashType:           SigHashAll,
 		compress:           true,
 		scriptAtWrongIndex: false,
 	},
@@ -532,7 +576,7 @@ var sigScriptTests = []tstSigScript{
 				indexOutOfRange:    false,
 			},
 		},
-		hashType:           txscript.SigHashNone,
+		hashType:           SigHashNone,
 		compress:           false,
 		scriptAtWrongIndex: false,
 	},
@@ -546,7 +590,7 @@ var sigScriptTests = []tstSigScript{
 				indexOutOfRange:    false,
 			},
 		},
-		hashType:           txscript.SigHashSingle,
+		hashType:           SigHashSingle,
 		compress:           false,
 		scriptAtWrongIndex: false,
 	},
@@ -560,7 +604,7 @@ var sigScriptTests = []tstSigScript{
 				indexOutOfRange:    false,
 			},
 		},
-		hashType:           txscript.SigHashAnyOneCanPay,
+		hashType:           SigHashAnyOneCanPay,
 		compress:           false,
 		scriptAtWrongIndex: false,
 	},
@@ -588,7 +632,7 @@ var sigScriptTests = []tstSigScript{
 				indexOutOfRange:    false,
 			},
 		},
-		hashType:           txscript.SigHashAll,
+		hashType:           SigHashAll,
 		compress:           true,
 		scriptAtWrongIndex: false,
 	},
@@ -601,7 +645,7 @@ var sigScriptTests = []tstSigScript{
 				indexOutOfRange:    false,
 			},
 		},
-		hashType:           txscript.SigHashAll,
+		hashType:           SigHashAll,
 		compress:           false,
 		scriptAtWrongIndex: false,
 	},
@@ -621,7 +665,7 @@ var sigScriptTests = []tstSigScript{
 				indexOutOfRange:    false,
 			},
 		},
-		hashType:           txscript.SigHashAll,
+		hashType:           SigHashAll,
 		compress:           false,
 		scriptAtWrongIndex: true,
 	},
@@ -641,7 +685,7 @@ var sigScriptTests = []tstSigScript{
 				indexOutOfRange:    false,
 			},
 		},
-		hashType:           txscript.SigHashAll,
+		hashType:           SigHashAll,
 		compress:           false,
 		scriptAtWrongIndex: true,
 	},
@@ -661,7 +705,7 @@ nexttest:
 	for i := range sigScriptTests {
 		tx := wire.NewMsgTx()
 
-		output := wire.NewTxOut(500, []byte{txscript.OP_RETURN})
+		output := wire.NewTxOut(500, []byte{OP_RETURN})
 		tx.AddTxOut(output)
 
 		for range sigScriptTests[i].inputs {
@@ -679,7 +723,7 @@ nexttest:
 			} else {
 				idx = j
 			}
-			script, err = txscript.SignatureScript(tx, idx,
+			script, err = SignatureScript(tx, idx,
 				sigScriptTests[i].inputs[j].txout.PkScript,
 				sigScriptTests[i].hashType, privKey,
 				sigScriptTests[i].compress)
@@ -711,9 +755,9 @@ nexttest:
 		}
 
 		// Validate tx input scripts
-		scriptFlags := txscript.ScriptBip16 | txscript.ScriptVerifyDERSignatures
+		scriptFlags := ScriptBip16 | ScriptVerifyDERSignatures
 		for j := range tx.TxIn {
-			vm, err := txscript.NewEngine(sigScriptTests[i].
+			vm, err := NewEngine(sigScriptTests[i].
 				inputs[j].txout.PkScript, tx, j, scriptFlags, nil, nil, 0)
 			if err != nil {
 				t.Errorf("cannot create script vm for test %v: %v",

@@ -3,7 +3,7 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package txscript_test
+package txscript
 
 import (
 	"bytes"
@@ -11,7 +11,6 @@ import (
 	"github.com/bitgo/prova/btcec"
 	"github.com/bitgo/prova/chaincfg"
 	"github.com/bitgo/prova/provautil"
-	"github.com/bitgo/prova/txscript"
 	"github.com/bitgo/prova/wire"
 	"reflect"
 	"testing"
@@ -63,7 +62,7 @@ func TestExtractPkScriptAddrs(t *testing.T) {
 		script  []byte
 		addrs   []provautil.Address
 		reqSigs int
-		class   txscript.ScriptClass
+		class   ScriptClass
 	}{
 		{
 			name: "standard prova",
@@ -74,27 +73,27 @@ func TestExtractPkScriptAddrs(t *testing.T) {
 					[]btcec.KeyID{0x10000, 1}),
 			},
 			reqSigs: 2,
-			class:   txscript.ProvaTy,
+			class:   ProvaTy,
 		},
 		{
 			name:    "empty script",
 			script:  []byte{},
 			addrs:   nil,
 			reqSigs: 0,
-			class:   txscript.NonStandardTy,
+			class:   NonStandardTy,
 		},
 		{
 			name:    "script that does not parse",
-			script:  []byte{txscript.OP_DATA_45},
+			script:  []byte{OP_DATA_45},
 			addrs:   nil,
 			reqSigs: 0,
-			class:   txscript.NonStandardTy,
+			class:   NonStandardTy,
 		},
 	}
 
 	t.Logf("Running %d tests.", len(tests))
 	for i, test := range tests {
-		class, addrs, reqSigs, err := txscript.ExtractPkScriptAddrs(
+		class, addrs, reqSigs, err := ExtractPkScriptAddrs(
 			test.script, &chaincfg.MainNetParams)
 		if err != nil {
 		}
@@ -133,31 +132,31 @@ func TestIsValidAdminOp(t *testing.T) {
 	})
 	// provision key add
 	data := make([]byte, 1+btcec.PubKeyBytesLenCompressed)
-	data[0] = txscript.AdminOpProvisionKeyAdd
+	data[0] = AdminOpProvisionKeyAdd
 	copy(data[1:], pubKey.SerializeCompressed())
-	adminOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).AddData(data).Script()
+	adminOpPkScript, _ := NewScriptBuilder().AddOp(OP_RETURN).AddData(data).Script()
 	adminOpTxOut := wire.TxOut{
 		Value:    0,
 		PkScript: adminOpPkScript,
 	}
 	// asp add
 	aspData := make([]byte, 1+btcec.PubKeyBytesLenCompressed+btcec.KeyIDSize)
-	aspData[0] = txscript.AdminOpASPKeyAdd
+	aspData[0] = AdminOpASPKeyAdd
 	copy(aspData[1:], pubKey.SerializeCompressed())
 	btcec.KeyID(1).ToAddressFormat(aspData[1+btcec.PubKeyBytesLenCompressed:])
-	provOpPkScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).AddData(aspData).Script()
+	provOpPkScript, _ := NewScriptBuilder().AddOp(OP_RETURN).AddData(aspData).Script()
 	provOpTxOut := wire.TxOut{
 		Value:    0,
 		PkScript: provOpPkScript,
 	}
 	// create root tx out
-	rootPkScript, _ := txscript.ProvaThreadScript(provautil.RootThread)
+	rootPkScript, _ := ProvaThreadScript(provautil.RootThread)
 	rootTxOut := wire.TxOut{
 		Value:    0,
 		PkScript: rootPkScript,
 	}
 	// create provision tx out
-	provisionPkScript, _ := txscript.ProvaThreadScript(provautil.ProvisionThread)
+	provisionPkScript, _ := ProvaThreadScript(provautil.ProvisionThread)
 	provisionTxOut := wire.TxOut{
 		Value:    0, // 0 RMG
 		PkScript: provisionPkScript,
@@ -192,13 +191,13 @@ func TestIsValidAdminOp(t *testing.T) {
 	for _, test := range tests {
 		mtx := provautil.NewTx(&test.tx)
 		// Ensure standardness is as expected.
-		threadInt, adminOutputs := txscript.GetAdminDetails(mtx)
+		threadInt, adminOutputs := GetAdminDetails(mtx)
 		if threadInt < 0 {
 			t.Errorf("IsValidAdminOp (%s): non-admin thread "+
 				" when it should be", test.name)
 			continue
 		}
-		isValid := txscript.IsValidAdminOp(adminOutputs[0], provautil.ThreadID(threadInt))
+		isValid := IsValidAdminOp(adminOutputs[0], provautil.ThreadID(threadInt))
 		if isValid == test.isValid {
 			// Test passes since function returned valid for an
 			// op which is intended to be valid.
@@ -275,15 +274,15 @@ func TestPayToAddrScript(t *testing.T) {
 		},
 
 		// Supported address types with nil pointers.
-		{(*provautil.AddressProva)(nil), "", txscript.ErrUnsupportedAddress},
+		{(*provautil.AddressProva)(nil), "", ErrUnsupportedAddress},
 
 		// Unsupported address type.
-		{&bogusAddress{}, "", txscript.ErrUnsupportedAddress},
+		{&bogusAddress{}, "", ErrUnsupportedAddress},
 	}
 
 	t.Logf("Running %d tests", len(tests))
 	for i, test := range tests {
-		pkScript, err := txscript.PayToAddrScript(test.in)
+		pkScript, err := PayToAddrScript(test.in)
 		if err != test.err {
 			t.Errorf("PayToAddrScript #%d unexpected error - "+
 				"got %v, want %v", i, err, test.err)
@@ -369,7 +368,7 @@ func TestMultiSigScript(t *testing.T) {
 			},
 			3,
 			"",
-			txscript.ErrBadNumRequired,
+			ErrBadNumRequired,
 		},
 		{
 			[]*provautil.AddressPubKey{
@@ -388,14 +387,13 @@ func TestMultiSigScript(t *testing.T) {
 			},
 			2,
 			"",
-			txscript.ErrBadNumRequired,
+			ErrBadNumRequired,
 		},
 	}
 
 	t.Logf("Running %d tests", len(tests))
 	for i, test := range tests {
-		script, err := txscript.MultiSigScript(test.keys,
-			test.nrequired)
+		script, err := MultiSigScript(test.keys, test.nrequired)
 		if err != test.err {
 			t.Errorf("MultiSigScript #%d unexpected error - "+
 				"got %v, want %v", i, err, test.err)
@@ -425,14 +423,14 @@ func TestCalcMultiSigStats(t *testing.T) {
 			name: "short script",
 			script: "0x046708afdb0fe5548271967f1a67130b7105cd6a828" +
 				"e03909a67962e0ea1f61d",
-			err: txscript.ErrStackShortScript,
+			err: ErrStackShortScript,
 		},
 		{
 			name: "stack underflow",
 			script: "RETURN DATA_41 0x046708afdb0fe5548271967f1a" +
 				"67130b7105cd6a828e03909a67962e0ea1f61deb649f6" +
 				"bc3f4cef308",
-			err: txscript.ErrStackUnderflow,
+			err: ErrStackUnderflow,
 		},
 		{
 			name: "multisig script",
@@ -448,7 +446,7 @@ func TestCalcMultiSigStats(t *testing.T) {
 
 	for i, test := range tests {
 		script := mustParseShortForm(test.script)
-		if _, _, err := txscript.CalcMultiSigStats(script); err != test.err {
+		if _, _, err := CalcMultiSigStats(script); err != test.err {
 			t.Errorf("CalcMultiSigStats #%d (%s) unexpected "+
 				"error\ngot: %v\nwant: %v", i, test.name, err,
 				test.err)
@@ -463,21 +461,21 @@ func TestCalcMultiSigStats(t *testing.T) {
 var scriptClassTests = []struct {
 	name   string
 	script string
-	class  txscript.ScriptClass
+	class  ScriptClass
 }{
 	{
 		name: "Pay Pubkey",
 		script: "DATA_65 0x0411db93e1dcdb8a016b49840f8c53bc1eb68a382e" +
 			"97b1482ecad7b148a6909a5cb2e0eaddfb84ccf9744464f82e16" +
 			"0bfa9b8b64f9d4c03f999b8643f656b412a3 CHECKSIG",
-		class: txscript.NonStandardTy,
+		class: NonStandardTy,
 	},
 	// tx 599e47a8114fe098103663029548811d2651991b62397e057f0c863c2bc9f9ea
 	{
 		name: "Pay PubkeyHash",
 		script: "DUP HASH160 DATA_20 0x660d4ef3a743e3e696ad990364e555" +
 			"c271ad504b EQUALVERIFY CHECKSIG",
-		class: txscript.NonStandardTy,
+		class: NonStandardTy,
 	},
 	// part of tx 6d36bc17e947ce00bb6f12f8e7a56a1585c5a36188ffa2b05e10b4743273a74b
 	// codeseparator parts have been elided. (bitcoin core's checks for
@@ -486,44 +484,44 @@ var scriptClassTests = []struct {
 		name: "multisig",
 		script: "1 DATA_33 0x0232abdc893e7f0631364d7fd01cb33d24da4" +
 			"5329a00357b3a7886211ab414d55a 1 CHECKMULTISIG",
-		class: txscript.NonStandardTy,
+		class: NonStandardTy,
 	},
 	// tx e5779b9e78f9650debc2893fd9636d827b26b4ddfa6a8172fe8708c924f5c39d
 	{
 		name: "P2SH",
 		script: "HASH160 DATA_20 0x433ec2ac1ffa1b7b7d027f564529c57197f" +
 			"9ae88 EQUAL",
-		class: txscript.NonStandardTy,
+		class: NonStandardTy,
 	},
 	{
 		// Nulldata with no data at all.
 		name:   "nulldata with no data",
 		script: "RETURN",
-		class:  txscript.NullDataTy,
+		class:  NullDataTy,
 	},
 	{
 		// Nulldata with single zero push.
 		name:   "nulldata zero",
 		script: "RETURN 0",
-		class:  txscript.NullDataTy,
+		class:  NullDataTy,
 	},
 	{
 		// Nulldata with small integer push.
 		name:   "nulldata small int",
 		script: "RETURN 1",
-		class:  txscript.NullDataTy,
+		class:  NullDataTy,
 	},
 	{
 		// Nulldata with max small integer push.
 		name:   "nulldata max small int",
 		script: "RETURN 16",
-		class:  txscript.NullDataTy,
+		class:  NullDataTy,
 	},
 	{
 		// Nulldata with small data push.
 		name:   "nulldata small data",
 		script: "RETURN DATA_8 0x046708afdb0fe554",
-		class:  txscript.NullDataTy,
+		class:  NullDataTy,
 	},
 	{
 		// Canonical nulldata with 60-byte data push.
@@ -531,7 +529,7 @@ var scriptClassTests = []struct {
 		script: "RETURN 0x3c 0x046708afdb0fe5548271967f1a67130b7105cd" +
 			"6a828e03909a67962e0ea1f61deb649f6bc3f4cef3046708afdb" +
 			"0fe5548271967f1a67130b7105cd6a",
-		class: txscript.NullDataTy,
+		class: NullDataTy,
 	},
 	{
 		// Non-canonical nulldata with 60-byte data push.
@@ -539,7 +537,7 @@ var scriptClassTests = []struct {
 		script: "RETURN PUSHDATA1 0x3c 0x046708afdb0fe5548271967f1a67" +
 			"130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3" +
 			"046708afdb0fe5548271967f1a67130b7105cd6a",
-		class: txscript.NullDataTy,
+		class: NullDataTy,
 	},
 	{
 		// Nulldata with max allowed data to be considered standard.
@@ -548,7 +546,7 @@ var scriptClassTests = []struct {
 			"130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3" +
 			"046708afdb0fe5548271967f1a67130b7105cd6a828e03909a67" +
 			"962e0ea1f61deb649f6bc3f4cef3",
-		class: txscript.NullDataTy,
+		class: NullDataTy,
 	},
 	{
 		// Nulldata with more than max allowed data to be considered
@@ -558,14 +556,14 @@ var scriptClassTests = []struct {
 			"130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3" +
 			"046708afdb0fe5548271967f1a67130b7105cd6a828e03909a67" +
 			"962e0ea1f61deb649f6bc3f4cef308",
-		class: txscript.NonStandardTy,
+		class: NonStandardTy,
 	},
 	{
 		// Almost nulldata, but add an additional opcode after the data
 		// to make it nonstandard.
 		name:   "almost nulldata",
 		script: "RETURN 4 TRUE",
-		class:  txscript.NonStandardTy,
+		class:  NonStandardTy,
 	},
 
 	// The next few are almost multisig (it is the more complex script type)
@@ -575,13 +573,13 @@ var scriptClassTests = []struct {
 		name: "strange 1",
 		script: "DUP DATA_33 0x0232abdc893e7f0631364d7fd01cb33d24da45" +
 			"329a00357b3a7886211ab414d55a 1 CHECKSAFEMULTISIG",
-		class: txscript.NonStandardTy,
+		class: NonStandardTy,
 	},
 	{
 		// Multisig but invalid pubkey.
 		name:   "strange 2",
 		script: "1 1 1 CHECKSAFEMULTISIG",
-		class:  txscript.NonStandardTy,
+		class:  NonStandardTy,
 	},
 	{
 		// Multisig but no matching npubkeys opcode.
@@ -590,25 +588,25 @@ var scriptClassTests = []struct {
 			"9a00357b3a7886211ab414d55a DATA_33 0x0232abdc893e7f0" +
 			"631364d7fd01cb33d24da45329a00357b3a7886211ab414d55a " +
 			"CHECKSAFEMULTISIG",
-		class: txscript.NonStandardTy,
+		class: NonStandardTy,
 	},
 	{
 		// Multisig but with multisigverify.
 		name: "strange 4",
 		script: "1 DATA_33 0x0232abdc893e7f0631364d7fd01cb33d24da4532" +
 			"9a00357b3a7886211ab414d55a 1 CHECKSAFEMULTISIG",
-		class: txscript.NonStandardTy,
+		class: NonStandardTy,
 	},
 	{
 		// Multisig but wrong length.
 		name:   "strange 5",
 		script: "1 CHECKSAFEMULTISIG",
-		class:  txscript.NonStandardTy,
+		class:  NonStandardTy,
 	},
 	{
 		name:   "doesn't parse",
 		script: "DATA_5 0x01020304",
-		class:  txscript.NonStandardTy,
+		class:  NonStandardTy,
 	},
 	{
 		name: "multisig script with wrong number of pubkeys",
@@ -620,24 +618,24 @@ var scriptClassTests = []struct {
 			"0x02c08f3de8ee2de9be7bd770f4c10eb0" +
 			"d6ff1dd81ee96eedd3a9d4aeaf86695e80 " +
 			"3 CHECKSAFEMULTISIG",
-		class: txscript.NonStandardTy,
+		class: NonStandardTy,
 	},
 	{
 		name: "standard prova script",
 		script: "2 DATA_20 0x433ec2ac1ffa1b7b7d027f564529c57197f" +
 			"9ae88 1 2 3 CHECKSAFEMULTISIG",
-		class: txscript.ProvaTy,
+		class: ProvaTy,
 	},
 	{
 		name: "prova script with additional key ids",
 		script: "2 DATA_20 0x433ec2ac1ffa1b7b7d027f564529c57197f" +
 			"9ae88 1 2 3 4 5 CHECKSAFEMULTISIG",
-		class: txscript.GeneralProvaTy,
+		class: GeneralProvaTy,
 	},
 	{
 		name:   "prova admin script",
 		script: "0 CHECKTHREAD",
-		class:  txscript.ProvaAdminTy,
+		class:  ProvaAdminTy,
 	},
 }
 
@@ -648,7 +646,7 @@ func TestScriptClass(t *testing.T) {
 
 	for _, test := range scriptClassTests {
 		script := mustParseShortForm(test.script)
-		class := txscript.GetScriptClass(script)
+		class := GetScriptClass(script)
 		if class != test.class {
 			t.Errorf("%s: expected %s got %s (script %x)", test.name,
 				test.class, class, script)
@@ -664,22 +662,22 @@ func TestStringifyClass(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		class    txscript.ScriptClass
+		class    ScriptClass
 		stringed string
 	}{
 		{
 			name:     "nonstandardty",
-			class:    txscript.NonStandardTy,
+			class:    NonStandardTy,
 			stringed: "nonstandard",
 		},
 		{
 			name:     "nulldataty",
-			class:    txscript.NullDataTy,
+			class:    NullDataTy,
 			stringed: "nulldata",
 		},
 		{
 			name:     "broken",
-			class:    txscript.ScriptClass(255),
+			class:    ScriptClass(255),
 			stringed: "Invalid",
 		},
 	}
