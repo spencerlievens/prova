@@ -174,7 +174,7 @@ func (m *CPUMiner) submitBlock(block *provautil.Block) bool {
 	// detected and all work on the stale block is halted to start work on
 	// a new block, but the check only happens periodically, so it is
 	// possible a block was found and submitted in between.
-	latestHash := m.g.blockManager.chain.BestSnapshot().Hash
+	latestHash := m.g.BestSnapshot().Hash
 	msgBlock := block.MsgBlock()
 	if !msgBlock.Header.PrevBlock.IsEqual(latestHash) {
 		minrLog.Debugf("Block submitted via CPU miner with previous "+
@@ -184,7 +184,7 @@ func (m *CPUMiner) submitBlock(block *provautil.Block) bool {
 
 	// Process this block using the same rules as blocks coming from other
 	// nodes.  This will in turn relay it to the network like normal.
-	isOrphan, err := m.g.blockManager.ProcessBlock(block, blockchain.BFNone)
+	isOrphan, err := m.cfg.ProcessBlock(block, blockchain.BFNone)
 	if err != nil {
 		// Anything other than a rule violation is an unexpected error,
 		// so log that error as an internal error.
@@ -228,7 +228,7 @@ func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight uint32,
 
 	// Initial state.
 	lastGenerated := time.Now()
-	lastTxUpdate := m.g.txSource.LastUpdated()
+	lastTxUpdate := m.g.TxSource().LastUpdated()
 	hashesCompleted := uint64(0)
 
 	// Search through the entire nonce range for a solution while
@@ -245,7 +245,7 @@ func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight uint32,
 
 			// The current block is stale if the best block
 			// has changed.
-			best := m.g.blockManager.chain.BestSnapshot()
+			best := m.g.BestSnapshot()
 			if !header.PrevBlock.IsEqual(best.Hash) {
 				return false
 			}
@@ -254,7 +254,7 @@ func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight uint32,
 			// has been updated since the block template was
 			// generated and it has been at least one
 			// minute.
-			if lastTxUpdate != m.g.txSource.LastUpdated() &&
+			if lastTxUpdate != m.g.TxSource().LastUpdated() &&
 				time.Now().After(lastGenerated.Add(time.Minute)) {
 
 				return false
@@ -321,8 +321,8 @@ out:
 		// this would otherwise end up building a new block template on
 		// a block that is in the process of becoming stale.
 		m.submitBlockLock.Lock()
-		curHeight := m.g.blockManager.chain.BestSnapshot().Height
-		if curHeight != 0 && !m.g.blockManager.IsCurrent() {
+		curHeight := m.g.BestSnapshot().Height
+		if curHeight != 0 && !m.cfg.IsCurrent() {
 			m.submitBlockLock.Unlock()
 			time.Sleep(time.Second)
 			continue
@@ -698,7 +698,7 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 		// be changing and this would otherwise end up building a new block
 		// template on a block that is in the process of becoming stale.
 		m.submitBlockLock.Lock()
-		curHeight := m.g.blockManager.chain.BestSnapshot().Height
+		curHeight := m.g.BestSnapshot().Height
 
 		// Choose a payment address at random.
 		rand.Seed(time.Now().UnixNano())

@@ -13,6 +13,7 @@ import (
 
 	"github.com/bitgo/prova/blockchain"
 	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
 	"github.com/bitgo/prova/chaincfg/chainhash"
 	"github.com/bitgo/prova/mempool"
 	"github.com/bitgo/prova/mining"
@@ -354,12 +355,13 @@ func medianAdjustedTime(chainState *blockchain.BestState, timeSource blockchain.
 // See the NewBlockTemplate method for a detailed description of how the block
 // template is generated.
 type BlkTmplGenerator struct {
-	policy       *mining.Policy
-	txSource     mining.TxSource
-	sigCache     *txscript.SigCache
-	hashCache    *txscript.HashCache
-	blockManager *blockManager
-	timeSource   blockchain.MedianTimeSource
+	policy      *mining.Policy
+	chainParams *chaincfg.Params
+	txSource    mining.TxSource
+	chain       *blockchain.BlockChain
+	timeSource  blockchain.MedianTimeSource
+	sigCache    *txscript.SigCache
+	hashCache   *txscript.HashCache
 }
 
 // newBlkTmplGenerator returns a new block template generator for the given
@@ -368,17 +370,19 @@ type BlkTmplGenerator struct {
 // The additional state-related fields are required in order to ensure the
 // templates are built on top of the current best chain and adhere to the
 // consensus rules.
-func newBlkTmplGenerator(policy *mining.Policy, txSource mining.TxSource,
+func newBlkTmplGenerator(policy *mining.Policy, params *chaincfg.Params,
+	txSource mining.TxSource, chain *blockchain.BlockChain,
 	timeSource blockchain.MedianTimeSource, sigCache *txscript.SigCache,
-	hashCache *txscript.HashCache, blockManager *blockManager) *BlkTmplGenerator {
+	hashCache *txscript.HashCache) *BlkTmplGenerator {
 
 	return &BlkTmplGenerator{
-		policy:       policy,
-		txSource:     txSource,
-		sigCache:     sigCache,
-		hashCache:    hashCache,
-		blockManager: blockManager,
-		timeSource:   timeSource,
+		policy:      policy,
+		chainParams: params,
+		txSource:    txSource,
+		chain:       chain,
+		timeSource:  timeSource,
+		sigCache:    sigCache,
+		hashCache:   hashCache,
 	}
 }
 
@@ -447,13 +451,12 @@ func newBlkTmplGenerator(policy *mining.Policy, txSource mining.TxSource,
 func (g *BlkTmplGenerator) NewBlockTemplate(payToAddress provautil.Address, validateKey *btcec.PrivateKey) (*BlockTemplate, error) {
 	// Locals for faster access.
 	policy := g.policy
-	blockManager := g.blockManager
 	timeSource := g.timeSource
 	sigCache := g.sigCache
 	hashCache := g.hashCache
 
 	// Extend the most recently known best block.
-	best := blockManager.chain.BestSnapshot()
+	best := g.chain.BestSnapshot()
 	prevHash := best.Hash
 	nextBlockHeight := best.Height + 1
 
@@ -494,9 +497,9 @@ func (g *BlkTmplGenerator) NewBlockTemplate(payToAddress provautil.Address, vali
 	blockTxns = append(blockTxns, coinbaseTx)
 	blockUtxos := blockchain.NewUtxoViewpoint()
 	keyView := blockchain.NewKeyViewpoint()
-	keyView.SetLastKeyID(blockManager.chain.LastKeyID())
-	keyView.SetKeys(blockManager.chain.AdminKeySets())
-	keyView.SetKeyIDs(blockManager.chain.KeyIDs())
+	keyView.SetLastKeyID(g.chain.LastKeyID())
+	keyView.SetKeys(g.chain.AdminKeySets())
+	keyView.SetKeyIDs(g.chain.KeyIDs())
 
 	// dependers is used to track transactions which depend on another
 	// transaction in the source pool.  This, in conjunction with the
@@ -539,7 +542,7 @@ mempoolLoop:
 		// mempool since a transaction which depends on other
 		// transactions in the mempool must come after those
 		// dependencies in the final generated block.
-		utxos, err := blockManager.chain.FetchUtxoView(tx)
+		utxos, err := g.chain.FetchUtxoView(tx)
 		if err != nil {
 			minrLog.Warnf("Unable to fetch utxo view for tx %s: "+
 				"%v", tx.Hash(), err)
@@ -797,7 +800,7 @@ mempoolLoop:
 	// is potentially adjusted to ensure it comes after the median time of
 	// the last several blocks per the chain consensus rules.
 	ts := medianAdjustedTime(best, timeSource)
-	reqDifficulty, err := blockManager.chain.CalcNextRequiredDifficulty()
+	reqDifficulty, err := g.chain.CalcNextRequiredDifficulty()
 	if err != nil {
 		return nil, err
 	}
@@ -828,7 +831,7 @@ mempoolLoop:
 	// consensus rules to ensure it properly connects to the current best
 	// chain with no issues.
 	block := provautil.NewBlock(&msgBlock)
-	if err := blockManager.chain.CheckConnectBlock(block); err != nil {
+	if err := g.chain.CheckConnectBlock(block); err != nil {
 		return nil, err
 	}
 
@@ -858,12 +861,28 @@ func (g *BlkTmplGenerator) UpdateBlockTime(msgBlock *wire.MsgBlock,
 	// The new timestamp is potentially adjusted to ensure it comes after
 	// the median time of the last several blocks per the chain consensus
 	// rules.
-	best := g.blockManager.chain.BestSnapshot()
-	newTimestamp := medianAdjustedTime(best, g.timeSource)
-	msgBlock.Header.Timestamp = newTimestamp
+	newTime := medianAdjustedTime(g.chain.BestSnapshot(), g.timeSource)
+	msgBlock.Header.Timestamp = newTime
 
 	// Re-sign the block, since we updated the block time
 	msgBlock.Header.Sign(validateKey)
 
 	return nil
+}
+
+// BestSnapshot returns information about the current best chain block and
+// related state as of the current point in time using the chain instance
+// associated with the block template generator.  The returned state must be
+// treated as immutable since it is shared by all callers.
+//
+// This function is safe for concurrent access.
+func (g *BlkTmplGenerator) BestSnapshot() *blockchain.BestState {
+	return g.chain.BestSnapshot()
+}
+
+// TxSource returns the associated transaction source.
+//
+// This function is safe for concurrent access.
+func (g *BlkTmplGenerator) TxSource() mining.TxSource {
+	return g.txSource
 }
