@@ -52,6 +52,16 @@ type Checkpoint struct {
 	Hash   *chainhash.Hash
 }
 
+// DNSSeed identifies a DNS seed.
+type DNSSeed struct {
+	// Host defines the hostname of the seed.
+	Host string
+
+	// HasFiltering defines whether the seed supports filtering
+	// by service flags (wire.ServiceFlag).
+	HasFiltering bool
+}
+
 // Params defines a Bitcoin network by its parameters.  These parameters may be
 // used by Bitcoin applications to differentiate networks as well as addresses
 // and keys for one network from those intended for use on another network.
@@ -67,7 +77,7 @@ type Params struct {
 
 	// DNSSeeds defines a list of DNS seeds for the network that are used
 	// as one method to discover peers.
-	DNSSeeds []string
+	DNSSeeds []DNSSeed
 
 	// GenesisBlock defines the first block of the chain.
 	GenesisBlock *wire.MsgBlock
@@ -192,7 +202,7 @@ var MainNetParams = Params{
 	Name:        "mainnet",
 	Net:         wire.MainNet,
 	DefaultPort: "7979",
-	DNSSeeds:    []string{},
+	DNSSeeds:    []DNSSeed{},
 
 	// Chain parameters
 	GenesisBlock: &genesisBlock,
@@ -282,7 +292,7 @@ var RegressionNetParams = Params{
 	Name:        "regtest",
 	Net:         wire.RegNet,
 	DefaultPort: "18989",
-	DNSSeeds:    []string{},
+	DNSSeeds:    []DNSSeed{},
 
 	// Chain parameters
 	GenesisBlock: &regTestGenesisBlock,
@@ -362,7 +372,9 @@ var TestNetParams = Params{
 	Name:        "testnet",
 	Net:         wire.TestNet,
 	DefaultPort: "17979",
-	DNSSeeds:    []string{"nodedns.rmgchain.info"},
+	DNSSeeds: []DNSSeed{
+		{"nodedns.rmgchain.info", false},
+	},
 
 	// Chain parameters
 	GenesisBlock: &testNetGenesisBlock,
@@ -459,7 +471,7 @@ var SimNetParams = Params{
 	Name:        "simnet",
 	Net:         wire.SimNet,
 	DefaultPort: "10079",
-	DNSSeeds:    []string{}, // NOTE: There must NOT be any seeds.
+	DNSSeeds:    []DNSSeed{}, // NOTE: There must NOT be any seeds.
 
 	// Chain parameters
 	GenesisBlock:             &simNetGenesisBlock,
@@ -537,6 +549,11 @@ var (
 	provaAddrIDs      = make(map[byte]struct{})
 	hdPrivToPubKeyIDs = make(map[[4]byte][]byte)
 )
+
+// String returns the hostname of the DNS seed in human-readable form.
+func (d DNSSeed) String() string {
+	return d.Host
+}
 
 // Register registers the network parameters for a Bitcoin network.  This may
 // error with ErrDuplicateNet if the network is already registered (either
