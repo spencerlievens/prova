@@ -39,15 +39,6 @@ func (b *BlockChain) maybeAcceptBlock(block *provautil.Block, flags BehaviorFlag
 		return false, err
 	}
 
-	// Prune block nodes which are no longer needed before creating
-	// a new node.
-	if !dryRun {
-		err = b.pruneBlockNodes()
-		if err != nil {
-			return false, err
-		}
-	}
-
 	// Create a new block node for the block and add it to the in-memory
 	// block chain (could be either a side chain or the main chain).
 	blockHeader := &block.MsgBlock().Header
