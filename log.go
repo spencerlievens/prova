@@ -12,6 +12,7 @@ import (
 	"github.com/bitgo/prova/addrmgr"
 	"github.com/bitgo/prova/blockchain"
 	"github.com/bitgo/prova/blockchain/indexers"
+	"github.com/bitgo/prova/connmgr"
 	"github.com/bitgo/prova/database"
 	"github.com/bitgo/prova/mempool"
 	"github.com/bitgo/prova/peer"
@@ -34,6 +35,7 @@ var (
 	backendLog = seelog.Disabled
 	adxrLog    = btclog.Disabled
 	amgrLog    = btclog.Disabled
+	cmgrLog    = btclog.Disabled
 	bcdbLog    = btclog.Disabled
 	bmgrLog    = btclog.Disabled
 	btcdLog    = btclog.Disabled
@@ -52,6 +54,7 @@ var (
 var subsystemLoggers = map[string]btclog.Logger{
 	"ADXR": adxrLog,
 	"AMGR": amgrLog,
+	"CMGR": cmgrLog,
 	"BCDB": bcdbLog,
 	"BMGR": bmgrLog,
 	"CHAN": chanLog,
@@ -97,6 +100,10 @@ func useLogger(subsystemID string, logger btclog.Logger) {
 	case "AMGR":
 		amgrLog = logger
 		addrmgr.UseLogger(logger)
+
+	case "CMGR":
+		cmgrLog = logger
+		connmgr.UseLogger(logger)
 
 	case "BCDB":
 		bcdbLog = logger

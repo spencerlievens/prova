@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bitgo/prova/connmgr"
 	"github.com/bitgo/prova/database"
 	_ "github.com/bitgo/prova/database/ffldb"
 	"github.com/bitgo/prova/mempool"
@@ -850,7 +851,7 @@ func loadConfig() (*config, []string, error) {
 		cfg.dial = proxy.Dial
 		if !cfg.NoOnion {
 			cfg.lookup = func(host string) ([]net.IP, error) {
-				return torLookupIP(host, cfg.Proxy)
+				return connmgr.TorLookupIP(host, cfg.Proxy)
 			}
 		}
 	}
@@ -890,7 +891,7 @@ func loadConfig() (*config, []string, error) {
 			return proxy.Dial(a, b)
 		}
 		cfg.onionlookup = func(host string) ([]net.IP, error) {
-			return torLookupIP(host, cfg.OnionProxy)
+			return connmgr.TorLookupIP(host, cfg.OnionProxy)
 		}
 	} else {
 		cfg.oniondial = cfg.dial
