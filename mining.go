@@ -8,7 +8,6 @@ package main
 import (
 	"bytes"
 	"container/heap"
-	"container/list"
 	"encoding/hex"
 	"time"
 
@@ -309,13 +308,12 @@ func spendTransaction(utxoView *blockchain.UtxoViewpoint, tx *provautil.Tx, heig
 
 // logSkippedDeps logs any dependencies which are also skipped as a result of
 // skipping a transaction while generating a block template at the trace level.
-func logSkippedDeps(tx *provautil.Tx, deps *list.List) {
+func logSkippedDeps(tx *provautil.Tx, deps map[chainhash.Hash]*txPrioItem) {
 	if deps == nil {
 		return
 	}
 
-	for e := deps.Front(); e != nil; e = e.Next() {
-		item := e.Value.(*txPrioItem)
+	for _, item := range deps {
 		minrLog.Tracef("Skipping tx %s since it depends on %s\n",
 			item.tx.Hash(), tx.Hash())
 	}
@@ -480,7 +478,7 @@ func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress provau
 	// dependsOn map kept with each dependent transaction helps quickly
 	// determine which dependent transactions are now eligible for inclusion
 	// in the block once each transaction has been included.
-	dependers := make(map[chainhash.Hash]*list.List)
+	dependers := make(map[chainhash.Hash]map[chainhash.Hash]*txPrioItem)
 
 	// Create slices to hold the fees and number of signature operations
 	// for each of the selected transactions and add an entry for the
@@ -544,12 +542,12 @@ mempoolLoop:
 				// The transaction is referencing another
 				// transaction in the source pool, so setup an
 				// ordering dependency.
-				depList, exists := dependers[*originHash]
+				deps, exists := dependers[*originHash]
 				if !exists {
-					depList = list.New()
-					dependers[*originHash] = depList
+					deps = make(map[chainhash.Hash]*txPrioItem)
+					dependers[*originHash] = deps
 				}
-				depList.PushBack(prioItem)
+				deps[*prioItem.tx.Hash()] = prioItem
 				if prioItem.dependsOn == nil {
 					prioItem.dependsOn = make(
 						map[chainhash.Hash]struct{})
@@ -743,16 +741,12 @@ mempoolLoop:
 		// Add transactions which depend on this one (and also do not
 		// have any other unsatisified dependencies) to the priority
 		// queue.
-		if deps != nil {
-			for e := deps.Front(); e != nil; e = e.Next() {
-				// Add the transaction to the priority queue if
-				// there are no more dependencies after this
-				// one.
-				item := e.Value.(*txPrioItem)
-				delete(item.dependsOn, *tx.Hash())
-				if len(item.dependsOn) == 0 {
-					heap.Push(priorityQueue, item)
-				}
+		for _, item := range deps {
+			// Add the transaction to the priority queue if there
+			// are no more dependencies after this one.
+			delete(item.dependsOn, *tx.Hash())
+			if len(item.dependsOn) == 0 {
+				heap.Push(priorityQueue, item)
 			}
 		}
 	}
