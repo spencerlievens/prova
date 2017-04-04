@@ -1534,7 +1534,6 @@ func newPeerConfig(sp *serverPeer) *peer.Config {
 			OnAlert: nil,
 		},
 		NewestBlock:      sp.newestBlock,
-		BestLocalAddress: sp.server.addrManager.GetBestLocalAddress,
 		HostToNetAddress: sp.server.addrManager.HostToNetAddress,
 		Proxy:            cfg.Proxy,
 		UserAgentName:    userAgentName,
