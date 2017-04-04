@@ -12,6 +12,12 @@ import (
 	"github.com/bitgo/prova/provautil"
 )
 
+const (
+	// MinHighPriority is the minimum priority value that allows a
+	// transaction to be considered high priority.
+	MinHighPriority = 0.0
+)
+
 // TxDesc is a descriptor about a transaction in a transaction source along with
 // additional metadata.
 type TxDesc struct {
