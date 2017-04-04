@@ -17,6 +17,7 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 )
 
 // fakeChain is used by the pool harness to provide generated test utxos and
@@ -24,8 +25,9 @@ import (
 // transations to be appear as though they are spending completely valid utxos.
 type fakeChain struct {
 	sync.RWMutex
-	utxos         *blockchain.UtxoViewpoint
-	currentHeight uint32
+	utxos          *blockchain.UtxoViewpoint
+	currentHeight  uint32
+	medianTimePast time.Time
 }
 
 // FetchUtxoView loads utxo details about the input transactions referenced by
@@ -110,6 +112,23 @@ func (s *fakeChain) BestHeight() uint32 {
 func (s *fakeChain) SetHeight(height uint32) {
 	s.Lock()
 	s.currentHeight = height
+	s.Unlock()
+}
+
+// MedianTimePast returns the current median time past associated with the fake
+// chain instance.
+func (s *fakeChain) MedianTimePast() time.Time {
+	s.RLock()
+	mtp := s.medianTimePast
+	s.RUnlock()
+	return mtp
+}
+
+// SetMedianTimePast sets the current median time past associated with the fake
+// chain instance.
+func (s *fakeChain) SetMedianTimePast(mtp time.Time) {
+	s.Lock()
+	s.medianTimePast = mtp
 	s.Unlock()
 }
 
@@ -351,6 +370,7 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 			GetKeyIDs:       chain.KeyIDs,
 			GetAdminKeySets: chain.AdminKeySets,
 			BestHeight:      chain.BestHeight,
+			MedianTimePast:  chain.MedianTimePast,
 			SigCache:        nil,
 			HashCache:       txscript.NewHashCache(200),
 			TimeSource:      blockchain.NewMedianTime(),

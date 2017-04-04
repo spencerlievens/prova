@@ -2586,6 +2586,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 		GetKeyIDs:       bm.chain.KeyIDs,
 		GetAdminKeySets: bm.chain.AdminKeySets,
 		BestHeight:      func() uint32 { return bm.chain.BestSnapshot().Height },
+		MedianTimePast:  func() time.Time { return bm.chain.BestSnapshot().MedianTime },
 		SigCache:        s.sigCache,
 		HashCache:       s.hashCache,
 		TimeSource:      s.timeSource,
