@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/bitgo/prova/blockchain"
 	"github.com/bitgo/prova/chaincfg/chainhash"
@@ -116,31 +115,6 @@ type pauseMsg struct {
 	unpause <-chan struct{}
 }
 
-// chainState tracks the state of the best chain as blocks are inserted.  This
-// is done because btcchain is currently not safe for concurrent access and the
-// block manager is typically quite busy processing block and inventory.
-// Therefore, requesting this information from chain through the block manager
-// would not be anywhere near as efficient as simply updating it as each block
-// is inserted and protecting it with a mutex.
-type chainState struct {
-	sync.Mutex
-	newestHash        *chainhash.Hash
-	newestHeight      uint32
-	pastMedianTime    time.Time
-	pastMedianTimeErr error
-}
-
-// Best returns the block hash and height known for the tip of the best known
-// chain.
-//
-// This function is safe for concurrent access.
-func (c *chainState) Best() (*chainhash.Hash, uint32) {
-	c.Lock()
-	defer c.Unlock()
-
-	return c.newestHash, c.newestHeight
-}
-
 // blockManager provides a concurrency safe block manager for handling all
 // incoming blocks.
 type blockManager struct {
@@ -157,23 +131,8 @@ type blockManager struct {
 	processingReqs    bool
 	syncPeer          *serverPeer
 	msgChan           chan interface{}
-	chainState        chainState
 	wg                sync.WaitGroup
 	quit              chan struct{}
-}
-
-// updateChainState updates the chain state associated with the block manager.
-// This allows fast access to chain information since btcchain is currently not
-// safe for concurrent access and the block manager is typically quite busy
-// processing block and inventory.
-func (b *blockManager) updateChainState(newestHash *chainhash.Hash, newestHeight uint32) {
-	b.chainState.Lock()
-	defer b.chainState.Unlock()
-
-	b.chainState.newestHash = newestHash
-	b.chainState.newestHeight = newestHeight
-	b.chainState.pastMedianTime = b.chain.BestSnapshot().MedianTime
-	b.chainState.pastMedianTimeErr = nil
 }
 
 // startSync will choose the best peer among the available candidate peers to
@@ -494,14 +453,9 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 		// update the chain state.
 		b.progressLogger.LogBlockHeight(bmsg.block)
 
-		// Query the chain for the latest best block since the block
-		// that was processed could be on a side chain or have caused
-		// a reorg.
-		best := b.chain.BestSnapshot()
-		b.updateChainState(best.Hash, best.Height)
-
 		// Update this peer's latest block height, for future
 		// potential sync node candidacy.
+		best := b.chain.BestSnapshot()
 		heightUpdate = best.Height
 		blkHashUpdate = best.Hash
 
@@ -782,12 +736,6 @@ out:
 					}
 				}
 
-				// Query the chain for the latest best block
-				// since the block that was processed could be
-				// on a side chain or have caused a reorg.
-				best := b.chain.BestSnapshot()
-				b.updateChainState(best.Hash, best.Height)
-
 				// Allow any clients performing long polling via the
 				// getblocktemplate RPC to be notified when the new block causes
 				// their old block template to become stale.
@@ -1050,11 +998,6 @@ func newBlockManager(s *server, indexManager blockchain.IndexManager) (*blockMan
 	if err != nil {
 		return nil, err
 	}
-	best := bm.chain.BestSnapshot()
-
-	// Initialize the chain state now that the initial block node index has
-	// been generated.
-	bm.updateChainState(best.Hash, best.Height)
 
 	return &bm, nil
 }

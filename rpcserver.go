@@ -1493,7 +1493,7 @@ func (state *gbtWorkState) updateBlockTemplate(s *rpcServer, useCoinbaseValue bo
 	// generated.
 	var msgBlock *wire.MsgBlock
 	var targetDifficulty string
-	latestHash, _ := s.server.blockManager.chainState.Best()
+	latestHash := s.server.blockManager.chain.BestSnapshot().Hash
 	template := state.template
 	if template == nil || state.prevHash == nil ||
 		!state.prevHash.IsEqual(latestHash) ||
@@ -1532,12 +1532,8 @@ func (state *gbtWorkState) updateBlockTemplate(s *rpcServer, useCoinbaseValue bo
 		// Find the minimum allowed timestamp for the block based on the
 		// median timestamp of the last several blocks per the chain
 		// consensus rules.
-		chainState := &s.server.blockManager.chainState
-		minTimestamp, err := minimumMedianTime(chainState)
-		if err != nil {
-			context := "Failed to get minimum median time"
-			return internalRPCError(err.Error(), context)
-		}
+		best := s.server.blockManager.chain.BestSnapshot()
+		minTimestamp := minimumMedianTime(best)
 
 		// Update work state to ensure another block template isn't
 		// generated until needed.
@@ -1890,7 +1886,7 @@ func handleGetBlockTemplateRequest(s *rpcServer, request *btcjson.TemplateReques
 	}
 
 	// No point in generating or accepting work before the chain is synced.
-	_, currentHeight := s.server.blockManager.chainState.Best()
+	currentHeight := s.server.blockManager.chain.BestSnapshot().Height
 	if currentHeight != 0 && !s.server.blockManager.IsCurrent() {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCClientInInitialDownload,
@@ -2063,7 +2059,7 @@ func handleGetBlockTemplateProposal(s *rpcServer, request *btcjson.TemplateReque
 	block := provautil.NewBlock(&msgBlock)
 
 	// Ensure the block is building from the expected previous block.
-	expectedPrevHash, _ := s.server.blockManager.chainState.Best()
+	expectedPrevHash := s.server.blockManager.chain.BestSnapshot().Hash
 	prevHash := &block.MsgBlock().Header.PrevBlock
 	if expectedPrevHash == nil || !expectedPrevHash.IsEqual(prevHash) {
 		return "bad-prevblk", nil
@@ -2681,7 +2677,8 @@ func handleGetWorkRequest(s *rpcServer) (interface{}, error) {
 	// and it has been at least one minute since the last template was
 	// generated.
 	lastTxUpdate := s.server.txMemPool.LastUpdated()
-	latestHash, _ := s.server.blockManager.chainState.Best()
+	best := s.server.blockManager.chain.BestSnapshot()
+	latestHash := best.Hash
 	msgBlock := state.msgBlock
 	if msgBlock == nil || state.prevHash == nil ||
 		!state.prevHash.IsEqual(latestHash) ||
@@ -2896,7 +2893,7 @@ func handleGetWorkSubmission(s *rpcServer, hexData string) (interface{}, error) 
 		return false, nil
 	}
 
-	latestHash, _ := s.server.blockManager.chainState.Best()
+	latestHash := s.server.blockManager.chain.BestSnapshot().Hash
 	if !msgBlock.Header.PrevBlock.IsEqual(latestHash) {
 		rpcsLog.Debugf("Block submitted via getwork with previous "+
 			"block %s is stale", msgBlock.Header.PrevBlock)
@@ -2948,7 +2945,7 @@ func handleGetWork(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (in
 	}
 
 	// No point in generating or accepting work before the chain is synced.
-	_, currentHeight := s.server.blockManager.chainState.Best()
+	currentHeight := s.server.blockManager.chain.BestSnapshot().Height
 	if currentHeight != 0 && !s.server.blockManager.IsCurrent() {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCClientInInitialDownload,
