@@ -18,6 +18,7 @@ import (
 
 	"github.com/bitgo/prova/blockchain"
 	"github.com/bitgo/prova/btcec"
+	"github.com/bitgo/prova/chaincfg"
 	"github.com/bitgo/prova/chaincfg/chainhash"
 	"github.com/bitgo/prova/provautil"
 	"github.com/bitgo/prova/wire"
@@ -50,6 +51,50 @@ var (
 	defaultNumWorkers = uint32(runtime.NumCPU())
 )
 
+// cpuminerConfig is a descriptor containing the cpu miner configuration.
+type cpuminerConfig struct {
+	// ChainParams identifies which chain parameters the cpu miner is
+	// associated with.
+	ChainParams *chaincfg.Params
+
+	// BlockTemplateGenerator identifies the instance to use in order to
+	// generate block templates that the miner will attempt to solve.
+	BlockTemplateGenerator *BlkTmplGenerator
+
+	// MiningAddrs is a list of payment addresses to use for the generated
+	// blocks.  Each generated block will randomly choose one of them.
+	MiningAddrs []provautil.Address
+
+	// ProcessBlock defines the function to call with any solved blocks.
+	// It typically must run the provided block through the same set of
+	// rules and handling as any other block coming from the network.
+	ProcessBlock func(*provautil.Block, blockchain.BehaviorFlags) (bool, error)
+
+	// ConnectedCount defines the function to use to obtain how many other
+	// peers the server is connected to.  This is used by the automatic
+	// persistent mining routine to determine whether or it should attempt
+	// mining.  This is useful because there is no point in mining when not
+	// connected to any peers since there would no be anyone to send any
+	// found blocks to.
+	ConnectedCount func() int32
+
+	// IsCurrent defines the function to use to obtain whether or not the
+	// block chain is current.  This is used by the automatic persistent
+	// mining routine to determine whether or it should attempt mining.
+	// This is useful because there is no point in mining if the chain is
+	// not current since any solved blocks would be on a side chain and and
+	// up orphaned anyways.
+	IsCurrent func() bool
+
+	// IsValidateKeyRateLimited defines the function to use to determine
+	// whether or not a validate key is rate limited.
+	IsValidateKeyRateLimited func(validatePubKey wire.BlockValidatingPubKey) (bool, error)
+
+	// AdminKeySets defines the function to use to retrieve the
+	// admin key sets
+	AdminKeySets func() map[btcec.KeySetType]btcec.PublicKeySet
+}
+
 // CPUMiner provides facilities for solving blocks (mining) using the CPU in
 // a concurrency-safe manner.  It consists of two main goroutines -- a speed
 // monitor and a controller for worker goroutines which generate and solve
@@ -59,7 +104,7 @@ var (
 type CPUMiner struct {
 	sync.Mutex
 	g                 *BlkTmplGenerator
-	server            *server
+	cfg               cpuminerConfig
 	numWorkers        uint32
 	validateKeys      []*btcec.PrivateKey
 	started           bool
@@ -262,16 +307,13 @@ out:
 			// Non-blocking select to fall through
 		}
 
-		// TODO(prova): re-enable later, this cuts off mining when
-		// no other peers are present.
-		//
 		// Wait until there is a connection to at least one other peer
 		// since there is no way to relay a found block or receive
 		// transactions to work on when there are no connected peers.
-		// if m.server.ConnectedCount() == 0 {
-		// 	time.Sleep(time.Second)
-		// 	continue
-		// }
+		if m.cfg.ConnectedCount() == 0 {
+			time.Sleep(time.Second)
+			continue
+		}
 
 		// No point in searching for a solution before the chain is
 		// synced.  Also, grab the same lock as used for block
@@ -288,7 +330,7 @@ out:
 
 		// Choose a payment address at random.
 		rand.Seed(time.Now().UnixNano())
-		payToAddr := cfg.miningAddrs[rand.Intn(len(cfg.miningAddrs))]
+		payToAddr := m.cfg.MiningAddrs[rand.Intn(len(m.cfg.MiningAddrs))]
 
 		// Confirm that validate keys are present.
 		if len(m.validateKeys) == 0 {
@@ -317,7 +359,7 @@ out:
 		for _, privKey := range m.validateKeys {
 			var validatePubKey wire.BlockValidatingPubKey
 			copy(validatePubKey[:wire.BlockValidatingPubKeySize], privKey.PubKey().SerializeCompressed()[:wire.BlockValidatingPubKeySize])
-			isRateLimited, validateKeyErr := m.server.blockManager.chain.IsValidateKeyRateLimited(validatePubKey)
+			isRateLimited, validateKeyErr := m.cfg.IsValidateKeyRateLimited(validatePubKey)
 			if validateKeyErr != nil || isRateLimited {
 				continue
 			}
@@ -371,7 +413,7 @@ out:
 // detectInvalidValidateKey determines if there is an invalid validate key in
 // the miner's validate key set.  If there is an invalid key, it is returned.
 func (m *CPUMiner) detectInvalidValidateKey() *btcec.PublicKey {
-	adminKeySets := m.server.blockManager.chain.AdminKeySets()
+	adminKeySets := m.cfg.AdminKeySets()
 	validateKeySet := adminKeySets[btcec.ValidateKeySet]
 	for _, validateKey := range m.validateKeys {
 		if validateKeySet.Pos(validateKey.PubKey()) == -1 {
@@ -610,10 +652,10 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 	m.Lock()
 
 	// Respond with an error if there's virtually 0 chance of CPU-mining a block.
-	if !m.server.chainParams.GenerateSupported {
+	if !m.cfg.ChainParams.GenerateSupported {
 		m.Unlock()
 		return nil, errors.New("No support for `generate` on the current " +
-			"network, " + m.server.chainParams.Net.String() +
+			"network, " + m.cfg.ChainParams.Net.String() +
 			", as it's unlikely to be possible to CPU-mine a block.")
 	}
 
@@ -660,7 +702,7 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 
 		// Choose a payment address at random.
 		rand.Seed(time.Now().UnixNano())
-		payToAddr := cfg.miningAddrs[rand.Intn(len(cfg.miningAddrs))]
+		payToAddr := m.cfg.MiningAddrs[rand.Intn(len(m.cfg.MiningAddrs))]
 
 		// Choose a validate key at random.
 		validateKeys := m.ValidateKeys()
@@ -704,10 +746,10 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 // newCPUMiner returns a new instance of a CPU miner for the provided server.
 // Use Start to begin the mining process.  See the documentation for CPUMiner
 // type for more details.
-func newCPUMiner(generator *BlkTmplGenerator, s *server) *CPUMiner {
+func newCPUMiner(cfg *cpuminerConfig) *CPUMiner {
 	return &CPUMiner{
-		g:                 generator,
-		server:            s,
+		g:                 cfg.BlockTemplateGenerator,
+		cfg:               *cfg,
 		numWorkers:        defaultNumWorkers,
 		updateNumWorkers:  make(chan struct{}),
 		queryHashesPerSec: make(chan float64),
