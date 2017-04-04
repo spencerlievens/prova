@@ -6,6 +6,7 @@
 package blockchain
 
 import (
+	"bytes"
 	"github.com/bitgo/prova/btcec"
 	"github.com/bitgo/prova/provautil"
 	"github.com/bitgo/prova/txscript"
@@ -99,6 +100,8 @@ func (view *KeyViewpoint) LookupKeyIDs(keyIDs []btcec.KeyID) map[btcec.KeyID][]b
 		pubKey := view.aspKeyIdMap[keyID]
 		if pubKey != nil {
 			keyIdMap[keyID] = provautil.Hash160(pubKey.SerializeCompressed())
+		} else {
+			keyIdMap[keyID] = bytes.Repeat([]byte{0x00}, 20)
 		}
 	}
 	return keyIdMap

@@ -424,6 +424,66 @@ func changeCoinbaseValue(delta int64) func(*wire.MsgBlock) {
 	}
 }
 
+func makeAddr(priv *btcec.PrivateKey, kids *[2]uint) provautil.Address {
+	// Create an Prova address that has:
+	//   - a random pkHash address, so transaction hashes don't collide
+	//   - has keyId1 and keyId2, so it can be spend by always the same
+	//      private keys defined for this test suite
+	pkHash := make([]byte, 20)
+	rand.Read(pkHash)
+	if priv != nil {
+		pub := (*btcec.PublicKey)(&priv.PublicKey)
+		pkHash = provautil.Hash160(pub.SerializeCompressed())
+	}
+	keyIDs := []btcec.KeyID{keyId1, keyId2}
+	if kids != nil {
+		keyIDs[0] = btcec.KeyID(kids[0])
+		keyIDs[1] = btcec.KeyID(kids[1])
+	}
+	addr, _ := provautil.NewAddressProva(pkHash, keyIDs, &chaincfg.RegressionNetParams)
+	return addr
+}
+
+type ProvaOut struct {
+	amount provautil.Amount
+	addr   string
+}
+
+func createProvaSpendTx(spend *spendableOut, outs []ProvaOut, priv *btcec.PrivateKey) *wire.MsgTx {
+	spendTx := wire.NewMsgTx()
+
+	spendTx.AddTxIn(&wire.TxIn{
+		PreviousOutPoint: spend.prevOut,
+		Sequence:         wire.MaxTxInSequenceNum,
+		SignatureScript:  nil,
+	})
+
+	for _, out := range outs {
+		addr, _ := provautil.DecodeAddress(out.addr, &chaincfg.RegressionNetParams)
+		scriptPkScript, _ := txscript.PayToAddrScript(addr)
+		spendTx.AddTxOut(wire.NewTxOut(int64(out.amount), scriptPkScript))
+	}
+
+	privKeys := []txscript.PrivateKey{
+		txscript.PrivateKey{privKey1, true},
+		txscript.PrivateKey{privKey2, true},
+	}
+	if priv != nil {
+		privKeys[1] = txscript.PrivateKey{priv, true}
+	}
+	lookupKeyFunc := func(a provautil.Address) ([]txscript.PrivateKey, error) {
+		return privKeys, nil
+	}
+
+	// Use Account Service Key and Account Recovery Key to sign tx.
+	sigScript, _ := txscript.SignTxOutput(&chaincfg.RegressionNetParams, spendTx,
+		0, int64(spend.amount), spend.pkScript, txscript.SigHashAll, txscript.KeyClosure(lookupKeyFunc), nil)
+
+	spendTx.TxIn[0].SignatureScript = sigScript
+
+	return spendTx
+}
+
 // createSpendTx creates a transaction that spends from the provided spendable
 // output and includes an additional unique OP_RETURN output to ensure the
 // transaction ends up with a unique hash.  The script is a simple OP_TRUE
@@ -438,14 +498,7 @@ func createSpendTx(spend *spendableOut, fee provautil.Amount) *wire.MsgTx {
 		SignatureScript:  nil,
 	})
 
-	// Create an Prova address that has:
-	//   - a random pkHash address, so transaction hashes don't collide
-	//   - has keyId1 and keyId2, so it can be spend by always the same
-	//      private keys defined for this test suite
-	pkHash := make([]byte, 20)
-	rand.Read(pkHash)
-	addr, _ := provautil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
-	scriptPkScript, _ := txscript.PayToAddrScript(addr)
+	scriptPkScript, _ := txscript.PayToAddrScript(makeAddr(nil, nil))
 	spendTx.AddTxOut(wire.NewTxOut(int64(spend.amount-fee), scriptPkScript))
 
 	// Use Account Service Key and Account Recovery Key to sign tx.
@@ -522,11 +575,7 @@ func createIssueTx(thread *spendableOut, value int64, spend *spendableOut) *wire
 	// thread output
 	spendTx.AddTxOut(wire.NewTxOut(int64(0), provaThreadScript(provautil.IssueThread)))
 	if spend == nil {
-		// issue some tokens: create a prova output
-		pkHash := make([]byte, 20)
-		rand.Read(pkHash)
-		addr, _ := provautil.NewAddressProva(pkHash, []btcec.KeyID{keyId1, keyId2}, &chaincfg.RegressionNetParams)
-		scriptPkScript, _ := txscript.PayToAddrScript(addr)
+		scriptPkScript, _ := txscript.PayToAddrScript(makeAddr(nil, nil))
 		spendTx.AddTxOut(wire.NewTxOut(value, scriptPkScript))
 	} else {
 		// destroy some tokens:
@@ -987,63 +1036,84 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	assertASPKey(pubKey1, btcec.KeyID(6))
 	accepted()
 
-	g.nextBlock("b19", nil)
+	// spend some coins to keyID 4
+	coinsToSpend := makeSpendableOutForTx(issueTx, 1)
+	spendTx := createProvaSpendTx(&coinsToSpend, []ProvaOut{
+		{4000000000, makeAddr(privKey3, &[2]uint{2, 4}).String()},
+		{4000000000, makeAddr(nil, nil).String()},
+	}, nil)
+	g.nextBlock("b19", nil, additionalTx(spendTx))
+	accepted()
+
+	// revoke keyID 4
+	provThreadOut = makeSpendableOutForTx(aspKeyIdTx2, 0)
+	aspKeyIdTx = createASPAdminTx(&provThreadOut, []AspOp{{txscript.AdminOpASPKeyRevoke, pubKey2, btcec.KeyID(4)}})
+	g.nextBlock("b20", nil, additionalTx(aspKeyIdTx))
+	assertNotASPKey(pubKey2, btcec.KeyID(4))
+	accepted()
+
+	// send coins with recovery key
+	coinsToSpend = makeSpendableOutForTx(spendTx, 0)
+	reSpendTx := createProvaSpendTx(&coinsToSpend, []ProvaOut{
+		{4000000000, makeAddr(nil, nil).String()},
+	}, privKey3)
+	g.nextBlock("b21", nil, additionalTx(reSpendTx))
 	accepted()
 
 	// ---------------------------------------------------------------------
 	// Basic forking and reorg tests.
 	// ---------------------------------------------------------------------
 	//
-	//   ... -> b20(8) -> b21()
+	//   ... -> b22(8) -> b23()
 	//
-	// A new key will be provisioned in b21, then the operation will be
+	// A new key will be provisioned in b23, then the operation will be
 	// reorged away.
 
-	g.nextBlock("b20", outs[8])
+	g.nextBlock("b22", outs[8])
 	accepted()
 
 	adminKeyAddTx := createAdminTx(&rootThreadOut, 0, txscript.AdminOpIssueKeyAdd, pubKey1)
 	rootThreadOutFork := makeSpendableOutForTx(adminKeyAddTx, 0)
-	g.nextBlock("b21", nil, additionalTx(adminKeyAddTx))
+	g.nextBlock("b23", nil, additionalTx(adminKeyAddTx))
 	assertThreadTip(provautil.RootThread, rootThreadOutFork)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1})
 	accepted()
 
-	// Create a fork from b9.  There should not be a reorg since b10 was seen
+	// Create a fork from b20.  There should not be a reorg since b10 was seen
 	// first.
 	//
-	//   ... -> b20(8) -> b21(9)
-	//                \-> b22(9)
-	g.setTip("b20")
-	g.nextBlock("b22", outs[9])
+	//   ... -> b22(8) -> b23(9)
+	//                \-> b24(9)
+	g.setTip("b22")
+	g.nextBlock("b24", outs[9])
 	// blocks on sidechains are not validated for utxos or keysets yet
-	acceptedToSideChainWithExpectedTip("b21")
+	acceptedToSideChainWithExpectedTip("b23")
 
-	// Extend b11 fork to make the alternative chain longer and force reorg.
+	// Extend b24 fork to make the alternative chain longer and force reorg.
 	//
-	//   ... -> b20(8) -> b21(9)
-	//                \-> b22(9) -> b23(10)
+	//   ... -> b22(8) -> b23(9)
+	//                \-> b24(9) -> b25(10)
 	//
-	// The reorg should revent the provisioning of an ISSUE key in b21.
-	g.nextBlock("b23", outs[10])
+	// The reorg should revent the provisioning of an ISSUE key in b23.
+	g.nextBlock("b25", outs[10])
 	assertThreadTip(provautil.RootThread, rootThreadOut)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2}) // The genesis admin state is valid.
 	accepted()
 
-	// Extend b2 fork twice to make first chain longer and force reorg.
+	// Extend b23 fork twice to make first chain longer and force reorg.
 	//
-	//   ... -> b20(8) -> b21(9) -> b24(10) -> b25(11)
-	//                \-> b22(9) -> b23(10)
+	//   ... -> b22(8) -> b23(9) -> b26(10) -> b27(11)
+	//                \-> b24(9) -> b25(10)
 	//
 	// key provisioned in b10 will be back in admin set.
 	//
-	g.setTip("b21")
-	g.nextBlock("b24", outs[10])
+	g.setTip("b23")
+	g.nextBlock("b26", outs[10])
 	// blocks for sidechains don't validate utxos or keysets yet
-	acceptedToSideChainWithExpectedTip("b23")
+	acceptedToSideChainWithExpectedTip("b25")
 
 	// key is active again.
-	g.nextBlock("b25", outs[11])
+	g.nextBlock("b27", outs[11])
 	assertThreadTip(provautil.RootThread, rootThreadOutFork)
 	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1})
 	accepted()
@@ -1054,31 +1124,31 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 
 	// Create a fork that double spends.
 	//
-	//   ... -> b20(8) -> b21(9) -> b24(10) -> b25(11)
-	//                                    \-> b26(10) -> b27(12)
-	//                \-> b22(9) -> b23(10)
+	//   ... -> b22(8) -> b23(9) -> b26(10) -> b27(11)
+	//                                    \-> b28(10) -> b29(12)
+	//                \-> b24(9) -> b25(10)
 	//
-	g.setTip("b24")
-	g.nextBlock("b26", outs[10])
+	g.setTip("b26")
+	g.nextBlock("b28", outs[10])
 	// blocks on sidechains are not validated for utxos or keysets yet
-	acceptedToSideChainWithExpectedTip("b25")
+	acceptedToSideChainWithExpectedTip("b27")
 
-	g.nextBlock("b27", outs[12])
+	g.nextBlock("b29", outs[12])
 	rejected(blockchain.ErrMissingTx) // now doublespend recognized.
 
 	// ---------------------------------------------------------------------
 	// Coinbase reward tests.
 	// ---------------------------------------------------------------------
 
-	// Attempt to progress the chain past b25 with bad coinbase fee blocks.
-	g.setTip("b25")
-	issuedCoinsSpend := makeSpendableOutForTx(issueTx, 1)
+	// Attempt to progress the chain past b27 with bad coinbase fee blocks.
+	g.setTip("b27")
+	issuedCoinsSpend := makeSpendableOutForTx(spendTx, 1)
 	createSpendTx := createSpendTx(&issuedCoinsSpend, 1) // Fee: 1
-	g.nextBlock("b28", outs[12], additionalTx(createSpendTx), changeCoinbaseValue(0))
+	g.nextBlock("b30", outs[12], additionalTx(createSpendTx), changeCoinbaseValue(0))
 	rejected(blockchain.ErrBadCoinbaseValue)
 
-	g.setTip("b25")
-	g.nextBlock("b29", outs[12], changeCoinbaseValue(1))
+	g.setTip("b27")
+	g.nextBlock("b31", outs[12], changeCoinbaseValue(1))
 	rejected(blockchain.ErrBadCoinbaseValue)
 
 	return tests, nil
