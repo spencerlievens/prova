@@ -643,10 +643,11 @@ func (mp *TxPool) maybeAcceptTransaction(tx *provautil.Tx, isNew, rateLimit bool
 	bestHeight := mp.cfg.BestHeight()
 	nextBlockHeight := bestHeight + 1
 
+	medianTimePast := mp.cfg.MedianTimePast()
+
 	// Don't allow non-standard transactions if the network parameters
 	// forbid their acceptance.
 	if !mp.cfg.Policy.AcceptNonStd {
-		medianTimePast := mp.cfg.MedianTimePast()
 		err = checkTransactionStandard(tx, nextBlockHeight,
 			medianTimePast, mp.cfg.Policy.MinRelayTxFee)
 		if err != nil {
@@ -722,6 +723,22 @@ func (mp *TxPool) maybeAcceptTransaction(tx *provautil.Tx, isNew, rateLimit bool
 	}
 	if len(missingParents) > 0 {
 		return missingParents, nil
+	}
+
+	// Don't allow the transaction into the mempool unless its sequence
+	// lock is active, meaning that it'll be allowed into the next block
+	// with respect to its defined relative lock times.
+	sequenceLock, err := mp.cfg.CalcSequenceLock(tx, utxoView)
+	if err != nil {
+		if cerr, ok := err.(blockchain.RuleError); ok {
+			return nil, chainRuleError(cerr)
+		}
+		return nil, err
+	}
+	if !blockchain.SequenceLockActive(sequenceLock, int32(nextBlockHeight),
+		medianTimePast) {
+		return nil, txRuleError(wire.RejectNonstandard,
+			"transaction's sequence locks on inputs not met")
 	}
 
 	// Perform several checks on the transaction inputs using the invariant

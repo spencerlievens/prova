@@ -530,7 +530,6 @@ mempoolLoop:
 		}
 		if !blockchain.IsFinalizedTransaction(tx, nextBlockHeight,
 			timeSource.AdjustedTime()) {
-
 			minrLog.Tracef("Skipping non-finalized tx %s", tx.Hash())
 			continue
 		}
