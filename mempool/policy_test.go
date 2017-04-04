@@ -7,6 +7,7 @@ package mempool
 
 import (
 	"bytes"
+
 	"github.com/bitgo/prova/blockchain"
 	"github.com/bitgo/prova/btcec"
 	"github.com/bitgo/prova/chaincfg"
@@ -15,6 +16,7 @@ import (
 	"github.com/bitgo/prova/txscript"
 	"github.com/bitgo/prova/wire"
 	"testing"
+	"time"
 )
 
 // TestCalcMinRequiredTxRelayFee tests the calcMinRequiredTxRelayFee API.
@@ -587,11 +589,11 @@ func TestCheckTransactionStandard(t *testing.T) {
 		},
 	}
 
-	timeSource := blockchain.NewMedianTime()
+	pastMedianTime := time.Now()
 	for _, test := range tests {
 		// Ensure standardness is as expected.
 		err := checkTransactionStandard(provautil.NewTx(&test.tx),
-			test.height, timeSource, DefaultMinRelayTxFee)
+			test.height, pastMedianTime, DefaultMinRelayTxFee)
 		if err == nil && test.isStandard {
 			// Test passes since function returned standard for a
 			// transaction which is intended to be standard.

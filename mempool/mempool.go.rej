@@ -1,0 +1,11 @@
+diff a/mempool/mempool.go b/mempool/mempool.go	(rejected hunks)
+@@ -67,9 +67,6 @@ type Config struct {
+ 	// SigCache defines a signature cache to use.
+ 	SigCache *txscript.SigCache
+ 
+-	// TimeSource defines the timesource to use.
+-	TimeSource blockchain.MedianTimeSource
+-
+ 	// AddrIndex defines the optional address index instance to use for
+ 	// indexing the unconfirmed transactions in the memory pool.
+ 	// This can be nil if the address index is not enabled.

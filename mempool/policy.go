@@ -7,6 +7,7 @@ package mempool
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/bitgo/prova/blockchain"
 	"github.com/bitgo/prova/provautil"
@@ -336,7 +337,7 @@ func isDust(txOut *wire.TxOut, minRelayTxFee provautil.Amount) bool {
 // TODO(prova): Notice that this code is a dupclicate of transaction
 // validation code in CheckTransactionSanity() of validate.go
 // TODO(prova): extract functionality into admin tx validator.
-func checkTransactionStandard(tx *provautil.Tx, height uint32, timeSource blockchain.MedianTimeSource, minRelayTxFee provautil.Amount) error {
+func checkTransactionStandard(tx *provautil.Tx, height uint32, medianTimePast time.Time, minRelayTxFee provautil.Amount) error {
 	// The transaction must be a currently supported version.
 	msgTx := tx.MsgTx()
 	if msgTx.Version > wire.TxVersion || msgTx.Version < 1 {
@@ -348,8 +349,7 @@ func checkTransactionStandard(tx *provautil.Tx, height uint32, timeSource blockc
 
 	// The transaction must be finalized to be standard and therefore
 	// considered for inclusion in a block.
-	adjustedTime := timeSource.AdjustedTime()
-	if !blockchain.IsFinalizedTransaction(tx, height, adjustedTime) {
+	if !blockchain.IsFinalizedTransaction(tx, height, medianTimePast) {
 		return txRuleError(wire.RejectNonstandard,
 			"transaction is not finalized")
 	}
