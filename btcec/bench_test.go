@@ -21,7 +21,7 @@ func BenchmarkAddJacobian(b *testing.B) {
 	curve := S256()
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		curve.TstAddJacobian(x1, y1, z1, x2, y2, z2, x3, y3, z3)
+		curve.addJacobian(x1, y1, z1, x2, y2, z2, x3, y3, z3)
 	}
 }
 
@@ -40,7 +40,7 @@ func BenchmarkAddJacobianNotZOne(b *testing.B) {
 	curve := S256()
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		curve.TstAddJacobian(x1, y1, z1, x2, y2, z2, x3, y3, z3)
+		curve.addJacobian(x1, y1, z1, x2, y2, z2, x3, y3, z3)
 	}
 }
 
