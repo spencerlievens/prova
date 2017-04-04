@@ -36,10 +36,6 @@ const (
 	// transaction to be considered high priority.
 	MinHighPriority = 0.0
 
-	// mempoolHeight is the height used for the "block" height field of the
-	// contextual transaction information provided in a transaction view.
-	mempoolHeight = 0x7fffffff
-
 	// orphanTTL is the maximum amount of time an orphan is allowed to
 	// stay in the orphan pool before it expires and is evicted during the
 	// next scan.
@@ -513,7 +509,7 @@ func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *provaut
 			Height: height,
 			Fee:    fee,
 		},
-		StartingPriority: CalcPriority(tx.MsgTx(), utxoView, height),
+		StartingPriority: mining.CalcPriority(tx.MsgTx(), utxoView, height),
 	}
 	for _, txIn := range tx.MsgTx().TxIn {
 		mp.outpoints[txIn.PreviousOutPoint] = tx
@@ -565,7 +561,7 @@ func (mp *TxPool) fetchInputUtxos(tx *provautil.Tx) (*blockchain.UtxoViewpoint, 
 		}
 
 		if poolTxDesc, exists := mp.pool[originHash]; exists {
-			utxoView.AddTxOuts(poolTxDesc.Tx, mempoolHeight)
+			utxoView.AddTxOuts(poolTxDesc.Tx, mining.UnminedHeight)
 		}
 	}
 	return utxoView, nil
@@ -811,7 +807,7 @@ func (mp *TxPool) maybeAcceptTransaction(tx *provautil.Tx, isNew, rateLimit bool
 	// memory pool from blocks that have been disconnected during a reorg
 	// are exempted.
 	if isNew && !mp.cfg.Policy.DisableRelayPriority && txFee < minFee {
-		currentPriority := CalcPriority(tx.MsgTx(), utxoView,
+		currentPriority := mining.CalcPriority(tx.MsgTx(), utxoView,
 			nextBlockHeight)
 		if currentPriority <= MinHighPriority {
 			str := fmt.Sprintf("transaction %v has insufficient "+
@@ -1139,7 +1135,7 @@ func (mp *TxPool) RawMempoolVerbose() map[string]*btcjson.GetRawMempoolVerboseRe
 		var currentPriority float64
 		utxos, err := mp.fetchInputUtxos(tx)
 		if err == nil {
-			currentPriority = CalcPriority(tx.MsgTx(), utxos,
+			currentPriority = mining.CalcPriority(tx.MsgTx(), utxos,
 				bestHeight+1)
 		}
 
