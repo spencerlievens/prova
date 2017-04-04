@@ -346,6 +346,42 @@ func medianAdjustedTime(chainState *blockchain.BestState, timeSource blockchain.
 	return newTimestamp
 }
 
+// BlkTmplGenerator provides a type that can be used to generate block templates
+// based on a given mining policy and source of transactions to choose from.
+// It also houses additional state required in order to ensure the templates
+// are built on top of the current best chain and adhere to the consensus rules.
+//
+// See the NewBlockTemplate method for a detailed description of how the block
+// template is generated.
+type BlkTmplGenerator struct {
+	policy       *mining.Policy
+	txSource     mining.TxSource
+	sigCache     *txscript.SigCache
+	hashCache    *txscript.HashCache
+	blockManager *blockManager
+	timeSource   blockchain.MedianTimeSource
+}
+
+// newBlkTmplGenerator returns a new block template generator for the given
+// policy using transactions from the provided transaction source.
+//
+// The additional state-related fields are required in order to ensure the
+// templates are built on top of the current best chain and adhere to the
+// consensus rules.
+func newBlkTmplGenerator(policy *mining.Policy, txSource mining.TxSource,
+	timeSource blockchain.MedianTimeSource, sigCache *txscript.SigCache,
+	hashCache *txscript.HashCache, blockManager *blockManager) *BlkTmplGenerator {
+
+	return &BlkTmplGenerator{
+		policy:       policy,
+		txSource:     txSource,
+		sigCache:     sigCache,
+		hashCache:    hashCache,
+		blockManager: blockManager,
+		timeSource:   timeSource,
+	}
+}
+
 // NewBlockTemplate returns a new block template that is ready to be solved
 // using the transactions from the passed transaction source pool and a coinbase
 // that either pays to the passed address if it is not nil, or a coinbase that
@@ -408,10 +444,13 @@ func medianAdjustedTime(chainState *blockchain.BestState, timeSource blockchain.
 //  |  transactions (while block size   |   |
 //  |  <= policy.BlockMinSize)          |   |
 //   -----------------------------------  --
-func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress provautil.Address, validateKey *btcec.PrivateKey) (*BlockTemplate, error) {
-	var txSource mining.TxSource = server.txMemPool
-	blockManager := server.blockManager
-	timeSource := server.timeSource
+func (g *BlkTmplGenerator) NewBlockTemplate(payToAddress provautil.Address, validateKey *btcec.PrivateKey) (*BlockTemplate, error) {
+	// Locals for faster access.
+	policy := g.policy
+	blockManager := g.blockManager
+	timeSource := g.timeSource
+	sigCache := g.sigCache
+	hashCache := g.hashCache
 
 	// Extend the most recently known best block.
 	best := blockManager.chain.BestSnapshot()
@@ -443,7 +482,7 @@ func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress provau
 	// number of items that are available for the priority queue.  Also,
 	// choose the initial sort order for the priority queue based on whether
 	// or not there is an area allocated for high-priority transactions.
-	sourceTxns := txSource.MiningDescs()
+	sourceTxns := g.txSource.MiningDescs()
 	sortedByFee := policy.BlockPrioritySize == 0
 	priorityQueue := newTxPriorityQueue(len(sourceTxns), sortedByFee)
 
@@ -517,7 +556,7 @@ mempoolLoop:
 			originIndex := txIn.PreviousOutPoint.Index
 			utxoEntry := utxos.LookupEntry(originHash)
 			if utxoEntry == nil || utxoEntry.IsOutputSpent(originIndex) {
-				if !txSource.HaveTransaction(originHash) {
+				if !g.txSource.HaveTransaction(originHash) {
 					minrLog.Tracef("Skipping tx %s because "+
 						"it references unspent output "+
 						"%s which is not available",
@@ -693,7 +732,7 @@ mempoolLoop:
 		}
 
 		err = blockchain.ValidateTransactionScripts(tx, blockUtxos, keyView,
-			txscript.StandardVerifyFlags, server.sigCache, server.hashCache)
+			txscript.StandardVerifyFlags, sigCache, hashCache)
 		if err != nil {
 			minrLog.Tracef("Skipping tx %s due to error in "+
 				"ValidateTransactionScripts: %v", tx.Hash(), err)
@@ -814,14 +853,14 @@ mempoolLoop:
 // consensus rules.  Finally, it will update the target difficulty if needed
 // based on the new time for the test networks since their target difficulty can
 // change based upon time.
-func UpdateBlockTime(msgBlock *wire.MsgBlock, bManager *blockManager,
+func (g *BlkTmplGenerator) UpdateBlockTime(msgBlock *wire.MsgBlock,
 	validateKey *btcec.PrivateKey) error {
 
 	// The new timestamp is potentially adjusted to ensure it comes after
 	// the median time of the last several blocks per the chain consensus
 	// rules.
-	best := bManager.chain.BestSnapshot()
-	newTimestamp := medianAdjustedTime(best, bManager.server.timeSource)
+	best := g.blockManager.chain.BestSnapshot()
+	newTimestamp := medianAdjustedTime(best, g.timeSource)
 	msgBlock.Header.Timestamp = newTimestamp
 
 	// Re-sign the block, since we updated the block time

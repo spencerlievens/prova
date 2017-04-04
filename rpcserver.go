@@ -22,7 +22,6 @@ import (
 	"github.com/bitgo/prova/chaincfg/chainhash"
 	"github.com/bitgo/prova/database"
 	"github.com/bitgo/prova/mempool"
-	"github.com/bitgo/prova/mining"
 	"github.com/bitgo/prova/provautil"
 	"github.com/bitgo/prova/txscript"
 	"github.com/bitgo/prova/wire"
@@ -1519,7 +1518,7 @@ func (state *gbtWorkState) updateBlockTemplate(s *rpcServer, useCoinbaseValue bo
 		// block template doesn't include the coinbase, so the caller
 		// will ultimately create their own coinbase which pays to the
 		// appropriate address(es).
-		blkTemplate, err := NewBlockTemplate(s.policy, s.server, payAddr, nil)
+		blkTemplate, err := s.generator.NewBlockTemplate(payAddr, nil)
 		if err != nil {
 			return internalRPCError("Failed to create new block "+
 				"template: "+err.Error(), "")
@@ -1592,7 +1591,7 @@ func (state *gbtWorkState) updateBlockTemplate(s *rpcServer, useCoinbaseValue bo
 		// Update the time of the block template to the current time
 		// while accounting for the median time of the past several
 		// blocks per the chain consensus rules.
-		UpdateBlockTime(msgBlock, s.server.blockManager, nil)
+		s.generator.UpdateBlockTime(msgBlock, nil)
 		msgBlock.Header.Nonce = 0
 
 		rpcsLog.Debugf("Updated block template (timestamp %v, "+
@@ -2698,7 +2697,7 @@ func handleGetWorkRequest(s *rpcServer) (interface{}, error) {
 
 		// Choose a payment address at random.
 		payToAddr := cfg.miningAddrs[rand.Intn(len(cfg.miningAddrs))]
-		template, err := NewBlockTemplate(s.policy, s.server, payToAddr, nil)
+		template, err := s.generator.NewBlockTemplate(payToAddr, nil)
 		if err != nil {
 			context := "Failed to create new block template"
 			return nil, internalRPCError(err.Error(), context)
@@ -2730,7 +2729,7 @@ func handleGetWorkRequest(s *rpcServer) (interface{}, error) {
 		// Update the time of the block template to the current time
 		// while accounting for the median time of the past several
 		// blocks per the chain consensus rules.
-		UpdateBlockTime(msgBlock, s.server.blockManager, nil)
+		s.generator.UpdateBlockTime(msgBlock, nil)
 
 		rpcsLog.Debugf("Updated block template (timestamp %v, "+
 			"target %064x, merkle root %s, signature "+
@@ -3761,7 +3760,7 @@ func handleVerifyChain(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 type rpcServer struct {
 	started                int32
 	shutdown               int32
-	policy                 *mining.Policy
+	generator              *BlkTmplGenerator
 	server                 *server
 	chain                  *blockchain.BlockChain
 	authsha                [fastsha256.Size]byte
@@ -4267,10 +4266,10 @@ func genCertPair(certFile, keyFile string) error {
 }
 
 // newRPCServer returns a new instance of the rpcServer struct.
-func newRPCServer(listenAddrs []string, policy *mining.Policy, s *server) (*rpcServer, error) {
+func newRPCServer(listenAddrs []string, generator *BlkTmplGenerator, s *server) (*rpcServer, error) {
 	rpc := rpcServer{
-		policy:                 policy,
 		server:                 s,
+		generator:              generator,
 		chain:                  s.blockManager.chain,
 		statusLines:            make(map[int]string),
 		workState:              newWorkState(),
