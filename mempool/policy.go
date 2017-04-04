@@ -261,13 +261,15 @@ func isDust(txOut *wire.TxOut, minRelayTxFee provautil.Amount) bool {
 // TODO(prova): Notice that this code is a dupclicate of transaction
 // validation code in CheckTransactionSanity() of validate.go
 // TODO(prova): extract functionality into admin tx validator.
-func checkTransactionStandard(tx *provautil.Tx, height uint32, medianTimePast time.Time, minRelayTxFee provautil.Amount) error {
+func checkTransactionStandard(tx *provautil.Tx, height uint32,
+	medianTimePast time.Time, minRelayTxFee provautil.Amount,
+	maxTxVersion int32) error {
 	// The transaction must be a currently supported version.
 	msgTx := tx.MsgTx()
-	if msgTx.Version > wire.TxVersion || msgTx.Version < 1 {
+	if msgTx.Version > maxTxVersion || msgTx.Version < 1 {
 		str := fmt.Sprintf("transaction version %d is not in the "+
 			"valid range of %d-%d", msgTx.Version, 1,
-			wire.TxVersion)
+			maxTxVersion)
 		return txRuleError(wire.RejectNonstandard, str)
 	}
 
