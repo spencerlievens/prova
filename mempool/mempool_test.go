@@ -133,6 +133,17 @@ func (s *fakeChain) SetMedianTimePast(mtp time.Time) {
 	s.Unlock()
 }
 
+// CalcSequenceLock returns the current sequence lock for the passed
+// transaction associated with the fake chain instance.
+func (s *fakeChain) CalcSequenceLock(tx *provautil.Tx,
+	view *blockchain.UtxoViewpoint) (*blockchain.SequenceLock, error) {
+
+	return &blockchain.SequenceLock{
+		Seconds:     -1,
+		BlockHeight: -1,
+	}, nil
+}
+
 // spendableOutput is a convenience type that houses a particular utxo and the
 // amount associated with it.
 type spendableOutput struct {
@@ -363,19 +374,20 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 				MaxSigOpsPerTx:       blockchain.MaxSigOpsPerBlock / 5,
 				MinRelayTxFee:        1000, // 1 Atom per byte
 			},
-			ChainParams:     chainParams,
-			FetchUtxoView:   chain.FetchUtxoView,
-			ThreadTips:      chain.ThreadTips,
-			LastKeyID:       chain.LastKeyID,
-			TotalSupply:     chain.TotalSupply,
-			GetKeyIDs:       chain.KeyIDs,
-			GetAdminKeySets: chain.AdminKeySets,
-			BestHeight:      chain.BestHeight,
-			MedianTimePast:  chain.MedianTimePast,
-			SigCache:        nil,
-			HashCache:       txscript.NewHashCache(200),
-			TimeSource:      blockchain.NewMedianTime(),
-			AddrIndex:       nil,
+			ChainParams:      chainParams,
+			FetchUtxoView:    chain.FetchUtxoView,
+			ThreadTips:       chain.ThreadTips,
+			LastKeyID:        chain.LastKeyID,
+			TotalSupply:      chain.TotalSupply,
+			GetKeyIDs:        chain.KeyIDs,
+			GetAdminKeySets:  chain.AdminKeySets,
+			BestHeight:       chain.BestHeight,
+			MedianTimePast:   chain.MedianTimePast,
+			CalcSequenceLock: chain.CalcSequenceLock,
+			SigCache:         nil,
+			HashCache:        txscript.NewHashCache(200),
+			TimeSource:       blockchain.NewMedianTime(),
+			AddrIndex:        nil,
 		}),
 	}
 
@@ -396,6 +408,7 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 		outputs = append(outputs, txOutToSpendableOut(coinbase, i))
 	}
 	harness.chain.SetHeight(uint32(chainParams.CoinbaseMaturity) + curHeight)
+	harness.chain.SetMedianTimePast(time.Now())
 
 	return &harness, outputs, nil
 }
