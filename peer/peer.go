@@ -1074,7 +1074,7 @@ func (p *Peer) handlePongMsg(msg *wire.MsgPong) {
 	if p.ProtocolVersion() > wire.BIP0031Version {
 		p.statsMtx.Lock()
 		if p.lastPingNonce != 0 && msg.Nonce == p.lastPingNonce {
-			p.lastPingMicros = time.Now().Sub(p.lastPingTime).Nanoseconds()
+			p.lastPingMicros = time.Since(p.lastPingTime).Nanoseconds()
 			p.lastPingMicros /= 1000 // convert to usec.
 			p.lastPingNonce = 0
 		}
@@ -1323,7 +1323,7 @@ out:
 
 				// Extend active deadlines by the time it took
 				// to execute the callback.
-				duration := time.Now().Sub(handlersStartTime)
+				duration := time.Since(handlersStartTime)
 				deadlineOffset += duration
 				handlerActive = false
 

@@ -287,11 +287,7 @@ func ValidateTransactionScripts(tx *provautil.Tx, utxoView *UtxoViewpoint, keyVi
 
 	// Validate all of the inputs.
 	validator := newTxValidator(utxoView, keyView, flags, sigCache, hashCache)
-	if err := validator.Validate(txValItems); err != nil {
-		return err
-	}
-
-	return nil
+	return validator.Validate(txValItems)
 }
 
 // checkBlockScripts executes and validates the scripts for all transactions in
@@ -340,8 +336,5 @@ func checkBlockScripts(block *provautil.Block, utxoView *UtxoViewpoint, keyView 
 
 	// Validate all of the inputs.
 	validator := newTxValidator(utxoView, keyView, scriptFlags, sigCache, hashCache)
-	if err := validator.Validate(txValItems); err != nil {
-		return err
-	}
-	return nil
+	return validator.Validate(txValItems)
 }

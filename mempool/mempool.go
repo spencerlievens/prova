@@ -1095,11 +1095,7 @@ func (mp *TxPool) ProcessTransaction(tx *provautil.Tx, allowOrphan, rateLimit bo
 
 	// Potentially add the orphan transaction to the orphan pool.
 	err = mp.maybeAddOrphan(tx, tag)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+	return nil, err
 }
 
 // Count returns the number of transactions in the main pool.  It does not

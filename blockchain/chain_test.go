@@ -31,9 +31,7 @@ func TestHaveBlock(t *testing.T) {
 			t.Errorf("Error loading file: %v\n", err)
 			return
 		}
-		for _, block := range blockTmp {
-			blocks = append(blocks, block)
-		}
+		blocks = append(blocks, blockTmp...)
 	}
 
 	// Create a new database and chain instance to run tests against.

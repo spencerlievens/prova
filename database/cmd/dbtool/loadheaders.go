@@ -63,14 +63,10 @@ func (cmd *headersCmd) Execute(args []string) error {
 				return nil
 			})
 			log.Infof("Loaded %d headers in %v", numLoaded,
-				time.Now().Sub(startTime))
+				time.Since(startTime))
 			return nil
 		})
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return err
 	}
 
 	// Bulk load headers.
@@ -91,12 +87,8 @@ func (cmd *headersCmd) Execute(args []string) error {
 			return err
 		}
 		log.Infof("Loaded %d headers in %v", len(hdrs),
-			time.Now().Sub(startTime))
+			time.Since(startTime))
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

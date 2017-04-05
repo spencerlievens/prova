@@ -208,24 +208,14 @@ func NewBlockHeader(prevHash *chainhash.Hash, merkleRootHash *chainhash.Hash,
 // decoding block headers stored to disk, such as in a database, as opposed to
 // decoding from the wire.
 func readBlockHeader(r io.Reader, pver uint32, bh *BlockHeader) error {
-	err := readElements(r, &bh.Version, &bh.PrevBlock, &bh.MerkleRoot,
+	return readElements(r, &bh.Version, &bh.PrevBlock, &bh.MerkleRoot,
 		(*int64Time)(&bh.Timestamp), &bh.Bits, &bh.Height, &bh.Size, &bh.Nonce, &bh.ValidatingPubKey, &bh.Signature)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // writeBlockHeader writes a bitcoin block header to w.  See Serialize for
 // encoding block headers to be stored to disk, such as in a database, as
 // opposed to encoding for the wire.
 func writeBlockHeader(w io.Writer, pver uint32, bh *BlockHeader) error {
-	err := writeElements(w, bh.Version, &bh.PrevBlock, &bh.MerkleRoot,
+	return writeElements(w, bh.Version, &bh.PrevBlock, &bh.MerkleRoot,
 		bh.Timestamp.Unix(), bh.Bits, bh.Height, bh.Size, bh.Nonce, bh.ValidatingPubKey, bh.Signature)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
