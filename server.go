@@ -29,6 +29,7 @@ import (
 	"github.com/bitgo/prova/database"
 	"github.com/bitgo/prova/mempool"
 	"github.com/bitgo/prova/mining"
+	"github.com/bitgo/prova/mining/cpuminer"
 	"github.com/bitgo/prova/peer"
 	"github.com/bitgo/prova/provautil"
 	"github.com/bitgo/prova/provautil/bloom"
@@ -155,7 +156,7 @@ type server struct {
 	rpcServer            *rpcServer
 	blockManager         *blockManager
 	txMemPool            *mempool.TxPool
-	cpuMiner             *CPUMiner
+	cpuMiner             *cpuminer.CPUMiner
 	modifyRebroadcastInv chan interface{}
 	newPeers             chan *serverPeer
 	donePeers            chan *serverPeer
@@ -2381,7 +2382,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 
 	blockTemplateGenerator := mining.NewBlkTmplGenerator(&policy, s.chainParams,
 		s.txMemPool, s.blockManager.chain, s.timeSource, s.sigCache, s.hashCache)
-	s.cpuMiner = newCPUMiner(&cpuminerConfig{
+	s.cpuMiner = cpuminer.New(&cpuminer.Config{
 		ChainParams:              chainParams,
 		BlockTemplateGenerator:   blockTemplateGenerator,
 		MiningAddrs:              cfg.miningAddrs,

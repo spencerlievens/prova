@@ -3,7 +3,7 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package main
+package cpuminer
 
 import (
 	"encoding/hex"
@@ -52,8 +52,8 @@ var (
 	defaultNumWorkers = uint32(runtime.NumCPU())
 )
 
-// cpuminerConfig is a descriptor containing the cpu miner configuration.
-type cpuminerConfig struct {
+// Config is a descriptor containing the cpu miner configuration.
+type Config struct {
 	// ChainParams identifies which chain parameters the cpu miner is
 	// associated with.
 	ChainParams *chaincfg.Params
@@ -105,7 +105,7 @@ type cpuminerConfig struct {
 type CPUMiner struct {
 	sync.Mutex
 	g                 *mining.BlkTmplGenerator
-	cfg               cpuminerConfig
+	cfg               Config
 	numWorkers        uint32
 	validateKeys      []*btcec.PrivateKey
 	started           bool
@@ -123,7 +123,7 @@ type CPUMiner struct {
 // speedMonitor handles tracking the number of hashes per second the mining
 // process is performing.  It must be run as a goroutine.
 func (m *CPUMiner) speedMonitor() {
-	minrLog.Tracef("CPU miner speed monitor started")
+	log.Tracef("CPU miner speed monitor started")
 
 	var hashesPerSec float64
 	var totalHashes uint64
@@ -147,7 +147,7 @@ out:
 			hashesPerSec = (hashesPerSec + curHashesPerSec) / 2
 			totalHashes = 0
 			if hashesPerSec != 0 {
-				minrLog.Debugf("Hash speed: %6.0f kilohashes/s",
+				log.Debugf("Hash speed: %6.0f kilohashes/s",
 					hashesPerSec/1000)
 			}
 
@@ -161,7 +161,7 @@ out:
 	}
 
 	m.wg.Done()
-	minrLog.Tracef("CPU miner speed monitor done")
+	log.Tracef("CPU miner speed monitor done")
 }
 
 // submitBlock submits the passed block to network after ensuring it passes all
@@ -175,10 +175,9 @@ func (m *CPUMiner) submitBlock(block *provautil.Block) bool {
 	// detected and all work on the stale block is halted to start work on
 	// a new block, but the check only happens periodically, so it is
 	// possible a block was found and submitted in between.
-	latestHash := m.g.BestSnapshot().Hash
 	msgBlock := block.MsgBlock()
-	if !msgBlock.Header.PrevBlock.IsEqual(latestHash) {
-		minrLog.Debugf("Block submitted via CPU miner with previous "+
+	if !msgBlock.Header.PrevBlock.IsEqual(m.g.BestSnapshot().Hash) {
+		log.Debugf("Block submitted via CPU miner with previous "+
 			"block %s is stale", msgBlock.Header.PrevBlock)
 		return false
 	}
@@ -190,22 +189,22 @@ func (m *CPUMiner) submitBlock(block *provautil.Block) bool {
 		// Anything other than a rule violation is an unexpected error,
 		// so log that error as an internal error.
 		if _, ok := err.(blockchain.RuleError); !ok {
-			minrLog.Errorf("Unexpected error while processing "+
+			log.Errorf("Unexpected error while processing "+
 				"block submitted via CPU miner: %v", err)
 			return false
 		}
 
-		minrLog.Debugf("Block submitted via CPU miner rejected: %v", err)
+		log.Debugf("Block submitted via CPU miner rejected: %v", err)
 		return false
 	}
 	if isOrphan {
-		minrLog.Debugf("Block submitted via CPU miner is an orphan")
+		log.Debugf("Block submitted via CPU miner is an orphan")
 		return false
 	}
 
 	// The block was accepted.
 	coinbaseTx := block.MsgBlock().Transactions[0].TxOut[0]
-	minrLog.Infof("Block submitted via CPU miner accepted (hash %s, "+
+	log.Infof("Block submitted via CPU miner accepted (hash %s, "+
 		"amount %v)", block.Hash(), provautil.Amount(coinbaseTx.Value))
 	return true
 }
@@ -223,7 +222,7 @@ func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight uint32,
 	ticker *time.Ticker, validateKey *btcec.PrivateKey,
 	quit chan struct{}) bool {
 
-	// Create a couple of convenience variables.
+	// Create some convenience variables.
 	header := &msgBlock.Header
 	targetDifficulty := blockchain.CompactToBig(header.Bits)
 
@@ -292,7 +291,7 @@ func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight uint32,
 //
 // It must be run as a goroutine.
 func (m *CPUMiner) generateBlocks(quit chan struct{}) {
-	minrLog.Tracef("Starting generate blocks worker")
+	log.Tracef("Starting generate blocks worker")
 
 	// Start a ticker which is used to signal checks for stale work and
 	// updates to the speed monitor.
@@ -337,7 +336,7 @@ out:
 		if len(m.validateKeys) == 0 {
 			errStr := fmt.Sprintf("Missing validate keys, set via"+
 				" setvalidatekeys or env var %s", validateKeysEnvironmentKey)
-			minrLog.Errorf(errStr)
+			log.Errorf(errStr)
 			continue
 		}
 
@@ -347,7 +346,7 @@ out:
 		if invalidValidateKey != nil {
 			str := fmt.Sprintf("invalid validate key %v",
 				invalidValidateKey.SerializeCompressed())
-			minrLog.Errorf(str)
+			log.Errorf(str)
 			m.submitBlockLock.Unlock()
 			time.Sleep(10 * time.Second)
 			continue
@@ -369,7 +368,7 @@ out:
 		if validateKeyErr != nil {
 			m.submitBlockLock.Unlock()
 			errStr := fmt.Sprintf("Failed checking validate key %v", validateKeyErr)
-			minrLog.Errorf(errStr)
+			log.Errorf(errStr)
 			time.Sleep(time.Second)
 			continue
 		}
@@ -379,7 +378,7 @@ out:
 		} else {
 			m.submitBlockLock.Unlock()
 			errStr := fmt.Sprintf("Block generation rate limited.")
-			minrLog.Errorf(errStr)
+			log.Errorf(errStr)
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -392,7 +391,7 @@ out:
 		if err != nil {
 			errStr := fmt.Sprintf("Failed to create new block "+
 				"template: %v", err)
-			minrLog.Errorf(errStr)
+			log.Errorf(errStr)
 			time.Sleep(time.Second)
 			continue
 		}
@@ -408,7 +407,7 @@ out:
 	}
 
 	m.workerWg.Done()
-	minrLog.Tracef("Generate blocks worker done")
+	log.Tracef("Generate blocks worker done")
 }
 
 // detectInvalidValidateKey determines if there is an invalid validate key in
@@ -500,7 +499,7 @@ func (m *CPUMiner) EstablishValidateKeys() {
 		if err != nil {
 			errStr := fmt.Sprintf("Failed parsing validate"+
 				" key: %v %v", privKeyStr, err)
-			minrLog.Errorf(errStr)
+			log.Errorf(errStr)
 			return
 		}
 		privKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), privKeyBytes)
@@ -518,8 +517,8 @@ func (m *CPUMiner) Start() {
 	m.Lock()
 	defer m.Unlock()
 
-	// Nothing to do if the miner is already running or if running in discrete
-	// mode (using GenerateNBlocks).
+	// Nothing to do if the miner is already running or if running in
+	// discrete mode (using GenerateNBlocks).
 	if m.started || m.discreteMining {
 		return
 	}
@@ -535,7 +534,7 @@ func (m *CPUMiner) Start() {
 	go m.miningWorkerController()
 
 	m.started = true
-	minrLog.Infof("CPU miner started")
+	log.Infof("CPU miner started")
 }
 
 // Stop gracefully stops the mining process by signalling all workers, and the
@@ -556,7 +555,7 @@ func (m *CPUMiner) Stop() {
 	close(m.quit)
 	m.wg.Wait()
 	m.started = false
-	minrLog.Infof("CPU miner stopped")
+	log.Infof("CPU miner stopped")
 }
 
 // IsMining returns whether or not the CPU miner has been started and is
@@ -668,7 +667,7 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 
 	m.Unlock()
 
-	minrLog.Tracef("Generating %d blocks", n)
+	log.Tracef("Generating %d blocks", n)
 
 	i := uint32(0)
 	blockHashes := make([]*chainhash.Hash, n, n)
@@ -709,7 +708,7 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 		if err != nil {
 			errStr := fmt.Sprintf("Failed to create new block "+
 				"template: %v", err)
-			minrLog.Errorf(errStr)
+			log.Errorf(errStr)
 			continue
 		}
 
@@ -723,7 +722,7 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 			blockHashes[i] = block.Hash()
 			i++
 			if i == n {
-				minrLog.Tracef("Generated %d blocks", i)
+				log.Tracef("Generated %d blocks", i)
 				m.Lock()
 				close(m.speedMonitorQuit)
 				m.wg.Wait()
@@ -736,10 +735,10 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 	}
 }
 
-// newCPUMiner returns a new instance of a CPU miner for the provided server.
+// New returns a new instance of a CPU miner for the provided configuration.
 // Use Start to begin the mining process.  See the documentation for CPUMiner
 // type for more details.
-func newCPUMiner(cfg *cpuminerConfig) *CPUMiner {
+func New(cfg *Config) *CPUMiner {
 	return &CPUMiner{
 		g:                 cfg.BlockTemplateGenerator,
 		cfg:               *cfg,

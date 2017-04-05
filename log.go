@@ -16,6 +16,7 @@ import (
 	"github.com/bitgo/prova/database"
 	"github.com/bitgo/prova/mempool"
 	"github.com/bitgo/prova/mining"
+	"github.com/bitgo/prova/mining/cpuminer"
 	"github.com/bitgo/prova/peer"
 	"github.com/bitgo/prova/txscript"
 	"github.com/btcsuite/btclog"
@@ -130,6 +131,7 @@ func useLogger(subsystemID string, logger btclog.Logger) {
 	case "MINR":
 		minrLog = logger
 		mining.UseLogger(logger)
+		cpuminer.UseLogger(logger)
 
 	case "PEER":
 		peerLog = logger
