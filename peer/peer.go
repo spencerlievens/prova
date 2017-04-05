@@ -1866,7 +1866,7 @@ func (p *Peer) QueueInventory(invVect *wire.InvVect) {
 	p.outputInvChan <- invVect
 }
 
-// AssociateConnection associates the given conn to the peer. Calling this
+// AssociateConnection associates the given conn to the peer.   Calling this
 // function when the peer is already connected will have no effect.
 func (p *Peer) AssociateConnection(conn net.Conn) {
 	// Already connected?
@@ -1894,7 +1894,7 @@ func (p *Peer) AssociateConnection(conn net.Conn) {
 
 	go func() {
 		if err := p.start(); err != nil {
-			log.Warnf("Cannot start peer %v: %v", p, err)
+			log.Debugf("Cannot start peer %v: %v", p, err)
 			p.Disconnect()
 		}
 	}()
@@ -1971,7 +1971,6 @@ func (p *Peer) WaitForDisconnect() {
 // peer.  If the next message is not a version message or the version is not
 // acceptable then return an error.
 func (p *Peer) readRemoteVersionMsg() error {
-
 	// Read their version message.
 	msg, _, err := p.readMessage()
 	if err != nil {
@@ -2000,7 +1999,6 @@ func (p *Peer) readRemoteVersionMsg() error {
 
 // writeLocalVersionMsg writes our version message to the remote peer.
 func (p *Peer) writeLocalVersionMsg() error {
-
 	localVerMsg, err := p.localVersionMsg()
 	if err != nil {
 		return err
@@ -2020,7 +2018,6 @@ func (p *Peer) writeLocalVersionMsg() error {
 // then sends our version message. If the events do not occur in that order then
 // it returns an error.
 func (p *Peer) negotiateInboundProtocol() error {
-
 	if err := p.readRemoteVersionMsg(); err != nil {
 		return err
 	}
@@ -2032,7 +2029,6 @@ func (p *Peer) negotiateInboundProtocol() error {
 // version message from the peer.  If the events do not occur in that order then
 // it returns an error.
 func (p *Peer) negotiateOutboundProtocol() error {
-
 	if err := p.writeLocalVersionMsg(); err != nil {
 		return err
 	}
