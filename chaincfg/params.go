@@ -107,12 +107,6 @@ type Params struct {
 	// is reduced.
 	SubsidyReductionInterval uint32
 
-	// TargetTimespan is the desired amount of time that should elapse
-	// before the block difficulty requirement is examined to determine how
-	// it should be changed in order to maintain the desired block
-	// generation rate.
-	TargetTimespan time.Duration
-
 	// TargetTimePerBlock is the desired amount of time to generate each
 	// block.
 	TargetTimePerBlock time.Duration
@@ -237,8 +231,7 @@ var MainNetParams = Params{
 	PowLimitBits:             0x1f07ffff,
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
-	TargetTimespan:           time.Hour * 24 * 14, // 14 days
-	TargetTimePerBlock:       time.Second * 150,   // 2.5 minutes
+	TargetTimePerBlock:       time.Second * 150, // 2.5 minutes
 	GenerateSupported:        false,
 
 	// Checkpoints ordered from oldest to newest.
@@ -327,8 +320,7 @@ var RegressionNetParams = Params{
 	PowLimitBits:             0x200f0f0f,
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 150,
-	TargetTimespan:           time.Hour * 24 * 14, // 14 days
-	TargetTimePerBlock:       time.Minute,         // 1 minute
+	TargetTimePerBlock:       time.Minute, // 1 minute
 	GenerateSupported:        true,
 
 	// Enforce current block version once majority of the network has
@@ -411,8 +403,7 @@ var TestNetParams = Params{
 	PowLimitBits:             0x2007ffff,
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
-	TargetTimespan:           time.Hour * 24 * 14, // 14 days
-	TargetTimePerBlock:       time.Second * 150,   // 2.5 minutes
+	TargetTimePerBlock:       time.Second * 150, // 2.5 minutes
 	GenerateSupported:        false,
 
 	// Checkpoints ordered from oldest to newest.
@@ -482,8 +473,7 @@ var SimNetParams = Params{
 	PowLimitBits:             0x207fffff,
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
-	TargetTimespan:           time.Hour * 24 * 14, // 14 days
-	TargetTimePerBlock:       time.Second * 150,   // 2.5 minutes
+	TargetTimePerBlock:       time.Second * 150, // 2.5 minutes
 	GenerateSupported:        true,
 
 	// Checkpoints ordered from oldest to newest.

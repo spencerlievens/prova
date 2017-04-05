@@ -1791,21 +1791,18 @@ func New(config *Config) (*BlockChain, error) {
 		}
 	}
 
-	params := config.ChainParams
-	targetTimespan := int64(params.TargetTimespan / time.Second)
-	targetTimePerBlock := int64(params.TargetTimePerBlock / time.Second)
 	b := BlockChain{
 		checkpoints:         config.Checkpoints,
 		checkpointsByHeight: checkpointsByHeight,
 		db:                  config.DB,
-		chainParams:         params,
+		chainParams:         config.ChainParams,
 		timeSource:          config.TimeSource,
 		notifications:       config.Notifications,
 		sigCache:            config.SigCache,
 		hashCache:           config.HashCache,
 		indexManager:        config.IndexManager,
-		blocksPerRetarget:   int32(targetTimespan / targetTimePerBlock),
-		minMemoryNodes:      int32(targetTimespan / targetTimePerBlock),
+		blocksPerRetarget:   int32(config.ChainParams.PowAveragingWindow),
+		minMemoryNodes:      int32(config.ChainParams.PowAveragingWindow),
 		bestNode:            nil,
 		threadTips:          make(map[provautil.ThreadID]*wire.OutPoint),
 		lastKeyID:           btcec.KeyID(0),

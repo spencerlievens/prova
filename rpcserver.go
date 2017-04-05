@@ -2282,8 +2282,7 @@ func handleGetNetworkHashPS(s *rpcServer, cmd interface{}, closeChan <-chan stru
 
 	// Calculate the number of blocks per retarget interval based on the
 	// chain parameters.
-	blocksPerRetarget := int32(s.server.chainParams.TargetTimespan /
-		s.server.chainParams.TargetTimePerBlock)
+	blocksPerRetarget := int32(s.server.chainParams.PowAveragingWindow)
 
 	// Calculate the starting block height based on the passed number of
 	// blocks.  When the passed value is negative, use the last block the
