@@ -58,6 +58,9 @@ type TxDesc struct {
 
 	// Fee is the total fee the transaction associated with the entry pays.
 	Fee int64
+
+	// FeePerKB is the fee the transaction pays in Satoshi per 1000 bytes.
+	FeePerKB int64
 }
 
 // TxSource represents a source of transactions to consider for inclusion in
@@ -625,8 +628,7 @@ mempoolLoop:
 			nextBlockHeight)
 
 		// Calculate the fee in Atoms/kB.
-		txSize := tx.MsgTx().SerializeSize()
-		prioItem.feePerKB = (txDesc.Fee * 1000) / int64(txSize)
+		prioItem.feePerKB = txDesc.FeePerKB
 		prioItem.fee = txDesc.Fee
 		prioItem.isAdmin = isAdmin(tx.MsgTx())
 

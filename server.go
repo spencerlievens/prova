@@ -183,6 +183,9 @@ type server struct {
 // serverPeer extends the peer to maintain state shared by the server and
 // the blockmanager.
 type serverPeer struct {
+	// The following variables must only be used atomically
+	feeFilter int64
+
 	*peer.Peer
 
 	connReq         *connmgr.ConnReq
@@ -778,6 +781,18 @@ func (sp *serverPeer) enforceNodeBloomFlag(cmd string) bool {
 	return true
 }
 
+func (sp *serverPeer) OnFeeFilter(p *peer.Peer, msg *wire.MsgFeeFilter) {
+	// Check that the passed minimum fee is a valid amount.
+	if msg.MinFee < 0 || msg.MinFee > provautil.MaxAtoms {
+		peerLog.Debugf("Peer %v sent an invalid feefilter '%v' -- "+
+			"disconnecting", sp, provautil.Amount(msg.MinFee))
+		sp.Disconnect()
+		return
+	}
+
+	atomic.StoreInt64(&sp.feeFilter, msg.MinFee)
+}
+
 // OnFilterAdd is invoked when a peer receives a filteradd bitcoin
 // message and is used by remote peers to add data to an already loaded bloom
 // filter.  The peer will be disconnected if a filter is not loaded when this
@@ -1312,16 +1327,24 @@ func (s *server) handleRelayInvMsg(state *peerState, msg relayMsg) {
 			if sp.relayTxDisabled() {
 				return
 			}
+
+			txD, ok := msg.data.(*mempool.TxDesc)
+			if !ok {
+				peerLog.Warnf("Underlying data for tx" +
+					" inv relay is not a *mempool.TxDesc")
+				return
+			}
+
+			// Don't relay the transaction if the transaction fee-per-kb
+			// is less than the peer's feefilter.
+			feeFilter := atomic.LoadInt64(&sp.feeFilter)
+			if feeFilter > 0 && txD.FeePerKB < feeFilter {
+				return
+			}
+
 			// Don't relay the transaction if there is a bloom
 			// filter loaded and the transaction doesn't match it.
 			if sp.filter.IsLoaded() {
-				txD, ok := msg.data.(*mempool.TxDesc)
-				if !ok {
-					peerLog.Warnf("Underlying data for tx" +
-						" inv relay is not a *mempool.TxDesc")
-					return
-				}
-
 				if !sp.filter.MatchTxAndUpdate(txD.Tx) {
 					return
 				}
@@ -1523,6 +1546,7 @@ func newPeerConfig(sp *serverPeer) *peer.Config {
 			OnGetData:     sp.OnGetData,
 			OnGetBlocks:   sp.OnGetBlocks,
 			OnGetHeaders:  sp.OnGetHeaders,
+			OnFeeFilter:   sp.OnFeeFilter,
 			OnFilterAdd:   sp.OnFilterAdd,
 			OnFilterClear: sp.OnFilterClear,
 			OnFilterLoad:  sp.OnFilterLoad,
@@ -1545,7 +1569,7 @@ func newPeerConfig(sp *serverPeer) *peer.Config {
 		ChainParams:      sp.server.chainParams,
 		Services:         sp.server.services,
 		DisableRelayTx:   cfg.BlocksOnly,
-		ProtocolVersion:  wire.SendHeadersVersion,
+		ProtocolVersion:  wire.FeeFilterVersion,
 	}
 }
 

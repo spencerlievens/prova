@@ -212,6 +212,7 @@ type GetPeerInfoResult struct {
 	StartingHeight uint32  `json:"startingheight"`
 	CurrentHeight  uint32  `json:"currentheight,omitempty"`
 	BanScore       int32   `json:"banscore"`
+	FeeFilter      int64   `json:"feefilter"`
 	SyncNode       bool    `json:"syncnode"`
 }
 
