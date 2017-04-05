@@ -113,7 +113,7 @@ func TestSigHashNew(t *testing.T) {
 	}
 	r := bytes.NewReader(txRaw)
 
-	tx := wire.NewMsgTx()
+	tx := wire.NewMsgTx(1)
 	if err := tx.Deserialize(r); err != nil {
 		t.Fatalf("unable to decode: %v", err)
 	}

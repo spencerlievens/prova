@@ -302,7 +302,7 @@ func (g *testGenerator) createCoinbaseTx(blockHeight uint32) *wire.MsgTx {
 		panic(err)
 	}
 
-	tx := wire.NewMsgTx()
+	tx := wire.NewMsgTx(1)
 	tx.AddTxIn(&wire.TxIn{
 		// Coinbase transactions have no inputs, so previous outpoint is
 		// zero hash and max index.
@@ -450,7 +450,7 @@ type ProvaOut struct {
 }
 
 func createProvaSpendTx(spend *spendableOut, outs []ProvaOut, priv *btcec.PrivateKey) *wire.MsgTx {
-	spendTx := wire.NewMsgTx()
+	spendTx := wire.NewMsgTx(1)
 
 	spendTx.AddTxIn(&wire.TxIn{
 		PreviousOutPoint: spend.prevOut,
@@ -490,7 +490,7 @@ func createProvaSpendTx(spend *spendableOut, outs []ProvaOut, priv *btcec.Privat
 // script which avoids the need to track addresses and signature scripts in the
 // tests.
 func createSpendTx(spend *spendableOut, fee provautil.Amount) *wire.MsgTx {
-	spendTx := wire.NewMsgTx()
+	spendTx := wire.NewMsgTx(1)
 
 	spendTx.AddTxIn(&wire.TxIn{
 		PreviousOutPoint: spend.prevOut,
@@ -512,7 +512,7 @@ func createSpendTx(spend *spendableOut, fee provautil.Amount) *wire.MsgTx {
 
 // createAdminTx creates an admin tx.
 func createAdminTx(spend *spendableOut, threadID provautil.ThreadID, op byte, pubKey *btcec.PublicKey) *wire.MsgTx {
-	spendTx := wire.NewMsgTx()
+	spendTx := wire.NewMsgTx(1)
 	spendTx.AddTxIn(&wire.TxIn{
 		PreviousOutPoint: spend.prevOut,
 		Sequence:         wire.MaxTxInSequenceNum,
@@ -539,7 +539,7 @@ type AspOp struct {
 
 // createASPAdminTx creates an admin tx that provisions a keyID
 func createASPAdminTx(spend *spendableOut, ops []AspOp) *wire.MsgTx {
-	spendTx := wire.NewMsgTx()
+	spendTx := wire.NewMsgTx(1)
 	spendTx.AddTxIn(&wire.TxIn{
 		PreviousOutPoint: spend.prevOut,
 		Sequence:         wire.MaxTxInSequenceNum,
@@ -565,7 +565,7 @@ func createASPAdminTx(spend *spendableOut, ops []AspOp) *wire.MsgTx {
 // If a spend output is passed, a revoke transaction is build.
 // if spend is nil, new tokens of amount in value are issued.
 func createIssueTx(thread *spendableOut, value int64, spend *spendableOut) *wire.MsgTx {
-	spendTx := wire.NewMsgTx()
+	spendTx := wire.NewMsgTx(1)
 	// thread input
 	spendTx.AddTxIn(&wire.TxIn{
 		PreviousOutPoint: thread.prevOut,

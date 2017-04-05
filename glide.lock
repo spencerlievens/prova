@@ -1,5 +1,5 @@
 hash: 9984e56213a2a93f9b6812b5721ec173916c08dd2f9de93d64ed6f9a2bd83abc
-updated: 2017-01-24T13:40:57.099268311-08:00
+updated: 2016-10-26T22:53:00.0848822-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: f6ad7eb2c963151c71de2bd37d04d9af644a891d
@@ -13,8 +13,6 @@ imports:
   version: 73889fb79bd687870312b6e40effcecffbd57d30
 - name: github.com/btcsuite/btcrpcclient
   version: 7903290fd9956021ed7b65463f8667df345b365e
-- name: github.com/btcsuite/btcutil
-  version: 9b9ce80a2edafc6198569550fcc01df11d214425
   subpackages:
   - base58
 - name: github.com/btcsuite/fastsha256
