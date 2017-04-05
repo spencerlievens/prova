@@ -20,6 +20,7 @@ import (
 	"github.com/bitgo/prova/btcec"
 	"github.com/bitgo/prova/chaincfg"
 	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/mining"
 	"github.com/bitgo/prova/provautil"
 	"github.com/bitgo/prova/wire"
 )
@@ -59,7 +60,7 @@ type cpuminerConfig struct {
 
 	// BlockTemplateGenerator identifies the instance to use in order to
 	// generate block templates that the miner will attempt to solve.
-	BlockTemplateGenerator *BlkTmplGenerator
+	BlockTemplateGenerator *mining.BlkTmplGenerator
 
 	// MiningAddrs is a list of payment addresses to use for the generated
 	// blocks.  Each generated block will randomly choose one of them.
@@ -103,7 +104,7 @@ type cpuminerConfig struct {
 // system which is typically sufficient.
 type CPUMiner struct {
 	sync.Mutex
-	g                 *BlkTmplGenerator
+	g                 *mining.BlkTmplGenerator
 	cfg               cpuminerConfig
 	numWorkers        uint32
 	validateKeys      []*btcec.PrivateKey
