@@ -51,8 +51,8 @@ const (
 	blockMaxSizeMin              = 1000
 	blockMaxSizeMax              = wire.MaxBlockPayload - 1000
 	defaultGenerate              = false
-	defaultMaxOrphanTransactions = 1000
-	defaultMaxOrphanTxSize       = 5000
+	defaultMaxOrphanTransactions = 100
+	defaultMaxOrphanTxSize       = mempool.MaxStandardTxSize
 	defaultSigCacheMaxSize       = 100000
 	defaultTxIndex               = false
 	defaultAddrIndex             = false
