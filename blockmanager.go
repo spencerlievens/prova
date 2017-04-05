@@ -545,7 +545,7 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 	if lastBlock != -1 && b.current() {
 		blkHeight, err := b.chain.BlockHeightByHash(&invVects[lastBlock].Hash)
 		if err == nil {
-			imsg.peer.UpdateLastBlockHeight(uint32(blkHeight))
+			imsg.peer.UpdateLastBlockHeight(blkHeight)
 		}
 	}
 

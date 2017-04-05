@@ -806,7 +806,7 @@ func (p *Peer) localVersionMsg() (*wire.MsgVersion, error) {
 	sentNonces.Add(nonce)
 
 	// Version message.
-	msg := wire.NewMsgVersion(ourNA, theirNA, nonce, uint32(blockNum))
+	msg := wire.NewMsgVersion(ourNA, theirNA, nonce, blockNum)
 	msg.AddUserAgent(p.cfg.UserAgentName, p.cfg.UserAgentVersion)
 
 	// XXX: bitcoind appears to always enable the full node services flag
@@ -2055,7 +2055,7 @@ func newPeerBase(origCfg *Config, inbound bool) *Peer {
 	// caller.
 	cfg := *origCfg // Copy to avoid mutating caller.
 	if cfg.ProtocolVersion == 0 {
-		cfg.ProtocolVersion = uint32(MaxProtocolVersion)
+		cfg.ProtocolVersion = MaxProtocolVersion
 	}
 
 	// Set the chain parameters to testnet if the caller did not specify any.

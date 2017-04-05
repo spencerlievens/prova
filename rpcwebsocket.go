@@ -1952,8 +1952,7 @@ fetchRange:
 			}
 
 			n := btcjson.NewRescanProgressNtfn(hashList[i].String(),
-				int32(blk.Height()),
-				blk.MsgBlock().Header.Timestamp.Unix())
+				int32(blk.Height()), blk.MsgBlock().Header.Timestamp.Unix())
 			mn, err := btcjson.MarshalCmd(nil, n)
 			if err != nil {
 				rpcsLog.Errorf("Failed to marshal rescan "+
