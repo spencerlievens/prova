@@ -46,6 +46,7 @@ const (
 const (
 	ErrRPCClientNotConnected      RPCErrorCode = -9
 	ErrRPCClientInInitialDownload RPCErrorCode = -10
+	ErrRPCClientNodeNotAdded      RPCErrorCode = -24
 )
 
 // Wallet JSON errors
