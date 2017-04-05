@@ -116,21 +116,18 @@ type pauseMsg struct {
 // blockManager provides a concurrency safe block manager for handling all
 // incoming blocks.
 type blockManager struct {
-	server            *server
-	started           int32
-	shutdown          int32
-	chain             *blockchain.BlockChain
-	rejectedTxns      map[chainhash.Hash]struct{}
-	requestedTxns     map[chainhash.Hash]struct{}
-	requestedBlocks   map[chainhash.Hash]struct{}
-	progressLogger    *blockProgressLogger
-	receivedLogBlocks int64
-	receivedLogTx     int64
-	processingReqs    bool
-	syncPeer          *serverPeer
-	msgChan           chan interface{}
-	wg                sync.WaitGroup
-	quit              chan struct{}
+	server          *server
+	started         int32
+	shutdown        int32
+	chain           *blockchain.BlockChain
+	rejectedTxns    map[chainhash.Hash]struct{}
+	requestedTxns   map[chainhash.Hash]struct{}
+	requestedBlocks map[chainhash.Hash]struct{}
+	progressLogger  *blockProgressLogger
+	syncPeer        *serverPeer
+	msgChan         chan interface{}
+	wg              sync.WaitGroup
+	quit            chan struct{}
 }
 
 // startSync will choose the best peer among the available candidate peers to
