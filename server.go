@@ -2445,9 +2445,13 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 	}
 
 	// Create a connection manager.
+	maxOutbound := defaultMaxOutbound
+	if cfg.MaxPeers < maxOutbound {
+		maxOutbound = cfg.MaxPeers
+	}
 	cmgr, err := connmgr.New(&connmgr.Config{
 		RetryDuration: connectionRetryInterval,
-		MaxOutbound:   defaultMaxOutbound,
+		MaxOutbound:   uint32(maxOutbound),
 		Dial:          btcdDial,
 		OnConnection:  s.outboundPeerConnected,
 		GetNewAddress: newAddressFunc,
