@@ -1615,7 +1615,10 @@ func (b *BlockChain) BestSnapshot() *BestState {
 	return snapshot
 }
 
-// ThreadTips
+// ThreadTips returns information about the best chain block's unspent admin
+// transaction outputs.  These outputs are not consensus critical for the
+// chain, they are redundant to the checked utxos in the utxoview.
+//
 // This function is safe for concurrent access.
 func (b *BlockChain) ThreadTips() map[provautil.ThreadID]*wire.OutPoint {
 	b.stateLock.RLock()
@@ -1624,7 +1627,11 @@ func (b *BlockChain) ThreadTips() map[provautil.ThreadID]*wire.OutPoint {
 	return threadTips
 }
 
-// TotalSupply
+// TotalSupply returns information about the total spendable supply of atoms in
+// the best chain.  Supply is issued and de-issued via transactions on the
+// issue thread.  The supply total is not consensus critical. The total does
+// not measure supply made unspendable via ASP key revocation.
+//
 // This function is safe for concurrent access.
 func (b *BlockChain) TotalSupply() uint64 {
 	b.stateLock.RLock()
@@ -1633,7 +1640,11 @@ func (b *BlockChain) TotalSupply() uint64 {
 	return totalSupply
 }
 
-// LastKeyID
+// LastKeyID returns the number for the last added ASP Key ID in the best
+// chain.  ASP Key IDs are atomically increasing, this number can be used to
+// check the current number.  ASP Key IDs start from 1, so this number should
+// not be used as a counter.
+//
 // This function is safe for concurrent access.
 func (b *BlockChain) LastKeyID() btcec.KeyID {
 	b.stateLock.RLock()
@@ -1642,9 +1653,11 @@ func (b *BlockChain) LastKeyID() btcec.KeyID {
 	return lastKeyID
 }
 
-// AdminKeySets returns all admin key sets that govern the chain state.
+// AdminKeySets returns all admin key sets that govern the chain state for the
+// best chain.
 // The returned instance must be treated as immutable since it is shared by all
 // callers.
+//
 // This function is safe for concurrent access.
 func (b *BlockChain) AdminKeySets() map[btcec.KeySetType]btcec.PublicKeySet {
 	b.stateLock.RLock()
@@ -1653,9 +1666,10 @@ func (b *BlockChain) AdminKeySets() map[btcec.KeySetType]btcec.PublicKeySet {
 	return adminKeySets
 }
 
-// KeyIDs returns all keyID to pub key mapping set on the chain.
+// KeyIDs returns the ASP keyID-to-pubkey mapping set for the best chain.
 // The returned instance must be treated as immutable since it is shared by all
 // callers.
+//
 // This function is safe for concurrent access.
 func (b *BlockChain) KeyIDs() btcec.KeyIdMap {
 	b.stateLock.RLock()
