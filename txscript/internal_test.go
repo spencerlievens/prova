@@ -21,10 +21,6 @@ import (
 	"github.com/bitgo/prova/wire"
 )
 
-// TstMaxScriptSize makes the internal maxScriptSize constant available to the
-// test package.
-const TstMaxScriptSize = maxScriptSize
-
 // TstHasCanoncialPushes makes the internal isCanonicalPush function available
 // to the test package.
 var TstHasCanonicalPushes = canonicalPush

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 The btcsuite developers
+// Copyright (c) 2013-2017 The btcsuite developers
 // Copyright (c) 2017 BitGo
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
@@ -134,7 +134,11 @@ func parseScriptTemplate(script []byte, opcodes *[256]opcode) ([]parsedOpcode, e
 		// Data pushes of specific lengths -- OP_DATA_[1-75].
 		case op.length > 1:
 			if len(script[i:]) < op.length {
-				return retScript, ErrStackShortScript
+				str := fmt.Sprintf("opcode %s requires %d "+
+					"bytes, but script only has %d remaining",
+					op.name, op.length, len(script[i:]))
+				return retScript, scriptError(ErrMalformedPush,
+					str)
 			}
 
 			// Slice out the data.
@@ -147,7 +151,11 @@ func parseScriptTemplate(script []byte, opcodes *[256]opcode) ([]parsedOpcode, e
 			off := i + 1
 
 			if len(script[off:]) < -op.length {
-				return retScript, ErrStackShortScript
+				str := fmt.Sprintf("opcode %s requires %d "+
+					"bytes, but script only has %d remaining",
+					op.name, -op.length, len(script[off:]))
+				return retScript, scriptError(ErrMalformedPush,
+					str)
 			}
 
 			// Next -length bytes are little endian length of data.
@@ -163,9 +171,10 @@ func parseScriptTemplate(script []byte, opcodes *[256]opcode) ([]parsedOpcode, e
 					(uint(script[off+1]) << 8) |
 					uint(script[off]))
 			default:
-				return retScript,
-					fmt.Errorf("invalid opcode length %d",
-						op.length)
+				str := fmt.Sprintf("invalid opcode length %d",
+					op.length)
+				return retScript, scriptError(ErrMalformedPush,
+					str)
 			}
 
 			// Move offset to beginning of the data.
@@ -174,7 +183,11 @@ func parseScriptTemplate(script []byte, opcodes *[256]opcode) ([]parsedOpcode, e
 			// Disallow entries that do not fit script or were
 			// sign extended.
 			if int(l) > len(script[off:]) || int(l) < 0 {
-				return retScript, ErrStackShortScript
+				str := fmt.Sprintf("opcode %s pushes %d bytes, "+
+					"but script only has %d remaining",
+					op.name, int(l), len(script[off:]))
+				return retScript, scriptError(ErrMalformedPush,
+					str)
 			}
 
 			pop.data = script[off : off+int(l)]

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 The btcsuite developers
+// Copyright (c) 2013-2017 The btcsuite developers
 // Copyright (c) 2017 BitGo
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
@@ -6,6 +6,8 @@
 package txscript
 
 import (
+	"fmt"
+
 	"github.com/bitgo/prova/btcec"
 	"github.com/bitgo/prova/chaincfg"
 	"github.com/bitgo/prova/provautil"
@@ -377,7 +379,8 @@ func CalcMultiSigStats(script []byte) (int, int, error) {
 	// items must be on the stack per:
 	//  OP_1 PUBKEY OP_1 OP_CHECKMULTISIG
 	if len(pops) < 4 {
-		return 0, 0, ErrStackUnderflow
+		str := fmt.Sprintf("script %x is not a multisig script", script)
+		return 0, 0, scriptError(ErrNotMultisigScript, str)
 	}
 
 	numSigs := asSmallInt(pops[0].opcode)
@@ -389,7 +392,7 @@ func CalcMultiSigStats(script []byte) (int, int, error) {
 // Prova 2-of-3 address.
 func payToProvaScript(pubKeyHash []byte, keyIDs []btcec.KeyID) ([]byte, error) {
 	if len(keyIDs) != 2 {
-		return nil, ErrBadNumRequired
+		return nil, scriptError(ErrInvalidNumberOfKeyIds, "prova script must have 2 key ids")
 	}
 	return NewScriptBuilder().
 		AddOp(OP_2). // 2 signatures required
@@ -407,12 +410,12 @@ func PayToAddrScript(addr provautil.Address) ([]byte, error) {
 	switch addr := addr.(type) {
 	case *provautil.AddressProva:
 		if addr == nil {
-			return nil, ErrUnsupportedAddress
+			return nil, scriptError(ErrUnsupportedAddress, "address is nil")
 		}
 		return payToProvaScript(addr.ScriptAddress(), addr.ScriptKeyIDs())
 	}
 
-	return nil, ErrUnsupportedAddress
+	return nil, scriptError(ErrUnsupportedAddress, "unsupported address type")
 }
 
 // ProvaThreadScript creates a new script to pay a transaction output to an
@@ -424,10 +427,13 @@ func ProvaThreadScript(threadID provautil.ThreadID) ([]byte, error) {
 }
 
 // NullDataScript creates a provably-prunable script containing OP_RETURN
-// followed by the passed data.
+// followed by the passed data.  An Error with the error code ErrTooMuchNullData
+// will be returned if the length of the passed data exceeds MaxDataCarrierSize.
 func NullDataScript(data []byte) ([]byte, error) {
 	if len(data) > MaxDataCarrierSize {
-		return nil, ErrStackLongScript
+		str := fmt.Sprintf("data size %d is larger than max "+
+			"allowed size %d", len(data), MaxDataCarrierSize)
+		return nil, scriptError(ErrTooMuchNullData, str)
 	}
 
 	return NewScriptBuilder().AddOp(OP_RETURN).AddData(data).Script()
@@ -439,7 +445,10 @@ func NullDataScript(data []byte) ([]byte, error) {
 // than the number of keys provided.
 func MultiSigScript(pubkeys []*provautil.AddressPubKey, nrequired int) ([]byte, error) {
 	if len(pubkeys) < nrequired {
-		return nil, ErrBadNumRequired
+		str := fmt.Sprintf("unable to generate multisig script with "+
+			"%d required signatures when there are only %d public "+
+			"keys available", nrequired, len(pubkeys))
+		return nil, scriptError(ErrTooManyRequiredSigs, str)
 	}
 
 	builder := NewScriptBuilder().AddInt64(int64(nrequired))
