@@ -36,6 +36,7 @@ const (
 		ScriptStrictMultiSig |
 		ScriptDiscourageUpgradableNops |
 		ScriptVerifyCleanStack |
+		ScriptVerifyNullFail |
 		ScriptVerifyCheckLockTimeVerify |
 		ScriptVerifyCheckSequenceVerify |
 		ScriptVerifyLowS

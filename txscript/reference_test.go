@@ -149,6 +149,8 @@ func parseScriptFlags(flagStr string) (ScriptFlags, error) {
 			// Nothing.
 		case "NULLDUMMY":
 			flags |= ScriptStrictMultiSig
+		case "NULLFAIL":
+			flags |= ScriptVerifyNullFail
 		case "P2SH":
 			flags |= ScriptBip16
 		case "SIGPUSHONLY":
