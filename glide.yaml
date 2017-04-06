@@ -2,7 +2,6 @@ package: github.com/bitgo/prova
 import:
 - package: github.com/btcsuite/btclog
 - package: github.com/btcsuite/btcrpcclient
-- package: github.com/btcsuite/fastsha256
 - package: github.com/btcsuite/go-flags
 - package: github.com/btcsuite/go-socks
   subpackages:

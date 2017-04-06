@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 The btcsuite developers
+// Copyright (c) 2013-2017 The btcsuite developers
 // Copyright (c) 2017 BitGo
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
@@ -8,6 +8,7 @@ package txscript
 import (
 	"bytes"
 	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -16,7 +17,6 @@ import (
 	"github.com/bitgo/prova/btcec"
 	"github.com/bitgo/prova/chaincfg/chainhash"
 	"github.com/bitgo/prova/wire"
-	"github.com/btcsuite/fastsha256"
 	"github.com/btcsuite/golangcrypto/ripemd160"
 )
 
@@ -1905,7 +1905,7 @@ func opcodeSha256(op *parsedOpcode, vm *Engine) error {
 		return err
 	}
 
-	hash := fastsha256.Sum256(buf)
+	hash := sha256.Sum256(buf)
 	vm.dstack.PushByteArray(hash[:])
 	return nil
 }
@@ -1920,7 +1920,7 @@ func opcodeHash160(op *parsedOpcode, vm *Engine) error {
 		return err
 	}
 
-	hash := fastsha256.Sum256(buf)
+	hash := sha256.Sum256(buf)
 	vm.dstack.PushByteArray(calcHash(hash[:], ripemd160.New()))
 	return nil
 }
@@ -2192,7 +2192,7 @@ func opcodeCheckSafeMultiSig(op *parsedOpcode, vm *Engine) error {
 			continue
 		}
 
-		hash256 := fastsha256.Sum256(pubKey)
+		hash256 := sha256.Sum256(pubKey)
 		hash160 := calcHash(hash256[:], ripemd160.New())
 
 		// Check hash of key in scriptSig against all key hashes in scriptPub
