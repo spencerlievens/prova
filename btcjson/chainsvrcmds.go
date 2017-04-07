@@ -1,4 +1,4 @@
-// Copyright (c) 2014 The btcsuite developers
+// Copyright (c) 2014-2017 The btcsuite developers
 // Copyright (c) 2017 BitGo
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
@@ -349,6 +349,19 @@ type GetInfoCmd struct{}
 // getinfo JSON-RPC command.
 func NewGetInfoCmd() *GetInfoCmd {
 	return &GetInfoCmd{}
+}
+
+// GetMempoolEntryCmd defines the getmempoolentry JSON-RPC command.
+type GetMempoolEntryCmd struct {
+	TxID string
+}
+
+// NewGetMempoolEntryCmd returns a new instance which can be used to issue a
+// getmempoolentry JSON-RPC command.
+func NewGetMempoolEntryCmd(txHash string) *GetMempoolEntryCmd {
+	return &GetMempoolEntryCmd{
+		TxID: txHash,
+	}
 }
 
 // GetMempoolInfoCmd defines the getmempoolinfo JSON-RPC command.
@@ -766,6 +779,7 @@ func init() {
 	MustRegisterCmd("getgenerate", (*GetGenerateCmd)(nil), flags)
 	MustRegisterCmd("gethashespersec", (*GetHashesPerSecCmd)(nil), flags)
 	MustRegisterCmd("getinfo", (*GetInfoCmd)(nil), flags)
+	MustRegisterCmd("getmempoolentry", (*GetMempoolEntryCmd)(nil), flags)
 	MustRegisterCmd("getmempoolinfo", (*GetMempoolInfoCmd)(nil), flags)
 	MustRegisterCmd("getmininginfo", (*GetMiningInfoCmd)(nil), flags)
 	MustRegisterCmd("getnetworkinfo", (*GetNetworkInfoCmd)(nil), flags)

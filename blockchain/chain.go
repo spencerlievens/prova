@@ -572,44 +572,6 @@ func (b *BlockChain) relativeNode(anchor *blockNode, distance uint32) (*blockNod
 	return iterNode, nil
 }
 
-// removeBlockNode removes the passed block node from the memory chain by
-// unlinking all of its children and removing it from the the node and
-// dependency indices.
-//
-// This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) removeBlockNode(node *blockNode) error {
-	if node.parent != nil {
-		return AssertError(fmt.Sprintf("removeBlockNode must be "+
-			"called with a node at the front of the chain - node %v",
-			node.hash))
-	}
-
-	// Remove the node from the node index.
-	delete(b.index, *node.hash)
-
-	// Unlink all of the node's children.
-	for _, child := range node.children {
-		child.parent = nil
-	}
-	node.children = nil
-
-	// Remove the reference from the dependency index.
-	prevHash := node.parentHash
-	if children, ok := b.depNodes[*prevHash]; ok {
-		// Find the node amongst the children of the
-		// dependencies for the parent hash and remove it.
-		b.depNodes[*prevHash] = removeChildNode(children, node)
-
-		// Remove the map entry altogether if there are no
-		// longer any nodes which depend on the parent hash.
-		if len(b.depNodes[*prevHash]) == 0 {
-			delete(b.depNodes, *prevHash)
-		}
-	}
-
-	return nil
-}
-
 // isMajorityVersion determines if a previous number of blocks in the chain
 // starting with startNode are at least the minimum passed version.
 //
@@ -692,18 +654,6 @@ func (b *BlockChain) calcPastMedianTime(startNode *blockNode) (time.Time, error)
 	// changed to an even number, this code will be wrong.
 	medianTimestamp := timestamps[numNodes/2]
 	return time.Unix(medianTimestamp, 0), nil
-}
-
-// CalcPastMedianTime calculates the median time of the previous few blocks
-// prior to, and including, the end of the current best chain.  It is primarily
-// used to ensure new blocks have sane timestamps.
-//
-// This function is safe for concurrent access.
-func (b *BlockChain) CalcPastMedianTime() (time.Time, error) {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
-
-	return b.calcPastMedianTime(b.bestNode)
 }
 
 // SequenceLock represents the converted relative lock-time in seconds, and
