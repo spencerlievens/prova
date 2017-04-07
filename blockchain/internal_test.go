@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 The btcsuite developers
+// Copyright (c) 2013-2017 The btcsuite developers
 // Copyright (c) 2017 BitGo
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
@@ -15,7 +15,6 @@ package blockchain
 
 import (
 	"sort"
-	"time"
 )
 
 // TstSetCoinbaseMaturity makes the ability to set the coinbase maturity
@@ -26,7 +25,7 @@ func (b *BlockChain) TstSetCoinbaseMaturity(maturity uint16) {
 
 // TstTimeSorter makes the internal timeSorter type available to the test
 // package.
-func TstTimeSorter(times []time.Time) sort.Interface {
+func TstTimeSorter(times []int64) sort.Interface {
 	return timeSorter(times)
 }
 

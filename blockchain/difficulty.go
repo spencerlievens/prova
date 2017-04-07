@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 The btcsuite developers
+// Copyright (c) 2013-2017 The btcsuite developers
 // Copyright (c) 2017 BitGo
 // Copyright (c) 2016 The Zcash developers
 // Use of this source code is governed by an ISC

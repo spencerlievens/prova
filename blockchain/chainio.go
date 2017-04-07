@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2016 The btcsuite developers
+// Copyright (c) 2015-2017 The btcsuite developers
 // Copyright (c) 2017 BitGo
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
@@ -16,6 +16,7 @@ import (
 	"github.com/bitgo/prova/wire"
 	"math/big"
 	"sort"
+	"time"
 )
 
 var (
@@ -1285,7 +1286,7 @@ func (b *BlockChain) createChainState() error {
 	numTxns := uint64(len(genesisBlock.MsgBlock().Transactions))
 	blockSize := uint64(genesisBlock.MsgBlock().SerializeSize())
 	b.stateSnapshot = newBestState(b.bestNode, blockSize, numTxns, numTxns,
-		b.bestNode.timestamp)
+		time.Unix(b.bestNode.timestamp, 0))
 
 	b.adminKeySets = b.chainParams.AdminKeySets
 	b.aspKeyIdMap = b.chainParams.ASPKeyIdMap
