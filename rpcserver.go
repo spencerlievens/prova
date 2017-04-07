@@ -223,6 +223,7 @@ var rpcUnimplemented = map[string]struct{}{
 // Commands that are available to a limited user
 var rpcLimited = map[string]struct{}{
 	// Websockets commands
+	"loadtxfilter":          {},
 	"notifyblocks":          {},
 	"notifynewtransactions": {},
 	"notifyreceived":        {},
