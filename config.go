@@ -21,6 +21,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bitgo/prova/chaincfg"
+	"github.com/bitgo/prova/chaincfg/chainhash"
 	"github.com/bitgo/prova/connmgr"
 	"github.com/bitgo/prova/database"
 	_ "github.com/bitgo/prova/database/ffldb"
@@ -123,6 +125,7 @@ type config struct {
 	TestNet              bool          `long:"testnet" description:"Use the test network"`
 	RegressionTest       bool          `long:"regtest" description:"Use the regression test network"`
 	SimNet               bool          `long:"simnet" description:"Use the simulation test network"`
+	AddCheckpoints       []string      `long:"addcheckpoint" description:"Add a custom checkpoint. Format: '<height>:<hash>'"`
 	DbType               string        `long:"dbtype" description:"Database backend to use for the Block Chain"`
 	Profile              string        `long:"profile" description:"Enable HTTP profiling on given port -- NOTE port must be between 1024 and 65536"`
 	CPUProfile           string        `long:"cpuprofile" description:"Write CPU profile to the specified file"`
@@ -149,6 +152,7 @@ type config struct {
 	lookup               func(string) ([]net.IP, error)
 	oniondial            func(string, string, time.Duration) (net.Conn, error)
 	dial                 func(string, string, time.Duration) (net.Conn, error)
+	addCheckpoints       []chaincfg.Checkpoint
 	miningAddrs          []provautil.Address
 	minRelayTxFee        provautil.Amount
 }
@@ -300,6 +304,49 @@ func normalizeAddresses(addrs []string, defaultPort string) []string {
 	}
 
 	return removeDuplicateAddresses(addrs)
+}
+
+// newCheckpointFromStr parses checkpoints in the '<height>:<hash>' format.
+func newCheckpointFromStr(checkpoint string) (chaincfg.Checkpoint, error) {
+	parts := strings.Split(checkpoint, ":")
+	if len(parts) != 2 {
+		return chaincfg.Checkpoint{}, errors.New("checkpoints must use the " +
+			"syntax '<height>:<hash>'")
+	}
+
+	height, err := strconv.ParseInt(parts[0], 10, 32)
+	if err != nil {
+		return chaincfg.Checkpoint{}, fmt.Errorf("unable to parse checkpoint "+
+			"due to malformed height: %s", parts[0])
+	}
+
+	hash, err := chainhash.NewHashFromStr(parts[1])
+	if err != nil {
+		return chaincfg.Checkpoint{}, fmt.Errorf("unable to parse checkpoint "+
+			"due to malformed hash: %s", parts[1])
+	}
+
+	return chaincfg.Checkpoint{
+		Height: uint32(height),
+		Hash:   hash,
+	}, nil
+}
+
+// parseCheckpoints checks the checkpoint strings for valid syntax
+// ('<height>:<hash>') and parses them to chaincfg.Checkpoint instances.
+func parseCheckpoints(checkpointStrings []string) ([]chaincfg.Checkpoint, error) {
+	if len(checkpointStrings) == 0 {
+		return nil, nil
+	}
+	checkpoints := make([]chaincfg.Checkpoint, len(checkpointStrings))
+	for i, cpString := range checkpointStrings {
+		checkpoint, err := newCheckpointFromStr(cpString)
+		if err != nil {
+			return nil, err
+		}
+		checkpoints[i] = checkpoint
+	}
+	return checkpoints, nil
 }
 
 // filesExists reports whether the named file or directory exists.
@@ -789,6 +836,16 @@ func loadConfig() (*config, []string, error) {
 	if cfg.NoOnion && cfg.OnionProxy != "" {
 		err := fmt.Errorf("%s: the --noonion and --onion options may "+
 			"not be activated at the same time", funcName)
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, usageMessage)
+		return nil, nil, err
+	}
+
+	// Check the checkpoints for syntax errors.
+	cfg.addCheckpoints, err = parseCheckpoints(cfg.AddCheckpoints)
+	if err != nil {
+		str := "%s: Error parsing checkpoints: %v"
+		err := fmt.Errorf(str, funcName, err)
 		fmt.Fprintln(os.Stderr, err)
 		fmt.Fprintln(os.Stderr, usageMessage)
 		return nil, nil, err
