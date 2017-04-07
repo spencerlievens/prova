@@ -193,6 +193,26 @@ func TestChainSvrWsCmds(t *testing.T) {
 				EndBlock:   btcjson.String("456"),
 			},
 		},
+		{
+			name: "loadtxfilter",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("loadtxfilter", false, `["1Address"]`, `[{"hash":"0000000000000000000000000000000000000000000000000000000000000123","index":0}]`)
+			},
+			staticCmd: func() interface{} {
+				addrs := []string{"1Address"}
+				ops := []btcjson.OutPoint{{
+					Hash:  "0000000000000000000000000000000000000000000000000000000000000123",
+					Index: 0,
+				}}
+				return btcjson.NewLoadTxFilterCmd(false, addrs, ops)
+			},
+			marshalled: `{"jsonrpc":"1.0","method":"loadtxfilter","params":[false,["1Address"],[{"hash":"0000000000000000000000000000000000000000000000000000000000000123","index":0}]],"id":1}`,
+			unmarshalled: &btcjson.LoadTxFilterCmd{
+				Reload:    false,
+				Addresses: []string{"1Address"},
+				OutPoints: []btcjson.OutPoint{{Hash: "0000000000000000000000000000000000000000000000000000000000000123", Index: 0}},
+			},
+		},
 	}
 
 	t.Logf("Running %d tests", len(tests))
