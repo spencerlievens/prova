@@ -43,7 +43,8 @@ func TestHaveBlock(t *testing.T) {
 	}
 	defer teardownFunc()
 
-	// Since we're not dealing with the real block chain, set the coinbase maturity to 1.
+	// Since we're not dealing with the real block chain, set the coinbase
+	// maturity to 1.
 	chain.TstSetCoinbaseMaturity(1)
 
 	for i := 1; i < len(blocks); i++ {
