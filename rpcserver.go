@@ -229,6 +229,7 @@ var rpcLimited = map[string]struct{}{
 	"notifyreceived":        {},
 	"notifyspent":           {},
 	"rescan":                {},
+	"rescanblocks":          {},
 	"session":               {},
 
 	// Websockets AND HTTP/S commands
