@@ -56,18 +56,19 @@ const (
 	defaultMaxOrphanTransactions = 100
 	defaultMaxOrphanTxSize       = mempool.MaxStandardTxSize
 	defaultSigCacheMaxSize       = 100000
+	sampleConfigFilename         = "sample-prova.conf"
 	defaultTxIndex               = false
 	defaultAddrIndex             = false
 )
 
 var (
-	btcdHomeDir        = provautil.AppDataDir("prova", false)
-	defaultConfigFile  = filepath.Join(btcdHomeDir, defaultConfigFilename)
-	defaultDataDir     = filepath.Join(btcdHomeDir, defaultDataDirname)
+	defaultHomeDir     = provautil.AppDataDir("prova", false)
+	defaultConfigFile  = filepath.Join(defaultHomeDir, defaultConfigFilename)
+	defaultDataDir     = filepath.Join(defaultHomeDir, defaultDataDirname)
 	knownDbTypes       = database.SupportedDrivers()
-	defaultRPCKeyFile  = filepath.Join(btcdHomeDir, "rpc.key")
-	defaultRPCCertFile = filepath.Join(btcdHomeDir, "rpc.cert")
-	defaultLogDir      = filepath.Join(btcdHomeDir, defaultLogDirname)
+	defaultRPCKeyFile  = filepath.Join(defaultHomeDir, "rpc.key")
+	defaultRPCCertFile = filepath.Join(defaultHomeDir, "rpc.cert")
+	defaultLogDir      = filepath.Join(defaultHomeDir, defaultLogDirname)
 )
 
 // runServiceCommand is only set to a real function on Windows.  It is used
@@ -157,7 +158,7 @@ type config struct {
 	minRelayTxFee        provautil.Amount
 }
 
-// serviceOptions defines the configuration options for btcd as a service on
+// serviceOptions defines the configuration options for the daemon as a service on
 // Windows.
 type serviceOptions struct {
 	ServiceCommand string `short:"s" long:"service" description:"Service command {install, remove, start, stop}"`
@@ -168,7 +169,7 @@ type serviceOptions struct {
 func cleanAndExpandPath(path string) string {
 	// Expand initial ~ to OS specific home directory.
 	if strings.HasPrefix(path, "~") {
-		homeDir := filepath.Dir(btcdHomeDir)
+		homeDir := filepath.Dir(defaultHomeDir)
 		path = strings.Replace(path, "~", homeDir, 1)
 	}
 
@@ -492,7 +493,7 @@ func loadConfig() (*config, []string, error) {
 
 	// Create the home directory if it doesn't already exist.
 	funcName := "loadConfig"
-	err = os.MkdirAll(btcdHomeDir, 0700)
+	err = os.MkdirAll(defaultHomeDir, 0700)
 	if err != nil {
 		// Show a nicer error message if it's because a symlink is
 		// linked to a directory that does not exist (probably because
@@ -980,19 +981,25 @@ func loadConfig() (*config, []string, error) {
 	return &cfg, remainingArgs, nil
 }
 
-// createDefaultConfig copies the file sample-btcd.conf to the given destination path,
+// createDefaultConfig copies the file sample-prova.conf to the given destination path,
 // and populates it with some randomly generated RPC username and password.
 func createDefaultConfigFile(destinationPath string) error {
 	// Create the destination directory if it does not exists
-	os.MkdirAll(filepath.Dir(destinationPath), 0700)
+	err := os.MkdirAll(filepath.Dir(destinationPath), 0700)
+	if err != nil {
+		return err
+	}
 
-	// We get the sample config file path, which is in the same directory as this file.
-	_, path, _, _ := runtime.Caller(0)
-	sampleConfigPath := filepath.Join(filepath.Dir(path), "sample-btcd.conf")
+	// We assume sample config file path is same as binary
+	path, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		return err
+	}
+	sampleConfigPath := filepath.Join(path, sampleConfigFilename)
 
 	// We generate a random user and password
 	randomBytes := make([]byte, 20)
-	_, err := rand.Read(randomBytes)
+	_, err = rand.Read(randomBytes)
 	if err != nil {
 		return err
 	}
@@ -1010,7 +1017,8 @@ func createDefaultConfigFile(destinationPath string) error {
 	}
 	defer src.Close()
 
-	dest, err := os.OpenFile(destinationPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
+	dest, err := os.OpenFile(destinationPath,
+		os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
