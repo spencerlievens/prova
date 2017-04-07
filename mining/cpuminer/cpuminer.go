@@ -348,7 +348,7 @@ out:
 				invalidValidateKey.SerializeCompressed())
 			log.Errorf(str)
 			m.submitBlockLock.Unlock()
-			time.Sleep(10 * time.Second)
+			time.Sleep(2 * time.Second)
 			continue
 		}
 
