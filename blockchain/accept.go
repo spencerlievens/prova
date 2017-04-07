@@ -5,7 +5,10 @@
 
 package blockchain
 
-import "github.com/bitgo/prova/provautil"
+import (
+	"github.com/bitgo/prova/database"
+	"github.com/bitgo/prova/provautil"
+)
 
 // maybeAcceptBlock potentially accepts a block into the block chain and, if
 // accepted, returns whether or not it is on the main chain.  It performs
@@ -35,6 +38,22 @@ func (b *BlockChain) maybeAcceptBlock(block *provautil.Block, flags BehaviorFlag
 	// The block must pass all of the validation rules which depend on the
 	// position of the block within the block chain.
 	err = b.checkBlockContext(block, prevNode, flags)
+	if err != nil {
+		return false, err
+	}
+
+	// Insert the block into the database if it's not already there.  Even
+	// though it is possible the block will ultimately fail to connect, it
+	// has already passed all proof-of-work and validity tests which means
+	// it would be prohibitively expensive for an attacker to fill up the
+	// disk with a bunch of blocks that fail to connect.  This is necessary
+	// since it allows block download to be decoupled from the much more
+	// expensive connection logic.  It also has some other nice properties
+	// such as making blocks that never become part of the main chain or
+	// blocks that fail to connect available for further analysis.
+	err = b.db.Update(func(dbTx database.Tx) error {
+		return dbMaybeStoreBlock(dbTx, block)
+	})
 	if err != nil {
 		return false, err
 	}

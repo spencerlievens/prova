@@ -224,7 +224,6 @@ type BlockChain struct {
 	orphans      map[chainhash.Hash]*orphanBlock
 	prevOrphans  map[chainhash.Hash][]*orphanBlock
 	oldestOrphan *orphanBlock
-	blockCache   map[chainhash.Hash]*provautil.Block
 
 	// These fields are related to checkpoint handling.  They are protected
 	// by the chain lock.
@@ -1003,12 +1002,6 @@ func (b *BlockChain) connectBlock(node *blockNode, block *provautil.Block, utxoV
 			return err
 		}
 
-		// Insert the block into the database if it's not already there.
-		err = dbMaybeStoreBlock(dbTx, block)
-		if err != nil {
-			return err
-		}
-
 		// Allow the index manager to call each of the currently active
 		// optional indexes with the block being connected so they can
 		// update themselves accordingly.
@@ -1170,9 +1163,8 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *provautil.Block, ut
 	// now that the modifications have been committed to the database.
 	utxoView.commit()
 
-	// Put block in the side chain cache.
+	// Mark block as being in a side chain.
 	node.inMainChain = false
-	b.blockCache[*node.hash] = block
 
 	// This node's parent is now the end of the best chain.
 	b.bestNode = node.parent
@@ -1220,15 +1212,6 @@ func countSpentOutputs(block *provautil.Block) int {
 //
 // This function MUST be called with the chain state lock held (for writes).
 func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags BehaviorFlags) error {
-	// Ensure all of the needed side chain blocks are in the cache.
-	for e := attachNodes.Front(); e != nil; e = e.Next() {
-		n := e.Value.(*blockNode)
-		if _, exists := b.blockCache[*n.hash]; !exists {
-			return AssertError(fmt.Sprintf("block %v is missing "+
-				"from the side chain block cache", n.hash))
-		}
-	}
-
 	// All of the blocks to detach and related spend journal entries needed
 	// to unspend transaction outputs in the blocks being disconnected must
 	// be loaded from the database during the reorg check phase below and
@@ -1236,6 +1219,7 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	// Rather than doing two loads, cache the loaded data into these slices.
 	detachBlocks := make([]*provautil.Block, 0, detachNodes.Len())
 	detachSpentTxOuts := make([][]spentTxOut, 0, detachNodes.Len())
+	attachBlocks := make([]*provautil.Block, 0, attachNodes.Len())
 
 	// Disconnect all of the blocks back to the point of the fork.  This
 	// entails loading the blocks and their associated spent txos from the
@@ -1260,6 +1244,9 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 			block, err = dbFetchBlockByHash(dbTx, n.hash)
 			return err
 		})
+		if err != nil {
+			return err
+		}
 
 		// Load all of the utxos referenced by the block that aren't
 		// already in the view.
@@ -1307,13 +1294,35 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	// issues before ever modifying the chain.
 	for e := attachNodes.Front(); e != nil; e = e.Next() {
 		n := e.Value.(*blockNode)
-		block := b.blockCache[*n.hash]
+		var block *provautil.Block
+		err := b.db.View(func(dbTx database.Tx) error {
+			// NOTE: This block is not in the main chain, so the
+			// block has to be loaded directly from the database
+			// instead of using the dbFetchBlockByHash function.
+			blockBytes, err := dbTx.FetchBlock(n.hash)
+			if err != nil {
+				return err
+			}
+
+			block, err = provautil.NewBlockFromBytes(blockBytes)
+			if err != nil {
+				return err
+			}
+			block.SetHeight(n.height)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		// Store the loaded block for later.
+		attachBlocks = append(attachBlocks, block)
 
 		// Notice the spent txout details are not requested here and
 		// thus will not be generated.  This is done because the state
 		// is not being immediately written to the database, so it is
 		// not needed.
-		err := b.checkConnectBlock(n, block, utxoView, keyView, nil)
+		err = b.checkConnectBlock(n, block, utxoView, keyView, nil)
 		if err != nil {
 			return err
 		}
@@ -1360,9 +1369,9 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 	}
 
 	// Connect the new best chain blocks.
-	for e := attachNodes.Front(); e != nil; e = e.Next() {
+	for i, e := 0, attachNodes.Front(); e != nil; i, e = i+1, e.Next() {
 		n := e.Value.(*blockNode)
-		block := b.blockCache[*n.hash]
+		block := attachBlocks[i]
 
 		// Load all of the utxos referenced by the block that aren't
 		// already in the view.
@@ -1387,7 +1396,6 @@ func (b *BlockChain) reorganizeChain(detachNodes, attachNodes *list.List, flags 
 		if err != nil {
 			return err
 		}
-		delete(b.blockCache, *n.hash)
 	}
 
 	// Log the point where the chain forked.
@@ -1494,21 +1502,16 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *provautil.Block, f
 	}
 
 	// We're extending (or creating) a side chain which may or may not
-	// become the main chain, but in either case we need the block stored
-	// for future processing, so add the block to the side chain holding
-	// cache.
-	if !dryRun {
-		log.Debugf("Adding block %v to side chain cache", node.hash)
-	}
-	b.blockCache[*node.hash] = block
+	// become the main chain, but in either case the entry is needed in the
+	// index for future processing.
 	b.index[*node.hash] = node
 
 	// Connect the parent node to this node.
 	node.inMainChain = false
 	node.parent.children = append(node.parent.children, node)
 
-	// Remove the block from the side chain cache and disconnect it from the
-	// parent node when the function returns when running in dry run mode.
+	// Disconnect it from the parent node when the function returns when
+	// running in dry run mode.
 	if dryRun {
 		defer func() {
 			children := node.parent.children
@@ -1516,7 +1519,6 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *provautil.Block, f
 			node.parent.children = children
 
 			delete(b.index, *node.hash)
-			delete(b.blockCache, *node.hash)
 		}()
 	}
 
@@ -1798,7 +1800,6 @@ func New(config *Config) (*BlockChain, error) {
 		depNodes:            make(map[chainhash.Hash][]*blockNode),
 		orphans:             make(map[chainhash.Hash]*orphanBlock),
 		prevOrphans:         make(map[chainhash.Hash][]*orphanBlock),
-		blockCache:          make(map[chainhash.Hash]*provautil.Block),
 	}
 
 	// Initialize the chain state from the passed database.  When the db
