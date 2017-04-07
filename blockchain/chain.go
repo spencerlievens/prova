@@ -60,10 +60,17 @@ type blockNode struct {
 	// ancestor when switching chains.
 	inMainChain bool
 
-	// Some fields from block headers to aid in best chain selection.
-	version   uint32
-	bits      uint32
-	timestamp int64
+	// Some fields from block headers to aid in best chain selection and
+	// reconstructing headers from memory.  These must be treated as
+	// immutable and are intentionally ordered to avoid padding on 64-bit
+	// platforms.
+	version    uint32
+	bits       uint32
+	nonce      uint64
+	timestamp  int64
+	merkleRoot chainhash.Hash
+	size       uint32
+	signature  wire.BlockSignature
 
 	// Generator identity to check rate limiting against.
 	validatingPubKey wire.BlockValidatingPubKey
@@ -85,10 +92,31 @@ func newBlockNode(blockHeader *wire.BlockHeader, blockHash *chainhash.Hash) *blo
 		height:           blockHeader.Height,
 		version:          blockHeader.Version,
 		bits:             blockHeader.Bits,
+		nonce:            blockHeader.Nonce,
 		timestamp:        blockHeader.Timestamp.Unix(),
+		merkleRoot:       blockHeader.MerkleRoot,
 		validatingPubKey: blockHeader.ValidatingPubKey,
 	}
 	return &node
+}
+
+// Header constructs a block header from the node and returns it.
+//
+// This function is safe for concurrent access.
+func (node *blockNode) Header() wire.BlockHeader {
+	// No lock is needed because all accessed fields are immutable.
+	return wire.BlockHeader{
+		Version:          node.version,
+		PrevBlock:        *node.parentHash,
+		MerkleRoot:       node.merkleRoot,
+		Timestamp:        time.Unix(node.timestamp, 0),
+		Bits:             node.bits,
+		Height:           node.height,
+		Size:             node.size,
+		Nonce:            node.nonce,
+		ValidatingPubKey: node.validatingPubKey,
+		Signature:        node.signature,
+	}
 }
 
 // orphanBlock represents a block that we don't yet have the parent for.  It
@@ -97,6 +125,30 @@ func newBlockNode(blockHeader *wire.BlockHeader, blockHash *chainhash.Hash) *blo
 type orphanBlock struct {
 	block      *provautil.Block
 	expiration time.Time
+}
+
+// FetchHeader returns the block header identified by the given hash or an error
+// if it doesn't exist.
+func (b *BlockChain) FetchHeader(hash *chainhash.Hash) (wire.BlockHeader, error) {
+	// Reconstruct the header from the block index if possible.
+	b.chainLock.RLock()
+	node, ok := b.index[*hash]
+	b.chainLock.RUnlock()
+	if ok {
+		return node.Header(), nil
+	}
+
+	// Fall back to loading it from the database.
+	var header *wire.BlockHeader
+	err := b.db.View(func(dbTx database.Tx) error {
+		var err error
+		header, err = dbFetchHeaderByHash(dbTx, hash)
+		return err
+	})
+	if err != nil {
+		return wire.BlockHeader{}, err
+	}
+	return *header, nil
 }
 
 // removeChildNode deletes node from the provided slice of child block
