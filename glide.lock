@@ -1,20 +1,27 @@
-hash: 9984e56213a2a93f9b6812b5721ec173916c08dd2f9de93d64ed6f9a2bd83abc
-updated: 2016-10-26T22:53:00.0848822-05:00
+hash: 4703944b89b38a91e9522ca678b49285ed2e460e63ed1af5ade337a1acdab23c
+updated: 2017-04-06T21:15:05.949504706-07:00
 imports:
 - name: github.com/btcsuite/btcd
   version: f6ad7eb2c963151c71de2bd37d04d9af644a891d
   subpackages:
+  - blockchain
   - btcec
   - btcjson
   - chaincfg
   - chaincfg/chainhash
+  - database
+  - txscript
   - wire
 - name: github.com/btcsuite/btclog
   version: 73889fb79bd687870312b6e40effcecffbd57d30
 - name: github.com/btcsuite/btcrpcclient
-  version: 5ce0ed600997eafaed25ad4936c1d84ec6ad2b5a
+  version: abcdfb702a7ca67e4a32c10be380c63216bd69fe
+- name: github.com/btcsuite/btcutil
+  version: 86346b5a958c0cf94186b87855469ae991be501c
   subpackages:
   - base58
+- name: github.com/btcsuite/fastsha256
+  version: 637e656429416087660c84436a2a035d69d54e2e
 - name: github.com/btcsuite/go-flags
   version: 6c288d648c1cc1befcb90cb5511dcacf64ae8e61
 - name: github.com/btcsuite/go-socks
