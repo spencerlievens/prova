@@ -1,7 +1,7 @@
 Prova
 ====
 
-Prova is a Bitcoin-based distributed consensus system for asset token exchange written in Go (golang).
+Prova is a distributed consensus system for asset token exchange written in Go (golang), based on [btcd](https://github.com/btcsuite/btcd).
 
 It downloads, validates, and serves a block chain using consensus rules for block acceptance.  It includes a full block validation testing framework.
 
@@ -35,7 +35,7 @@ recommended that `GOPATH` is set to a directory in your home directory such as
 `~/goprojects` to avoid write permission issues.  It is also recommended to add
 `$GOPATH/bin` to your `PATH` at this point.
 
-- Run the following commands to obtain btcd, all dependencies, and install it:
+- Run the following commands to obtain prova, all dependencies, and install it:
 
 ```bash
 $ go get -u github.com/Masterminds/glide
