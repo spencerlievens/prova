@@ -202,7 +202,9 @@ var MainNetParams = Params{
 	Name:        "mainnet",
 	Net:         wire.MainNet,
 	DefaultPort: "7979",
-	DNSSeeds:    []DNSSeed{},
+	DNSSeeds: []DNSSeed{
+		{"mainnet.rmgchain.info", false},
+	},
 
 	// Chain parameters
 	GenesisBlock: &genesisBlock,
@@ -373,7 +375,7 @@ var TestNetParams = Params{
 	Net:         wire.TestNet,
 	DefaultPort: "17979",
 	DNSSeeds: []DNSSeed{
-		{"nodedns.rmgchain.info", false},
+		{"testnet.rmgchain.info", false},
 	},
 
 	// Chain parameters
