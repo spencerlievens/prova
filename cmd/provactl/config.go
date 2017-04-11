@@ -279,9 +279,9 @@ func loadConfig() (*config, []string, error) {
 	return &cfg, remainingArgs, nil
 }
 
-// createDefaultConfig creates a basic config file at the given destination path.
-// For this it tries to read the btcd config file at its default path, and extract
-// the RPC user and password from it.
+// createDefaultConfig creates a basic config file at the given destination
+// path.  For this it tries to read the Prova config file at its default path,
+// and extract the RPC user and password from it.
 func createDefaultConfigFile(destinationPath string) error {
 	// Create the destination directory if it does not exists
 	os.MkdirAll(filepath.Dir(destinationPath), 0700)

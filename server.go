@@ -2196,7 +2196,7 @@ out:
 	s.wg.Done()
 }
 
-// newServer returns a new btcd server configured to listen on addr for the
+// newServer returns a new Prova server configured to listen on addr for the
 // bitcoin network type specified by chainParams.  Use start to begin accepting
 // connections from peers.
 func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Params) (*server, error) {
