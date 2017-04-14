@@ -92,9 +92,6 @@ func useLogger(subsystemID string, logger btclog.Logger) {
 	case "BMGR":
 		bmgrLog = logger
 
-	case "BTCD":
-		btcdLog = logger
-
 	case "CHAN":
 		chanLog = logger
 		blockchain.UseLogger(logger)
@@ -114,6 +111,9 @@ func useLogger(subsystemID string, logger btclog.Logger) {
 	case "PEER":
 		peerLog = logger
 		peer.UseLogger(logger)
+
+	case "PRVA":
+		btcdLog = logger
 
 	case "RPCS":
 		rpcsLog = logger

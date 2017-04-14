@@ -23,7 +23,7 @@ func TestCreateDefaultConfigFile(t *testing.T) {
 	sampleConfigFile := filepath.Join(filepath.Dir(path), "sample-prova.conf")
 
 	// Setup a temporary directory
-	tmpDir, err := ioutil.TempDir("", "btcd")
+	tmpDir, err := ioutil.TempDir("", "prova")
 	if err != nil {
 		t.Fatalf("Failed creating a temporary directory: %v", err)
 	}

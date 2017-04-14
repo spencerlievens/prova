@@ -75,12 +75,6 @@ func btcdMain(serverChan chan<- *server) error {
 		defer pprof.StopCPUProfile()
 	}
 
-	// Perform upgrades to btcd as new versions require it.
-	if err := doUpgrades(); err != nil {
-		btcdLog.Errorf("%v", err)
-		return err
-	}
-
 	// Return now if an interrupt signal was triggered.
 	if interruptRequested(interruptedChan) {
 		return nil
