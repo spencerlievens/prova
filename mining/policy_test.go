@@ -8,10 +8,10 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
+	"github.com/bitgo/prova/blockchain"
+	"github.com/bitgo/prova/chaincfg/chainhash"
+	"github.com/bitgo/prova/provautil"
+	"github.com/bitgo/prova/wire"
 )
 
 // newHashFromStr converts the passed big-endian hex string into a
@@ -42,14 +42,14 @@ func hexToBytes(s string) []byte {
 // provided source transactions as if there were available at the respective
 // block height specified in the heights slice.  The length of the source txns
 // and source tx heights must match or it will panic.
-func newUtxoViewpoint(sourceTxns []*wire.MsgTx, sourceTxHeights []int32) *blockchain.UtxoViewpoint {
+func newUtxoViewpoint(sourceTxns []*wire.MsgTx, sourceTxHeights []uint32) *blockchain.UtxoViewpoint {
 	if len(sourceTxns) != len(sourceTxHeights) {
 		panic("each transaction must have its block height specified")
 	}
 
 	view := blockchain.NewUtxoViewpoint()
 	for i, tx := range sourceTxns {
-		view.AddTxOuts(btcutil.NewTx(tx), sourceTxHeights[i])
+		view.AddTxOuts(provautil.NewTx(tx), sourceTxHeights[i])
 	}
 	return view
 }
@@ -89,9 +89,7 @@ func TestCalcPriority(t *testing.T) {
 		Version: 1,
 		TxIn: []*wire.TxIn{{
 			PreviousOutPoint: wire.OutPoint{
-				Hash: *newHashFromStr("0437cd7f8525ceed232435" +
-					"9c2d0ba26006d92d856a9c20fa0241106ee5" +
-					"a597c9"),
+				Hash:  commonSourceTx1.TxHash(),
 				Index: 0,
 			},
 			SignatureScript: hexToBytes("47304402204e45e16932b8af" +
@@ -120,14 +118,14 @@ func TestCalcPriority(t *testing.T) {
 		name       string                    // test description
 		tx         *wire.MsgTx               // tx to calc priority for
 		utxoView   *blockchain.UtxoViewpoint // inputs to tx
-		nextHeight int32                     // height for priority calc
+		nextHeight uint32                    // height for priority calc
 		want       float64                   // expected priority
 	}{
 		{
 			name: "one height 7 input, prio tx height 169",
 			tx:   commonRedeemTx1,
 			utxoView: newUtxoViewpoint([]*wire.MsgTx{commonSourceTx1},
-				[]int32{7}),
+				[]uint32{7}),
 			nextHeight: 169,
 			want:       5e9,
 		},
@@ -135,7 +133,7 @@ func TestCalcPriority(t *testing.T) {
 			name: "one height 100 input, prio tx height 169",
 			tx:   commonRedeemTx1,
 			utxoView: newUtxoViewpoint([]*wire.MsgTx{commonSourceTx1},
-				[]int32{100}),
+				[]uint32{100}),
 			nextHeight: 169,
 			want:       2129629629.6296296,
 		},
@@ -143,7 +141,7 @@ func TestCalcPriority(t *testing.T) {
 			name: "one height 7 input, prio tx height 100000",
 			tx:   commonRedeemTx1,
 			utxoView: newUtxoViewpoint([]*wire.MsgTx{commonSourceTx1},
-				[]int32{7}),
+				[]uint32{7}),
 			nextHeight: 100000,
 			want:       3086203703703.7036,
 		},
@@ -151,7 +149,7 @@ func TestCalcPriority(t *testing.T) {
 			name: "one height 100 input, prio tx height 100000",
 			tx:   commonRedeemTx1,
 			utxoView: newUtxoViewpoint([]*wire.MsgTx{commonSourceTx1},
-				[]int32{100}),
+				[]uint32{100}),
 			nextHeight: 100000,
 			want:       3083333333333.3335,
 		},
