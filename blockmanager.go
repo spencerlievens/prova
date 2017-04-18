@@ -1096,10 +1096,10 @@ func blockDbPath(dbType string) string {
 	return dbPath
 }
 
-// warnMultipeDBs shows a warning if multiple block database types are detected.
-// This is not a situation most users want.  It is handy for development however
-// to support multiple side-by-side databases.
-func warnMultipeDBs() {
+// warnMultipleDBs shows a warning if multiple block database types are
+// detected. This is not a situation most users want.  It is handy for
+// development however to support multiple side-by-side databases.
+func warnMultipleDBs() {
 	// This is intentionally not using the known db types which depend
 	// on the database types compiled into the binary since we want to
 	// detect legacy db types as well.
@@ -1147,7 +1147,7 @@ func loadBlockDB() (database.DB, error) {
 		return db, nil
 	}
 
-	warnMultipeDBs()
+	warnMultipleDBs()
 
 	// The database name is based on the database type.
 	dbPath := blockDbPath(cfg.DbType)
