@@ -259,7 +259,7 @@ out:
 			case handleFailed:
 				connReq := msg.c
 				connReq.updateState(ConnFailed)
-				log.Debugf("Failed to connect to %v: %v", connReq, msg.err)
+				log.Debugf("Failed to connect: %v", msg.err)
 				cm.handleFailedConn(connReq)
 			}
 
