@@ -15,7 +15,6 @@ import (
 	"github.com/bitgo/prova/database"
 	_ "github.com/bitgo/prova/database/ffldb"
 	"github.com/bitgo/prova/provautil"
-	"github.com/bitgo/prova/wire"
 )
 
 var (
@@ -60,17 +59,6 @@ func validDbType(dbType string) bool {
 	return false
 }
 
-// netName returns the name used when referring to a bitcoin network.
-// TODO(prova): only use chainParams.Name everywhere
-func netName(chainParams *chaincfg.Params) string {
-	switch chainParams.Net {
-	case wire.TestNet:
-		return "testnet"
-	default:
-		return chainParams.Name
-	}
-}
-
 // setupGlobalConfig examine the global configuration options for any conditions
 // which are invalid as well as performs any addition setup necessary after the
 // initial parse.
@@ -109,7 +97,7 @@ func setupGlobalConfig() error {
 	// All data is specific to a network, so namespacing the data directory
 	// means each individual piece of serialized data does not have to
 	// worry about changing names per network and such.
-	cfg.DataDir = filepath.Join(cfg.DataDir, netName(activeNetParams))
+	cfg.DataDir = filepath.Join(cfg.DataDir, activeNetParams.Name)
 
 	return nil
 }

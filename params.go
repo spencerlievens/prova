@@ -7,7 +7,6 @@ package main
 
 import (
 	"github.com/bitgo/prova/chaincfg"
-	"github.com/bitgo/prova/wire"
 )
 
 // activeNetParams is a pointer to the parameters specific to the
@@ -53,18 +52,4 @@ var testNetParams = params{
 var simNetParams = params{
 	Params:  &chaincfg.SimNetParams,
 	rpcPort: "18556",
-}
-
-// netName returns the name used when referring to a bitcoin network.  At the
-// time of writing, btcd currently places blocks for testnet in the
-// data and log directory "testnet", which does not match the Name field of the
-// chaincfg parameters.  This function can be used to override this directory
-// name as "testnet" when the passed active network matches wire.TestNet.
-func netName(chainParams *params) string {
-	switch chainParams.Net {
-	case wire.TestNet:
-		return "testnet"
-	default:
-		return chainParams.Name
-	}
 }
