@@ -150,6 +150,7 @@ type config struct {
 	DropAddrIndex        bool          `long:"dropaddrindex" description:"Deletes the address-based transaction index from the database on start up and then exits."`
 	RelayNonStd          bool          `long:"relaynonstd" description:"Relay non-standard transactions regardless of the default settings for the active network."`
 	RejectNonStd         bool          `long:"rejectnonstd" description:"Reject non-standard transactions regardless of the default settings for the active network."`
+	EnableExternalRPC    bool          `long:"enableexternalrpc" description:"Allow external listening of the RPC API. This also requires that TLS is not disabled."`
 	lookup               func(string) ([]net.IP, error)
 	oniondial            func(string, string, time.Duration) (net.Conn, error)
 	dial                 func(string, string, time.Duration) (net.Conn, error)
@@ -801,9 +802,9 @@ func loadConfig() (*config, []string, error) {
 	cfg.RPCListeners = normalizeAddresses(cfg.RPCListeners,
 		activeNetParams.rpcPort)
 
-	// Only allow TLS to be disabled if the RPC is bound to localhost
-	// addresses.
-	if !cfg.DisableRPC && cfg.DisableTLS {
+	// RPC listening on external interfaces is only allowed when explicitly
+	// enabled and TLS is required.
+	if !cfg.EnableExternalRPC || (!cfg.DisableRPC && cfg.DisableTLS) {
 		allowedTLSListeners := map[string]struct{}{
 			"localhost": {},
 			"127.0.0.1": {},
@@ -820,9 +821,16 @@ func loadConfig() (*config, []string, error) {
 				return nil, nil, err
 			}
 			if _, ok := allowedTLSListeners[host]; !ok {
-				str := "%s: the --notls option may not be used " +
-					"when binding RPC to non localhost " +
-					"addresses: %s"
+				var str string
+				if cfg.DisableTLS {
+					str = "%s: the --notls option may not be used " +
+						"when binding RPC to non localhost " +
+						"addresses: %s"
+				} else {
+					str = "%s: the --enableexternalrpc option" +
+						"must be used when binding RPC to non " +
+						"localhost addresses: %s"
+				}
 				err := fmt.Errorf(str, funcName, addr)
 				fmt.Fprintln(os.Stderr, err)
 				fmt.Fprintln(os.Stderr, usageMessage)

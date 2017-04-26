@@ -116,6 +116,7 @@ Application Options:
                             default settings for the active network.
       --rejectnonstd        Reject non-standard transactions regardless of the
                             default settings for the active network.
+      --enableexternalrpc   Enable RPC listening on external interfaces.
 
 Help Options:
   -h, --help           Show this help message
