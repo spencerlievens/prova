@@ -54,9 +54,19 @@ $ go version
 $ go env GOROOT GOPATH
 ```
 
+If `GOROOT` or `GOPATH` is not set properly, add the following to your ~/.bashrc or /.profile startup files (substitute with proper directories if you have a custom installation of Go):
+
+```bash
+$ export GOROOT=/usr/local/go
+$ export GOPATH=$HOME/go
+$ export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+```
+
+The 'go' binary will be located under GOROOT, while your saved packages will be located under GOPATH.
+
 NOTE: The `GOROOT` and `GOPATH` above must not be the same path.  It is
 recommended that `GOPATH` is set to a directory in your home directory such as
-`~/goprojects` to avoid write permission issues.  It is also recommended to add
+`~/go` to avoid write permission issues.  It is also recommended to add
 `$GOPATH/bin` to your `PATH` at this point.
 
 - Run the following commands to obtain prova, all dependencies, and install it:
