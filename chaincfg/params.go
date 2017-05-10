@@ -218,6 +218,15 @@ var MainNetParams = Params{
 			"031337e5f3edd3232bd0c1038416c113f0c0183abdc6d584ee33ac9b172bcba35c",
 			"031337f5db2a5ce6f8c2a97fedfc5e051751dfc5a89247261804bb13ba306d1df9",
 			"031337b5ac0e43f829f930e79494b587cc881e854f61198b5befa7ec188737058b",
+			"02b523e29f24fce1f4360766c4f1a4d791b045a072379ff551f093d97a2b16e35a",
+			"025ae36dc470129c7de919f3a77de74f00bf4179e7de838dd38f9452da24231337",
+			"036b77b662372102e1519cdca417b00e37686a795d41fad336d48401bace331337",
+			"029a66f9ece35927831e24e13096b6c7ccee4ca518c1ea2cad92e2c754a29b1750",
+			"0323414c10a76e8c452077b2969d018150cc3341d25b6c4212e4bbcd574fab1337",
+			"02f856a5edf891b36bda332d07a202f1a84c88a312a2a92adcb5fdc80d50ab1337",
+			"021ffbdae400f3797ae57658592a930a4bad2030fcd4b98592338e71a441ab1337",
+			"03d43eaf07c80eb23a3d25f57ba4de523f10914c50d683bf93071fd77eaaab1337",
+			"032c37fdc2f45f60e836cb1827cc5100a9883ed5a04eee6ac29d534d68d9ab1337",
 		)
 
 		return keySets
@@ -263,7 +272,7 @@ var MainNetParams = Params{
 	HDCoinType: 0,
 
 	// Number of blocks for the moving window of difficulty adjustment.
-	PowAveragingWindow: 17,
+	PowAveragingWindow: 31,
 
 	// Maximum downward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustDown: 32,
@@ -275,7 +284,7 @@ var MainNetParams = Params{
 	ChainTrailingSigKeyLimit: 13,
 
 	// Maximum blocks signed by a single validate key, as a percentage.
-	ChainWindowShareLimit: 33,
+	ChainWindowShareLimit: 10,
 
 	// Maximum fee allowed in a single transaction, in atoms.
 	MaximumFeeAmount: 5000000,
