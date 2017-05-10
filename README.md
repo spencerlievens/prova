@@ -107,10 +107,12 @@ configuration.
 $ ./prova
 ```
 
-## Issue Tracker
+## Issues
 
 The [integrated github issue tracker](https://github.com/bitgo/prova/issues)
 is used for this project.
+
+When reporting security issues, responsible disclosure is encouraged. The Prova developers at BitGo should be directly contacted at security@bitgo.com
 
 ## Documentation
 
