@@ -8,42 +8,6 @@ import (
 	"github.com/bitgo/prova/wire"
 )
 
-// TestIsGenerationTrailingRateLimited tests that generation is rate limited
-// from the perspective of the maximal number of consecutive blocks.
-func TestIsGenerationTrailingRateLimited(t *testing.T) {
-	keyBytes, _ := hex.DecodeString("4015289a228658047520f0d0abe7ad49abc77f6be0be63b36b94b83c2d1fd977")
-	key, _ := btcec.PrivKeyFromBytes(btcec.S256(), keyBytes)
-	var pubKey wire.BlockValidatingPubKey
-	copy(pubKey[:wire.BlockValidatingPubKeySize], key.PubKey().SerializeCompressed()[:wire.BlockValidatingPubKeySize])
-	chain := make([]wire.BlockValidatingPubKey, 0)
-	limit := 2
-	whenGenerationStarts := IsGenerationTrailingRateLimited(pubKey, chain, limit)
-	chain = append([]wire.BlockValidatingPubKey{pubKey}, chain...)
-	whenUnderLimit := IsGenerationTrailingRateLimited(pubKey, chain, limit)
-	chain = append([]wire.BlockValidatingPubKey{pubKey}, chain...)
-	whenAtLimit := IsGenerationTrailingRateLimited(pubKey, chain, limit)
-	chain = append([]wire.BlockValidatingPubKey{pubKey}, chain...)
-	chain = append([]wire.BlockValidatingPubKey{pubKey}, chain...)
-	whenNoLimit := IsGenerationTrailingRateLimited(pubKey, chain, 0)
-	isRateLimited := true
-
-	if whenGenerationStarts == isRateLimited {
-		t.Fatalf("Expected no rate limit for chain start")
-	}
-
-	if whenUnderLimit == isRateLimited {
-		t.Fatalf("Expected no rate limit for minimal trailing")
-	}
-
-	if whenAtLimit == !isRateLimited {
-		t.Fatalf("Expected rate limiting for excessive trailing")
-	}
-
-	if whenNoLimit == isRateLimited {
-		t.Fatalf("Expected no limiting when no limit is specified")
-	}
-}
-
 // TestIsGenerationShareRateLimited tests that generation is rate limited
 // below a ratio of total blocks.
 func TestIsGenerationShareRateLimited(t *testing.T) {

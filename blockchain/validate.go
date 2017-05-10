@@ -1232,10 +1232,6 @@ func (b *BlockChain) isValidateKeyRateLimited(node *blockNode, validatePubKey wi
 			prevPubKeys = append(prevPubKeys, iterNode.validatingPubKey)
 		}
 	}
-	// Check if there is a run of too many blocks from a generator.
-	if IsGenerationTrailingRateLimited(validatePubKey, prevPubKeys, b.chainParams.ChainTrailingSigKeyLimit) {
-		return true, nil
-	}
 	// Check if there are too many blocks in a window from a generator.
 	if IsGenerationShareRateLimited(validatePubKey, prevPubKeys, b.chainParams.ChainWindowShareLimit) {
 		return true, nil
@@ -1470,7 +1466,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *provautil.Block, 
 	}
 	if isRateLimited {
 		str := fmt.Sprintf("Validate key rate limited %v", blockHeader.ValidatingPubKey)
-		return ruleError(ErrExcessiveTrailing, str)
+		return ruleError(ErrExcessiveChainShare, str)
 	}
 
 	// Now that the inexpensive checks are done and have passed, verify the

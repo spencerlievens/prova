@@ -152,9 +152,6 @@ type Params struct {
 	// Maximum upward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustUp int64
 
-	// Maximum consecutive trailing blocks signed by a single validate key.
-	ChainTrailingSigKeyLimit int
-
 	// Maximum blocks signed by a single validate key, as a percentage.
 	ChainWindowShareLimit int
 
@@ -279,9 +276,6 @@ var MainNetParams = Params{
 
 	// Maximum upward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustUp: 16,
-
-	// Maximum consecutive trailing blocks signed by a single validate key.
-	ChainTrailingSigKeyLimit: 13,
 
 	// Maximum blocks signed by a single validate key, as a percentage.
 	ChainWindowShareLimit: 10,
@@ -452,9 +446,6 @@ var TestNetParams = Params{
 	// Maximum upward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustUp: 64,
 
-	// Maximum consecutive trailing blocks signed by a single validate key.
-	ChainTrailingSigKeyLimit: 13,
-
 	// Maximum blocks signed by a single validate key, as a percentage.
 	ChainWindowShareLimit: 45,
 
@@ -520,9 +511,6 @@ var SimNetParams = Params{
 
 	// Maximum upward adjustment in pow difficulty, as a percentage
 	PowMaxAdjustUp: 16,
-
-	// Maximum consecutive trailing blocks signed by a single validate key.
-	ChainTrailingSigKeyLimit: 13,
 
 	// Percentage limit of blocks from a single sig key id allowed
 	ChainWindowShareLimit: 45,

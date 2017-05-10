@@ -1984,8 +1984,6 @@ func chainErrToGBTErrString(err error) string {
 		return "bad-script-validate"
 	case blockchain.ErrExcessiveChainShare:
 		return "excessive-chain-share"
-	case blockchain.ErrExcessiveTrailing:
-		return "excessive-trailing"
 	case blockchain.ErrInconsistentBlkSize:
 		return "bad-size-value"
 	case blockchain.ErrInvalidValidateKey:

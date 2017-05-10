@@ -57,7 +57,6 @@ func TestErrorCodeStringer(t *testing.T) {
 		{blockchain.ErrScriptMalformed, "ErrScriptMalformed"},
 		{blockchain.ErrScriptValidation, "ErrScriptValidation"},
 		{blockchain.ErrExcessiveChainShare, "ErrExcessiveChainShare"},
-		{blockchain.ErrExcessiveTrailing, "ErrExcessiveTrailing"},
 		{blockchain.ErrInconsistentBlkSize, "ErrInconsistentBlkSize"},
 		{blockchain.ErrInvalidValidateKey, "ErrInvalidValidateKey"},
 		{blockchain.ErrFeeTooHigh, "ErrFeeTooHigh"},

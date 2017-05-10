@@ -192,10 +192,6 @@ const (
 	// block chain because it would exceed the allowed share of blocks.
 	ErrExcessiveChainShare
 
-	// ErrExcessiveTrailing indicates that a block cannot be added to the
-	// block chain because it would constitute a too-long run of blocks.
-	ErrExcessiveTrailing
-
 	// ErrInconsistentBlkSize indicates the block size attested to in the
 	// block header does not match the block size of the actual block.
 	ErrInconsistentBlkSize
@@ -266,7 +262,6 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrScriptMalformed:      "ErrScriptMalformed",
 	ErrScriptValidation:     "ErrScriptValidation",
 	ErrExcessiveChainShare:  "ErrExcessiveChainShare",
-	ErrExcessiveTrailing:    "ErrExcessiveTrailing",
 	ErrInconsistentBlkSize:  "ErrInconsistentBlkSize",
 	ErrInvalidCoinbase:      "ErrInvalidCoinbase",
 	ErrInvalidTx:            "ErrInvalidTx",
