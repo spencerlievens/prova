@@ -379,6 +379,18 @@ var TestNetParams = Params{
 	AdminKeySets: func() map[btcec.KeySetType]btcec.PublicKeySet {
 		keySets := make(map[btcec.KeySetType]btcec.PublicKeySet)
 
+		// Issue keys
+		keySets[btcec.IssueKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			"029cd0486fd4a5b260f956e1b16db17cd0e2f8914054b30eddda17950af7033855",
+			"034d3083c7ad8537d5397fbb65aa6794e5db24d8c4ed3a1f4e12285a447c83ffc7",
+		)
+
+		// Provision keys
+		keySets[btcec.ProvisionKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			"029cd0486fd4a5b260f956e1b16db17cd0e2f8914054b30eddda17950af7033855",
+			"0307051d31f87efb84839115c09e6160cf7b9ac210860202792e1cea7bd32a7051",
+		)
+
 		// Root keys
 		keySets[btcec.RootKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
 			"023cc2d11d97728d6d69d1d296513e12e0439c225b612f1a24e5d3b3a333d058aa",
