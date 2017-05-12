@@ -806,9 +806,10 @@ func loadConfig() (*config, []string, error) {
 	// enabled and TLS is required.
 	if !cfg.EnableExternalRPC || (!cfg.DisableRPC && cfg.DisableTLS) {
 		allowedTLSListeners := map[string]struct{}{
-			"localhost": {},
-			"127.0.0.1": {},
-			"::1":       {},
+			"localhost":   {},
+			"127.0.0.1":   {},
+			"::1":         {},
+			"fe80::1%lo0": {},
 		}
 		for _, addr := range cfg.RPCListeners {
 			host, _, err := net.SplitHostPort(addr)
