@@ -273,12 +273,12 @@ func ExtractKeyIDs(pkScript []parsedOpcode) ([]btcec.KeyID, error) {
 		return nil, fmt.Errorf("unable to extract keyIDs from script, "+
 			"unexpected script structure %v", pkScript)
 	}
-	pkHashCount := asSmallInt(pkScript[len(pkScript)-2].opcode)
-	keyIDs := make([]btcec.KeyID, 0, pkHashCount)
-	for i := 2; i <= pkHashCount; i++ {
+	// Find "n" as in "m-of-n"
+	n := asSmallInt(pkScript[len(pkScript)-2].opcode)
+	keyIDs := make([]btcec.KeyID, 0, n)
+	for i := 1; i < n+1; i++ {
 		if !isUint32(pkScript[i].opcode) {
-			return nil, fmt.Errorf("unable to extract keyIDs from script, "+
-				"unexpected script structure at opcode %v", pkScript[i])
+			continue
 		}
 		keyID, err := asInt32(pkScript[i])
 		if err != nil {
@@ -303,12 +303,12 @@ func ReplaceKeyIDs(pkScript []parsedOpcode, keyIdMap map[btcec.KeyID][]byte) err
 	if len(keyIdMap) == 0 {
 		return fmt.Errorf("no keyHashes provided to replace keyIDs")
 	}
-	pkHashCount := asSmallInt(pkScript[len(pkScript)-2].opcode)
-	for i := 2; i <= pkHashCount; i++ {
+	// Find "n" as in "m-of-n"
+	n := asSmallInt(pkScript[len(pkScript)-2].opcode)
+	for i := 1; i < n+1; i++ {
 		pop := &pkScript[i]
 		if !isUint32(pop.opcode) {
-			return fmt.Errorf("unable to replace keyIDs in script, "+
-				"unexpected script structure at opcode %v", pop)
+			continue
 		}
 		keyID, err := asInt32(*pop)
 		if err != nil {

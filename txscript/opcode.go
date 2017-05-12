@@ -2162,7 +2162,6 @@ func opcodeCheckSafeMultiSig(op *parsedOpcode, vm *Engine) error {
 	}
 	numKeyHashes := int(numKeys.Int32())
 	if numKeyHashes < 0 || numKeyHashes > MaxPubKeysPerMultiSig {
-		// TODO(prova): different limit here
 		str := fmt.Sprintf("number of key hashes %d is out of allowed range", numKeyHashes)
 		return scriptError(ErrInvalidPubKeyCount, str)
 	}
@@ -2180,7 +2179,7 @@ func opcodeCheckSafeMultiSig(op *parsedOpcode, vm *Engine) error {
 			return err
 		}
 		if len(keyHash) != ripemd160.Size {
-			return fmt.Errorf("too few valid key hashes found: %d < %d", i, numKeyHashes)
+			return fmt.Errorf("too few valid key hashes found: %d < %d (%v)", i, numKeyHashes, keyHash)
 		}
 		keyHashes = append(keyHashes, keyHash)
 	}

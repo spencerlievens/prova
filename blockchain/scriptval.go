@@ -93,7 +93,8 @@ out:
 				break out
 			}
 			// If script is Prova script, we replace all keyIDs with pubKeyHashes.
-			if txscript.TypeOfScript(pops) == txscript.ProvaTy {
+			scriptType := txscript.TypeOfScript(pops)
+			if scriptType == txscript.ProvaTy || scriptType == txscript.GeneralProvaTy {
 				keyIDs, err := txscript.ExtractKeyIDs(pops)
 				if err != nil {
 					str := fmt.Sprintf("failed to extract keyIDs %s: %v", originTxHash, err)

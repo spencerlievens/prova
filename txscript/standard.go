@@ -157,10 +157,25 @@ func isGeneralProva(pops []parsedOpcode) bool {
 
 // isProva returns true if the passed script is a 2 of 3 prova transaction.
 func isProva(pops []parsedOpcode) bool {
-	return len(pops) == 6 &&
+	if len(pops) < 6 {
+		return false
+	}
+	if !isGeneralProva(pops) {
+		return false
+	}
+
+	// Handle standard common case
+	if len(pops) == 6 &&
 		pops[0].opcode.value == OP_2 &&
-		pops[4].opcode.value == OP_3 &&
-		isGeneralProva(pops)
+		pops[4].opcode.value == OP_3 {
+		return true
+	}
+
+	// Handle less common case of n-1 of n (with n-1 keyids)
+	// Errors can be ignored since already checked by isGeneralProva
+	m, _ := asInt32(pops[0])
+	n, _ := asInt32(pops[len(pops)-2])
+	return m == n-1
 }
 
 // IsProvaTx determines if a transaction is a standard prova transaction
@@ -396,11 +411,11 @@ func payToProvaScript(pubKeyHash []byte, keyIDs []btcec.KeyID) ([]byte, error) {
 		return nil, scriptError(ErrInvalidNumberOfKeyIds, "prova script must have 2 key ids")
 	}
 	return NewScriptBuilder().
-		AddOp(OP_2). // 2 signatures required
+		AddInt64(int64(len(keyIDs))).
 		AddData(pubKeyHash).
 		AddInt64(int64(keyIDs[0])).
 		AddInt64(int64(keyIDs[1])).
-		AddOp(OP_3). // 3 keys in total
+		AddInt64(int64(len(keyIDs) + 1)).
 		AddOp(OP_CHECKSAFEMULTISIG).
 		Script()
 }
@@ -500,15 +515,19 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 	switch scriptClass {
 
 	case ProvaTy:
-		requiredSigs = 2
-		key0, err0 := asInt32(pops[2])
-		key1, err1 := asInt32(pops[3])
-		keyIDs := []btcec.KeyID{
-			btcec.KeyID(key0),
-			btcec.KeyID(key1),
+		numKeyIDs := len(pops) - 4
+		requiredSigs = numKeyIDs
+		keyIDError := false
+		keyIDs := []btcec.KeyID{}
+		for i := 0; i < numKeyIDs; i++ {
+			keyID, err := asInt32(pops[2+i])
+			if err != nil {
+				keyIDError = true
+			}
+			keyIDs = append(keyIDs, btcec.KeyID(keyID))
 		}
 		addr, err := provautil.NewAddressProva(pops[1].data, keyIDs, chainParams)
-		if err == nil && err0 == nil && err1 == nil {
+		if err == nil && !keyIDError {
 			addrs = append(addrs, addr)
 		}
 

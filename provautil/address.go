@@ -37,11 +37,13 @@ var (
 )
 
 func encodeProvaAddress(keyIDs []btcec.KeyID, hash160 []byte, netID byte) string {
-	data := make([]byte, 2*btcec.KeyIDSize+ripemd160.Size)
+	data := make([]byte, len(keyIDs)*btcec.KeyIDSize+ripemd160.Size)
 	copy(data[0:], hash160)
 	offset := ripemd160.Size
-	binary.LittleEndian.PutUint32(data[offset:], uint32(keyIDs[0]))
-	binary.LittleEndian.PutUint32(data[offset+btcec.KeyIDSize:], uint32(keyIDs[1]))
+	for _, keyID := range keyIDs {
+		binary.LittleEndian.PutUint32(data[offset:], uint32(keyID))
+		offset += btcec.KeyIDSize
+	}
 	return base58.CheckEncode(data, netID)
 }
 
@@ -108,9 +110,9 @@ func DecodeAddress(addr string, defaultNet *chaincfg.Params) (Address, error) {
 	return nil, errors.New("decoded address is of unknown size")
 }
 
-// AddressProva is a standard 2-of-3 Prova address
+// AddressProva is a standard n-1 of n Prova address with n-1 keyids
 type AddressProva struct {
-	keyIDs [2]btcec.KeyID
+	keyIDs []btcec.KeyID
 	hash   [ripemd160.Size]byte
 	netID  byte
 }
@@ -132,14 +134,18 @@ func newAddressProva(pkHash []byte, keyIDs []btcec.KeyID, netID byte) (*AddressP
 		return nil, errors.New("pkHash must be 20 bytes")
 	}
 	// Check for exactly 2 keyIDs
-	if len(keyIDs) != 2 {
-		return nil, errors.New("keyIDs must have length 2")
+	if len(keyIDs) < 2 {
+		return nil, errors.New("keyIDs must have length at least 2")
+	}
+	if len(keyIDs) > 19 {
+		return nil, errors.New("keyIDs must have length at most 19")
 	}
 
 	addr := &AddressProva{netID: netID}
 	copy(addr.hash[:], pkHash)
-	addr.keyIDs[0] = keyIDs[0]
-	addr.keyIDs[1] = keyIDs[1]
+	numKeyIDs := len(keyIDs)
+	addr.keyIDs = make([]btcec.KeyID, numKeyIDs, numKeyIDs)
+	copy(addr.keyIDs, keyIDs)
 	return addr, nil
 }
 
