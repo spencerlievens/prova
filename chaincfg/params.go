@@ -304,6 +304,18 @@ var RegressionNetParams = Params{
 			"038ef4a121bcaf1b1f175557a12896f8bc93b095e84817f90e9a901cd2113a8202", // priv 2b8c52b77b327c755b9b375500d3f4b2da9b0a1ff65f6891d311fe94295bc26a
 		)
 
+		// Provision Keys
+		keySets[btcec.ProvisionKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			"0248b3b4e579444e6b7cc414510109316c4c9ba7a2a46f50f8dcbb273efb1337ab", // priv f954b388f5db3a1d2915cda434206d791b47cf3d4e78cc32fbeb77ea25d20d7d
+			"02ef86c70ae6afd2dd2f0efb07ea59789c27a1bf43f687b35dac435b539e1337ab", // priv 627f6f1d5d8f38bd60b6aaea2f74c72917deffcc2a5a64f67d3e0a28a2d711c1
+		)
+
+		// Issue Keys
+		keySets[btcec.IssueKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			"02ef7739dc67d38f2804a9c0aa1add89a992ced5f37e580ea8ccbb5742391337ab", // priv 3f9222ab4d30b1795941d9815e5833a4da70cb04bff59a5fd2ddc4641e58607e
+			"021126d3d6158cf4f47eb2e08d12e9fa46d8da7b7e401220260bdc46446f1337ab", // priv 0a40defde0e49e1f78edb9cea5c499f704fabc140d6fd1a4df8405365e2e4f0f
+		)
+
 		// Validate keys
 		keySets[btcec.ValidateKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
 			"035f5103852bd7d9c9c28e44caf1f7188941e16295062ca4c89928a8ccff993cd3", // TODO(prova) add priv

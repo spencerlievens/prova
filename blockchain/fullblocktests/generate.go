@@ -874,6 +874,12 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 		outs = append(outs, &op)
 	}
 
+	// Initial admin set keys
+	initialIssuePubKey1 := lastAdminKeySets[btcec.IssueKeySet][0]
+	initialIssuePubKey2 := lastAdminKeySets[btcec.IssueKeySet][1]
+	initialProvisionPubKey1 := lastAdminKeySets[btcec.ProvisionKeySet][0]
+	initialProvisionPubKey2 := lastAdminKeySets[btcec.ProvisionKeySet][1]
+
 	// ---------------------------------------------------------------------
 	// The comments below identify the structure of the chain being built.
 	//
@@ -905,7 +911,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	rootThreadOut := makeSpendableOutForTx(issueKeyAddTx, 0)
 	g.nextBlock("b3", nil, additionalTx(issueKeyAddTx))
 	assertThreadTip(provautil.RootThread, rootThreadOut)
-	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1})
+	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1, initialIssuePubKey1, initialIssuePubKey2})
 	accepted()
 
 	// Provision another two ISSUE keys and check three are there.
@@ -915,7 +921,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	rootThreadOut = makeSpendableOutForTx(issueKeyAddTx3, 0)
 	g.nextBlock("b4", nil, additionalTx(issueKeyAddTx2), additionalTx(issueKeyAddTx3))
 	assertThreadTip(provautil.RootThread, rootThreadOut)
-	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1, *pubKey2, *pubKey3})
+	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey1, *pubKey2, *pubKey3, initialIssuePubKey1, initialIssuePubKey2})
 	accepted()
 
 	// Issue some tokens
@@ -961,7 +967,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	rootThreadOut = makeSpendableOutForTx(issueKeyRevokeTx1, 0)
 	g.nextBlock("b10", nil, additionalTx(issueKeyRevokeTx1))
 	assertThreadTip(provautil.RootThread, rootThreadOut)
-	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2})
+	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, initialIssuePubKey1, initialIssuePubKey2})
 	accepted()
 
 	// add provision keys
@@ -971,7 +977,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	rootThreadOut = makeSpendableOutForTx(provisionKeyAddTx2, 0)
 	g.nextBlock("b11", nil, additionalTx(provisionKeyAddTx1), additionalTx(provisionKeyAddTx2))
 	assertThreadTip(provautil.RootThread, rootThreadOut)
-	assertAdminKeys(btcec.ProvisionKeySet, []btcec.PublicKey{*pubKey1, *pubKey2})
+	assertAdminKeys(btcec.ProvisionKeySet, []btcec.PublicKey{*pubKey1, *pubKey2, initialProvisionPubKey1, initialProvisionPubKey2})
 	accepted()
 
 	// provision a keyID and check
@@ -1076,7 +1082,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	rootThreadOutFork := makeSpendableOutForTx(adminKeyAddTx, 0)
 	g.nextBlock("b23", nil, additionalTx(adminKeyAddTx))
 	assertThreadTip(provautil.RootThread, rootThreadOutFork)
-	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1})
+	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1, initialIssuePubKey1, initialIssuePubKey2})
 	accepted()
 
 	// Create a fork from b20.  There should not be a reorg since b10 was seen
@@ -1097,7 +1103,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	// The reorg should revent the provisioning of an ISSUE key in b23.
 	g.nextBlock("b25", outs[10])
 	assertThreadTip(provautil.RootThread, rootThreadOut)
-	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2}) // The genesis admin state is valid.
+	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, initialIssuePubKey1, initialIssuePubKey2}) // The genesis admin state is valid.
 	accepted()
 
 	// Extend b23 fork twice to make first chain longer and force reorg.
@@ -1115,7 +1121,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 	// key is active again.
 	g.nextBlock("b27", outs[11])
 	assertThreadTip(provautil.RootThread, rootThreadOutFork)
-	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1})
+	assertAdminKeys(btcec.IssueKeySet, []btcec.PublicKey{*pubKey3, *pubKey2, *pubKey1, initialIssuePubKey1, initialIssuePubKey2})
 	accepted()
 
 	// ---------------------------------------------------------------------
