@@ -304,7 +304,8 @@ out:
 		// since there is no way to relay a found block or receive
 		// transactions to work on when there are no connected peers.
 		if m.cfg.ConnectedCount() == 0 {
-			time.Sleep(time.Second)
+			log.Errorf("Generation halted: waiting for peers")
+			time.Sleep(5 * time.Second)
 			continue
 		}
 
