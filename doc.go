@@ -33,7 +33,7 @@ Application Options:
                             or --proxy options are used without also specifying
                             listen interfaces via --listen
       --listen=             Add an interface/port to listen for connections
-                            (default all interfaces port: 8333, testnet: 18333)
+                            (default all interfaces port: 7979, testnet: 17979)
       --maxpeers=           Max number of inbound and outbound peers (125)
       --nobanning           Disable banning of misbehaving peers
       --banthreshold=       Maximum allowed ban score before disconnecting and
