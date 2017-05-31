@@ -1070,7 +1070,7 @@ func CheckProvaOutput(tx *provautil.Tx, txOutIndex int, keyIDs []btcec.KeyID,
 //
 // NOTE: The transaction MUST have already been sanity checked with the
 // CheckTransactionSanity function prior to calling this function.
-func CheckTransactionOutputs(tx *provautil.Tx, keyView *KeyViewpoint) error {
+func CheckTransactionOutputs(tx *provautil.Tx, keyView *KeyViewpoint, chainParams *chaincfg.Params) error {
 	threadInt, adminOutputs := txscript.GetAdminDetails(tx)
 	hasAdminOut := (threadInt >= 0)
 	if !hasAdminOut {
@@ -1188,7 +1188,7 @@ func CheckTransactionOutputs(tx *provautil.Tx, keyView *KeyViewpoint) error {
 				// to keep in a set. This seems only critical for root keys,
 				minLen := 0 // but root key set is fixed.
 				if keySetType == btcec.ValidateKeySet {
-					minLen = MinValidateKeySetSize
+					minLen = chainParams.MinValidateKeySetSize()
 				}
 				if len(keySet) <= minLen {
 					str := fmt.Sprintf("admin transaction %v tries to remove "+
@@ -1367,7 +1367,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *provautil.Block, 
 		}
 
 		// CheckTransactionOutputs checks outputs for state violations.
-		err = CheckTransactionOutputs(tx, keyView)
+		err = CheckTransactionOutputs(tx, keyView, b.chainParams)
 		if err != nil {
 			return err
 		}

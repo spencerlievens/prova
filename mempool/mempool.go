@@ -786,7 +786,7 @@ func (mp *TxPool) maybeAcceptTransaction(tx *provautil.Tx, isNew, rateLimit bool
 	}
 
 	// CheckTransactionOutputs checks outputs for state violations.
-	err = blockchain.CheckTransactionOutputs(tx, keyView)
+	err = blockchain.CheckTransactionOutputs(tx, keyView, mp.cfg.ChainParams)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -862,7 +862,7 @@ func TestCheckTransactionOutputs(t *testing.T) {
 		if test.isCoinbase {
 			tx.SetIndex(0)
 		}
-		err := blockchain.CheckTransactionOutputs(tx, keyView)
+		err := blockchain.CheckTransactionOutputs(tx, keyView, &chaincfg.RegressionNetParams)
 		if err == nil && test.isValid {
 			// Test passes since function returned valid for a
 			// transaction which is intended to be valid.

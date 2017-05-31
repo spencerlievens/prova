@@ -12,6 +12,7 @@ import (
 	"github.com/bitgo/prova/btcec"
 	"github.com/bitgo/prova/chaincfg/chainhash"
 	"github.com/bitgo/prova/wire"
+	"math"
 	"math/big"
 	"time"
 )
@@ -169,6 +170,14 @@ func (p Params) MaxActualTimespan() time.Duration {
 func (p Params) MinActualTimespan() time.Duration {
 	dampenPercentage := time.Duration(100 - p.PowMaxAdjustUp)
 	return (p.AveragingWindowTimespan() * dampenPercentage) / 100
+}
+
+// MinValidateKeySetSize returns the minimum number of validate keys required
+// to progress the chain, given the ChainWindowShareLimit.
+func (p Params) MinValidateKeySetSize() int {
+	powAveragingWindow := float64(p.PowAveragingWindow)
+	chainWindowMaxBlocks := float64(p.ChainWindowMaxBlocks)
+	return int(math.Ceil(powAveragingWindow / chainWindowMaxBlocks))
 }
 
 // AveragingWindowTimespan returns the difficulty timespan to be averaged over.

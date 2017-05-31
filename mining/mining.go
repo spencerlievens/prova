@@ -760,7 +760,7 @@ mempoolLoop:
 		}
 
 		// CheckTransactionOutputs checks outputs for state violations.
-		err = blockchain.CheckTransactionOutputs(tx, keyView)
+		err = blockchain.CheckTransactionOutputs(tx, keyView, g.chainParams)
 		if err != nil {
 			log.Tracef("Skipping tx %s due to error in "+
 				"CheckTransactionOutputs: %v", tx.Hash(), err)
