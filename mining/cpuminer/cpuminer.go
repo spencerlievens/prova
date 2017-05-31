@@ -344,7 +344,7 @@ out:
 		// are any invalid keys detected.
 		invalidValidateKey := m.detectInvalidValidateKey()
 		if invalidValidateKey != nil {
-			str := fmt.Sprintf("invalid validate key %v",
+			str := fmt.Sprintf("invalid validate key %x",
 				invalidValidateKey.SerializeCompressed())
 			log.Errorf(str)
 			m.submitBlockLock.Unlock()

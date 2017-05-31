@@ -11,6 +11,7 @@ import (
 // TestIsGenerationShareRateLimited tests that generation is rate limited
 // below a ratio of total blocks.
 func TestIsGenerationShareRateLimited(t *testing.T) {
+	// Setup public keys
 	keyBytes0, _ := hex.DecodeString("4015289a228658047520f0d0abe7ad49abc77f6be0be63b36b94b83c2d1fd977")
 	keyBytes1, _ := hex.DecodeString("9ade85268e57b7c97af9f84e0d5d96138eae2b1d7ae96c5ab849f58551ab9147")
 	key0, _ := btcec.PrivKeyFromBytes(btcec.S256(), keyBytes0)
@@ -20,22 +21,24 @@ func TestIsGenerationShareRateLimited(t *testing.T) {
 	copy(pubKey0[:wire.BlockValidatingPubKeySize], key0.PubKey().SerializeCompressed()[:wire.BlockValidatingPubKeySize])
 	copy(pubKey1[:wire.BlockValidatingPubKeySize], key1.PubKey().SerializeCompressed()[:wire.BlockValidatingPubKeySize])
 
+	// Make a simulated "chain" of public keys
 	chain := make([]wire.BlockValidatingPubKey, 0)
-	share := 50
+	maxBlocks := 2
 
-	whenGenerationStarts := IsGenerationShareRateLimited(pubKey0, chain, share)
+	// Generation starts with an empty chain
+	whenGenerationStarts := IsGenerationShareRateLimited(pubKey0, chain, maxBlocks, false, pubKey0)
 
+	// A key is added
 	chain = append([]wire.BlockValidatingPubKey{pubKey0}, chain...)
+	whenUnderLimit := IsGenerationShareRateLimited(pubKey0, chain, maxBlocks, false, pubKey0)
 
-	whenUnderLimit := IsGenerationShareRateLimited(pubKey0, chain, share)
-
+	// The same key is tried again
 	chain = append([]wire.BlockValidatingPubKey{pubKey0}, chain...)
+	whenAtLimit := IsGenerationShareRateLimited(pubKey0, chain, maxBlocks, false, pubKey0)
 
-	whenAtLimit := IsGenerationShareRateLimited(pubKey0, chain, share)
-
+	// A new key is tried instead
 	chain = append([]wire.BlockValidatingPubKey{pubKey1}, chain...)
-
-	whenMiningWithOther := IsGenerationShareRateLimited(pubKey0, chain, share)
+	whenMiningWithOther := IsGenerationShareRateLimited(pubKey0, chain, maxBlocks, false, pubKey0)
 
 	rateLimited := true
 

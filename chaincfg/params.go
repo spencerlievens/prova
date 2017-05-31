@@ -152,8 +152,8 @@ type Params struct {
 	// Maximum upward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustUp int64
 
-	// Maximum blocks signed by a single validate key, as a percentage.
-	ChainWindowShareLimit int
+	// Maximum blocks signed by a single validate key in averaging window.
+	ChainWindowMaxBlocks int
 
 	// Maximum fee allowed in a single transaction, in atoms.
 	MaximumFeeAmount int64
@@ -277,8 +277,8 @@ var MainNetParams = Params{
 	// Maximum upward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustUp: 16,
 
-	// Maximum blocks signed by a single validate key, as a percentage.
-	ChainWindowShareLimit: 10,
+	// Maximum blocks signed by a single validate key in averaging window.
+	ChainWindowMaxBlocks: 3,
 
 	// Maximum fee allowed in a single transaction, in atoms.
 	MaximumFeeAmount: 5000000,
@@ -322,6 +322,13 @@ var RegressionNetParams = Params{
 			"0265de49399e78020026219492e2a6e1a41e93591b87220ae8a2f3ebf3473dbeef", // TODO(prova) add priv
 			"039cb94c99c4700918250c40fa35b7fa0a75a967c9366aa19b8fc354373368beef", // TODO(prova) add priv
 			"031337ab09070254638075c7b59643dce2d60c5260bf5841d2f8cc6f75f6790d4e", // TODO(prova) add priv
+			"03133752072c8bc132679655c671b7953c2edabc575f42d60fa2e4caac09770061", // d36c82406d3c77ebc342aaa16f24a985fbfe63c75e6fd2afeffa1ba69632d252
+			"02ab82d1531552c5b67e528047542ff9a2550ee4df7a88d67037754069db0541f9", // 05fa7a36092cc7accc8008365fd8d07229c794be2a4e9361c662b5cae9492fa3
+			"02ab8264fdb09480d07b4db2d25db28065d51ea2950da89b7366d13b3c7be25e92", // a3262a6f506e4bfd4bc5b0708b2162e755410c8670e38c53928eb093ece2d37e
+			"02ab829a899bb14365e45099062b9a9543e8c51d4ace1ddfb7ef52320bb6dabbdd", // 041bf76c17185bcddbbb5d40122d04528fbe6c68f488c16a4e85711410134b5e
+			"02ab8201f1834926a5388ca4157f56008238b84fdcd0bd208647151ef617ac49ed", // 224688827325203eb53d0ec0f044b72312c8e11fc4fdada7b91416e7b54939d5
+			"02ab821a995287881d383718476bf2305dee70174a4727688070701490c526061b", // c37e338bebe77d1ca77438ad7a382dc97c28703d793c732d88348eb5f26f9732
+			"02ab82faed27170fc9c2dc3ab57ebba5c0d2649b6044011c77ca4b27aef05c6e07", // 6d4a926fec187ee0a0b0395cadb39360687b8416809c21ab32490e944784d6a3
 		)
 
 		return keySets
@@ -364,7 +371,7 @@ var RegressionNetParams = Params{
 	HDCoinType: 1,
 
 	// Number of blocks for the moving window of difficulty adjustment
-	PowAveragingWindow: 17,
+	PowAveragingWindow: 31,
 
 	// Maximum downward adjustment in pow difficulty, as a percentage
 	PowMaxAdjustDown: 32,
@@ -417,6 +424,13 @@ var TestNetParams = Params{
 			"031337e5bbe1b43b283ab56d5ceb64c159b0b5abd5ab58edd7d0ccad5360a23130",
 			"031337b35bb33a8bfa9c190f617e139efef3d307bb1a981f17fd0ea6a42010f5ae",
 			"031337eeb34fd8eb0af9e171c448a66ea632311cfe8316f7aed49b954ac6c054f7",
+			"0372d56e2288fdd17a0975baa9607d5143f4b330b801142db16405ec961dab1337",
+			"02615e88cd09e731816926cd7f16caad87b6b7ae54ef440d3ffb7d935eedab1337",
+			"03d9e4d1bccd8efae3f74ae57258dd41c3c250e8b3806e7891a0a4d07fc3ab1337",
+			"031337b1b33037ad401a189389f65bda1f9abd1497c956834c99213f0bd2d931ed",
+			"031337ef04ae0d9b7f46f11889bbb0362d8477661a8ec5fabbaf85e9beb24eef20",
+			"031337a189ad45659f2eebd521c43775e3d6c69e1c25b9b3498909e95c5d2da3b6",
+			"031337e3ab1c86cbb6d67208b273098df863d1f3080947602d894cae4bc2d19d5c",
 		)
 
 		return keySets
@@ -462,7 +476,7 @@ var TestNetParams = Params{
 	HDCoinType: 1,
 
 	// Number of blocks for the moving window of difficulty adjustment.
-	PowAveragingWindow: 17,
+	PowAveragingWindow: 31,
 
 	// Maximum downward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustDown: 64,
@@ -470,8 +484,8 @@ var TestNetParams = Params{
 	// Maximum upward adjustment in pow difficulty, as a percentage.
 	PowMaxAdjustUp: 64,
 
-	// Maximum blocks signed by a single validate key, as a percentage.
-	ChainWindowShareLimit: 45,
+	// Maximum blocks signed by a single validate key in averaging window.
+	ChainWindowMaxBlocks: 3,
 
 	// Maximum fee allowed in a single transaction, in atoms.
 	MaximumFeeAmount: 5000000,
@@ -528,7 +542,7 @@ var SimNetParams = Params{
 	HDCoinType: 115, // ASCII for s
 
 	// Number of blocks for the moving window of difficulty adjustment
-	PowAveragingWindow: 17,
+	PowAveragingWindow: 31,
 
 	// Maximum downward adjustment in pow difficulty, as a percentage
 	PowMaxAdjustDown: 32,
@@ -536,8 +550,8 @@ var SimNetParams = Params{
 	// Maximum upward adjustment in pow difficulty, as a percentage
 	PowMaxAdjustUp: 16,
 
-	// Percentage limit of blocks from a single sig key id allowed
-	ChainWindowShareLimit: 45,
+	// Maximum blocks signed by a single validate key in averaging window.
+	ChainWindowMaxBlocks: 3,
 
 	// Maximum fee allowed in a single transaction, in atoms.
 	MaximumFeeAmount: 5000000,

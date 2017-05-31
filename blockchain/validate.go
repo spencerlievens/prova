@@ -55,7 +55,7 @@ const (
 
 	// MinValidateKeySetSize is the least amount of validators needed to run
 	// the chain. Rate Limiting for validators should not conflict with this.
-	MinValidateKeySetSize = 4
+	MinValidateKeySetSize = 11
 )
 
 var (
@@ -1192,8 +1192,8 @@ func CheckTransactionOutputs(tx *provautil.Tx, keyView *KeyViewpoint) error {
 				}
 				if len(keySet) <= minLen {
 					str := fmt.Sprintf("admin transaction %v tries to remove "+
-						"key from admin key set with length 2. At least 2 keys "+
-						"have to stay provisioned.", tx.Hash())
+						"key from admin key set with length %d. At least %d keys "+
+						"have to stay provisioned.", tx.Hash(), len(keySet), minLen)
 					return ruleError(ErrInvalidAdminOp, str)
 				}
 			}
@@ -1211,14 +1211,23 @@ func (b *BlockChain) IsValidateKeyRateLimited(validatePubKey wire.BlockValidatin
 }
 
 // isValidateKeyRateLimited determines whether or not a rate limiting violation
-// is present with a given validate key.
+// is present with a given validate key. This can be used prospectively to
+// evaluate a potential key for inclusion, or to validate an existing series
+// to determine a rate limit rule violation.
 func (b *BlockChain) isValidateKeyRateLimited(node *blockNode, validatePubKey wire.BlockValidatingPubKey, prospectiveInclusion bool) (bool, error) {
-	// Get the previous block generators to check rate limiting rules.
+	// No max block limit means that rate limiting is impossible.
+	if b.chainParams.ChainWindowMaxBlocks == 0 {
+		return false, nil
+	}
+	// Get the previous block validate keys to check rate limiting rules.
 	iterNode := node
 	prevPubKeys := []wire.BlockValidatingPubKey{}
 	window := b.chainParams.PowAveragingWindow
+	maxBlocks := b.chainParams.ChainWindowMaxBlocks
+	lastValidatePubKey := node.validatingPubKey
 	if prospectiveInclusion {
-		prevPubKeys = append(prevPubKeys, validatePubKey)
+		// When checking against prospective inclusion of the key,
+		// the pubkey is inclusive in the previous keys to check.
 		window -= 1
 	}
 	for i := 0; iterNode != nil && i < window; i++ {
@@ -1232,11 +1241,7 @@ func (b *BlockChain) isValidateKeyRateLimited(node *blockNode, validatePubKey wi
 			prevPubKeys = append(prevPubKeys, iterNode.validatingPubKey)
 		}
 	}
-	// Check if there are too many blocks in a window from a generator.
-	if IsGenerationShareRateLimited(validatePubKey, prevPubKeys, b.chainParams.ChainWindowShareLimit) {
-		return true, nil
-	}
-	return false, nil
+	return IsGenerationShareRateLimited(validatePubKey, prevPubKeys, maxBlocks, prospectiveInclusion, lastValidatePubKey), nil
 }
 
 // checkConnectBlock performs several checks to confirm connecting the passed
@@ -1446,7 +1451,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *provautil.Block, 
 		return err
 	}
 	if len(validateKeySet) > 0 && validateKeySet.Pos(pubKey) == -1 {
-		str := fmt.Sprintf("invalid validate key %v", pubKey.SerializeCompressed())
+		str := fmt.Sprintf("invalid validate key %x", pubKey.SerializeCompressed())
 		return ruleError(ErrInvalidValidateKey, str)
 	}
 
