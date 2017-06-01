@@ -3267,8 +3267,9 @@ func handleSetGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 	// sign the created blocks.
 	if len(s.server.cpuMiner.ValidateKeys()) == 0 {
 		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCInternal.Code,
-			Message: "No validating priv keys specified via setvalidatekeys",
+			Code: btcjson.ErrRPCInternal.Code,
+			Message: "No validate keys found. Set validate keys " +
+				"using setvalidatekeys",
 		}
 	}
 

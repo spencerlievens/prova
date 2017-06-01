@@ -46,12 +46,11 @@ For Prova in regtest simulating 2 nodes, create directories `~/regtest/1` and `~
 ```
 #!/bin/bash
 LOCAL=127.0.0.1
-nohup prova --listen=$LOCAL:6001 --rpcuser=user --rpcpass=pass --rpclisten=$LOCAL:7001 --datadir=$HOME/regtest/\
-1/ --connect=$LOCAL:6002 --regtest --txindex > $HOME/regtest/1/prova.log 2>&1 &
-nohup prova --listen=$LOCAL:6002 --rpcuser=user --rpcpass=pass --rpclisten=$LOCAL:7002 --datadir=$HOME/regtest/\
-2/ --connect=$LOCAL:6001 --regtest > $HOME/regtest/2/prova.log 2>&1 &
+nohup prova --listen=$LOCAL:6001 --rpcuser=user --rpcpass=pass --rpclisten=$LOCAL:7001 --datadir=$HOME/regtest/1/ --connect=$LOCAL:6002 --regtest --txindex --miningaddr=TCq7ZvyjTugZ3xDY8m1Mdgm95v4QmNuqYXYbutQgDgHtW > $HOME/regtest/1/prova.log 2>&1 &
+nohup prova --listen=$LOCAL:6002 --rpcuser=user --rpcpass=pass --rpclisten=$LOCAL:7002 --datadir=$HOME/regtest/2/ --connect=$LOCAL:6001 --regtest > $HOME/regtest/2/prova.log 2>&1 &
 sleep 1
-provactl -u user -P pass -s 127.0.0.1:7001 generate 101
+provactl -u user -P pass -s $LOCAL:7001 setvalidatekeys "[\"d36c82406d3c77ebc342aaa16f24a985fbfe63c75e6fd2afeffa1ba69632d252\"]"
+provactl -u user -P pass -s $LOCAL:7001 generate 101
 ```
 
 For Prova in testnet mode, create a ~/testnet/1 directory, use the following command line arguments to start the testnet node and connect to the remote node.
