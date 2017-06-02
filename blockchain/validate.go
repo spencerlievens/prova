@@ -52,10 +52,6 @@ const (
 	// from all active keys of that thread. The limit is needed to not exceed
 	// pubKeyScript size limits.
 	MaxAdminKeySetSize = 42
-
-	// MinValidateKeySetSize is the least amount of validators needed to run
-	// the chain. Rate Limiting for validators should not conflict with this.
-	MinValidateKeySetSize = 11
 )
 
 var (
