@@ -4,12 +4,10 @@
 
 package btcec
 
-import ()
-
 // KeyIdMap is a structure to keep assigned keyIDs and pubKeys.
 type KeyIdMap map[KeyID]*PublicKey
 
-// Equal will compare two slices.
+// Equal will compare two KeyIdMaps.
 func (keyMap KeyIdMap) Equal(v KeyIdMap) bool {
 	if keyMap == nil && v == nil {
 		return true
@@ -28,7 +26,7 @@ func (keyMap KeyIdMap) Equal(v KeyIdMap) bool {
 	return true
 }
 
-// DeepCopy creates a deep copy of the admin keys.
+// DeepCopy creates a deep copy of a KeyIdMap.
 func (keyMap KeyIdMap) DeepCopy() KeyIdMap {
 	keyIdMapCopy := make(map[KeyID]*PublicKey)
 	for keyID, pubKey := range keyMap {
