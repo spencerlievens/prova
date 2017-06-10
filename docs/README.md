@@ -20,6 +20,6 @@ The Prova blockchain is a Bitcoin-derived blockchain, custom-designed for the us
 
 [Install Guide](install-guide.md)
 
-[JSON RPC API](json-rpc-api.md)
+[JSON RPC API](json_rpc_api.md)
 
 [Example Raw Transactions](example/rawtx.md)
