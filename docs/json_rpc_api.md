@@ -600,7 +600,6 @@ The following is an overview of the RPC methods which are implemented by Prova, 
 |Method|setvalidatekeys|
 |Parameters|1. validateprivkeys (array of strings, required) - The private keys to use as validate keys |
 |Description|Set the private keys to use as signing validate keys when generating new blocks.|
-|Note|Setvalidatekeys is not intended to be used in conjunction with the validate keys environment variable.|
 |Returns|Nothing|
 [Return to Overview](#MethodOverview)<br />
 

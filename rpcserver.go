@@ -803,19 +803,11 @@ func handleGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		}
 	}
 
-	// Attempt to establish validate keys from the environment var if there
-	// are none already registered.
-	if len(s.server.cpuMiner.ValidateKeys()) == 0 {
-		s.server.cpuMiner.EstablishValidateKeys()
-	}
-
 	// Check that there are validate keys set
 	if len(s.server.cpuMiner.ValidateKeys()) == 0 {
 		return nil, &btcjson.RPCError{
-			Code: btcjson.ErrRPCInternal.Code,
-			Message: "No validate keys provided via " +
-				"--setvalidatekeys or PROVA_VALIDATE_KEYS " +
-				"environment variable",
+			Code:    btcjson.ErrRPCInternal.Code,
+			Message: "No validate keys provided via setvalidatekeys",
 		}
 	}
 
@@ -3271,20 +3263,12 @@ func handleSetGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 		}
 	}
 
-	// Attempt to establish validate keys from the environment var if there
-	// are none already registered.
-	if len(s.server.cpuMiner.ValidateKeys()) == 0 {
-		s.server.cpuMiner.EstablishValidateKeys()
-	}
-
 	// Respond with an error if there are no validate keys available to
 	// sign the created blocks.
 	if len(s.server.cpuMiner.ValidateKeys()) == 0 {
 		return nil, &btcjson.RPCError{
-			Code: btcjson.ErrRPCInternal.Code,
-			Message: "No validating priv keys specified " +
-				"via --setvalidatekeys or PROVA_VALIDATE_KEYS" +
-				"env variable",
+			Code:    btcjson.ErrRPCInternal.Code,
+			Message: "No validating priv keys specified via setvalidatekeys",
 		}
 	}
 
