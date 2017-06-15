@@ -8,7 +8,9 @@ package main
 import (
 	"bufio"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -102,8 +104,10 @@ type config struct {
 	BanThreshold         uint32        `long:"banthreshold" description:"Maximum allowed ban score before disconnecting and banning misbehaving peers."`
 	RPCUser              string        `short:"u" long:"rpcuser" description:"Username for RPC connections"`
 	RPCPass              string        `short:"P" long:"rpcpass" default-mask:"-" description:"Password for RPC connections"`
+	RPCHash              string        `long:"rpchash" description:"SHA2 of auth credentials (may be specified instead of user/pass)"`
 	RPCLimitUser         string        `long:"rpclimituser" description:"Username for limited RPC connections"`
 	RPCLimitPass         string        `long:"rpclimitpass" default-mask:"-" description:"Password for limited RPC connections"`
+	RPCLimitHash         string        `long:"rpclimithash" description:"SHA2 of auth credentials for limited RPC user (may be specified instead of user/pass)"`
 	RPCListeners         []string      `long:"rpclisten" description:"Add an interface/port to listen for RPC connections (default port: 8334, testnet: 18334)"`
 	RPCCert              string        `long:"rpccert" description:"File containing the certificate file"`
 	RPCKey               string        `long:"rpckey" description:"File containing the certificate key"`
@@ -652,6 +656,22 @@ func loadConfig() (*config, []string, error) {
 		}
 	}
 
+	// Check to make sure password is not used if hash is specified
+	if cfg.RPCHash != "" && cfg.RPCPass != "" {
+		str := "%s: --rpcpass may not be used if --rpchash is specified"
+		err := fmt.Errorf(str, funcName)
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, usageMessage)
+		return nil, nil, err
+	}
+	if cfg.RPCLimitHash != "" && cfg.RPCLimitPass != "" {
+		str := "%s: --rpclimitpass may not be used if --rpclimithash is specified"
+		err := fmt.Errorf(str, funcName)
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, usageMessage)
+		return nil, nil, err
+	}
+
 	// Check to make sure limited and admin users don't have the same username
 	if cfg.RPCUser == cfg.RPCLimitUser && cfg.RPCUser != "" {
 		str := "%s: --rpcuser and --rpclimituser must not specify the " +
@@ -672,9 +692,9 @@ func loadConfig() (*config, []string, error) {
 		return nil, nil, err
 	}
 
-	// The RPC server is disabled if no username or password is provided.
-	if (cfg.RPCUser == "" || cfg.RPCPass == "") &&
-		(cfg.RPCLimitUser == "" || cfg.RPCLimitPass == "") {
+	// The RPC server is disabled if no hash or (username+password) is provided.
+	if (cfg.RPCHash == "" && (cfg.RPCUser == "" || cfg.RPCPass == "")) &&
+		(cfg.RPCLimitHash == "" && (cfg.RPCLimitUser == "" || cfg.RPCLimitPass == "")) {
 		cfg.DisableRPC = true
 	}
 
@@ -1020,6 +1040,11 @@ func createDefaultConfigFile(destinationPath string) error {
 	}
 	generatedRPCPass := base64.StdEncoding.EncodeToString(randomBytes)
 
+	login := generatedRPCUser + ":" + generatedRPCPass
+	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(login))
+	authsha := sha256.Sum256([]byte(auth))
+	generatedRPCHash := hex.EncodeToString(authsha[:])
+
 	src, err := os.Open(sampleConfigPath)
 	if err != nil {
 		return err
@@ -1044,9 +1069,11 @@ func createDefaultConfigFile(destinationPath string) error {
 		}
 
 		if strings.Contains(line, "rpcuser=") {
-			line = "rpcuser=" + generatedRPCUser + "\n"
+			line = "\n; REMOVE PASSWORD FROM THIS FILE AFTER SECURING IT ELSEWHERE\nrpcuser=" + generatedRPCUser + "\n"
 		} else if strings.Contains(line, "rpcpass=") {
-			line = "rpcpass=" + generatedRPCPass + "\n"
+			line = "; rpcpass=" + generatedRPCPass + "\n\n"
+		} else if strings.Contains(line, "rpchash=") {
+			line = "rpchash=" + generatedRPCHash + "\n"
 		}
 
 		if _, err := dest.WriteString(line); err != nil {

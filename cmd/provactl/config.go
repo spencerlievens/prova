@@ -13,10 +13,12 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 
 	"github.com/bitgo/prova/btcjson"
 	"github.com/bitgo/prova/provautil"
 	flags "github.com/btcsuite/go-flags"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
@@ -276,7 +278,27 @@ func loadConfig() (*config, []string, error) {
 	cfg.RPCServer = normalizeAddress(cfg.RPCServer, cfg.TestNet,
 		cfg.SimNet, cfg.Wallet)
 
+	// If no password specified, prompt the user. This allows usage where
+	// it is not acceptable to have the password in a disk-based config file
+	// or to pass it as an arg on the command line (which would be visible in
+	// process listing.)
+	if cfg.RPCPassword == "" {
+		cfg.RPCPassword = readPassword()
+	}
+
 	return &cfg, remainingArgs, nil
+}
+
+// readPassword prompts the user for an RPC password and reads it in from stdin
+func readPassword() string {
+	fmt.Print("RPC Password: ")
+	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return ""
+	}
+	fmt.Print("\n")
+	password := string(bytePassword)
+	return strings.TrimSpace(password)
 }
 
 // createDefaultConfig creates a basic config file at the given destination

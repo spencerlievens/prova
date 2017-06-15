@@ -11,7 +11,7 @@ import (
 
 var (
 	rpcuserRegexp = regexp.MustCompile("(?m)^rpcuser=.+$")
-	rpcpassRegexp = regexp.MustCompile("(?m)^rpcpass=.+$")
+	rpcpassRegexp = regexp.MustCompile("(?m)^; rpcpass=.+$")
 )
 
 func TestCreateDefaultConfigFile(t *testing.T) {

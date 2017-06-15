@@ -3941,12 +3941,34 @@ func newRPCServer(listenAddrs []string, generator *mining.BlkTmplGenerator, s *s
 		requestProcessShutdown: make(chan struct{}),
 		quit: make(chan int),
 	}
-	if cfg.RPCUser != "" && cfg.RPCPass != "" {
+
+	// (Admin RPC User) First check for hash, then for user/password
+	if cfg.RPCHash != "" {
+		if len(cfg.RPCHash) != 64 {
+			return nil, errors.New("RPCS: Invalid RPCHash length")
+		}
+		authsha, err := hex.DecodeString(cfg.RPCHash)
+		if err != nil {
+			return nil, err
+		}
+		copy(rpc.authsha[:], authsha[0:32])
+	} else if cfg.RPCUser != "" && cfg.RPCPass != "" {
 		login := cfg.RPCUser + ":" + cfg.RPCPass
 		auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(login))
 		rpc.authsha = sha256.Sum256([]byte(auth))
 	}
-	if cfg.RPCLimitUser != "" && cfg.RPCLimitPass != "" {
+
+	// (Limited RPC User) First check for hash, then for user/password
+	if cfg.RPCLimitHash != "" {
+		if len(cfg.RPCLimitHash) != 64 {
+			return nil, errors.New("RPCS: Invalid RPCLimitHash length")
+		}
+		limitauthsha, err := hex.DecodeString(cfg.RPCLimitHash)
+		if err != nil {
+			return nil, err
+		}
+		copy(rpc.limitauthsha[:], limitauthsha[0:32])
+	} else if cfg.RPCLimitUser != "" && cfg.RPCLimitPass != "" {
 		login := cfg.RPCLimitUser + ":" + cfg.RPCLimitPass
 		auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(login))
 		rpc.limitauthsha = sha256.Sum256([]byte(auth))
