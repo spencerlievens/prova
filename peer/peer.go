@@ -64,7 +64,7 @@ const (
 
 	// trickleTimeout is the duration of the ticker which trickles down the
 	// inventory to a peer.
-	trickleTimeout = 2 * time.Second
+	trickleTimeout = 8 * time.Second
 )
 
 var (
