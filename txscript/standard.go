@@ -246,7 +246,7 @@ func GetAdminDetails(tx *provautil.Tx) (int, [][]parsedOpcode) {
 	return GetAdminDetailsMsgTx(tx.MsgTx())
 }
 
-// isProvaAdmin returns true if the passed script is admin tread script.
+// isProvaAdmin returns true if the passed script is admin thread script.
 func isProvaAdmin(pops []parsedOpcode) bool {
 	sLen := len(pops)
 	if sLen != 2 {
