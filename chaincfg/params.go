@@ -247,7 +247,7 @@ var MainNetParams = Params{
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
 	TargetTimePerBlock:       time.Second * 150, // 2.5 minutes
-	GenerateSupported:        false,
+	GenerateSupported:        true,
 
 	// Checkpoints ordered from oldest to newest.
 	Checkpoints: []Checkpoint{},
@@ -454,7 +454,7 @@ var TestNetParams = Params{
 	CoinbaseMaturity:         100,
 	SubsidyReductionInterval: 210000,
 	TargetTimePerBlock:       time.Second * 150, // 2.5 minutes
-	GenerateSupported:        false,
+	GenerateSupported:        true,
 
 	// Checkpoints ordered from oldest to newest.
 	Checkpoints: []Checkpoint{},
