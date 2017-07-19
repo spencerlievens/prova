@@ -869,8 +869,7 @@ func TestCheckAdminTransactionStandard(t *testing.T) {
 				LockTime: 0,
 			},
 			height:     300000,
-			code:       wire.RejectInvalidAdmin,
-			isStandard: false,
+			isStandard: true,
 		},
 		{
 			name: "odd number of sig scripts",

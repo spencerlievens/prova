@@ -405,7 +405,7 @@ var RegressionNetParams = Params{
 	BlockUpgradeNumToCheck:  1000,
 
 	// Mempool parameters
-	RelayNonStdTxs: true,
+	RelayNonStdTxs: false,
 
 	// Address encoding magics
 	ProvaAddrID:  0x58, // starts with T
@@ -510,7 +510,7 @@ var TestNetParams = Params{
 	BlockUpgradeNumToCheck:  100,
 
 	// Mempool parameters
-	RelayNonStdTxs: true,
+	RelayNonStdTxs: false,
 
 	// Address encoding magics
 	PrivateKeyID: 0xef, // starts with 9 (uncompressed) or c (compressed)
@@ -577,7 +577,7 @@ var SimNetParams = Params{
 	BlockUpgradeNumToCheck:  100,
 
 	// Mempool parameters
-	RelayNonStdTxs: true,
+	RelayNonStdTxs: false,
 
 	// Address encoding magics
 	PrivateKeyID: 0x64, // starts with 4 (uncompressed) or F (compressed)

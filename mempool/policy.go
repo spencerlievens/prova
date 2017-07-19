@@ -120,7 +120,7 @@ func checkInputsStandard(tx *provautil.Tx, utxoView *blockchain.UtxoViewpoint) e
 				return txRuleError(wire.RejectNonstandard, str)
 			}
 			// check input position
-			if prevOut.Index != 0 {
+			if txInIndex != 0 {
 				str := fmt.Sprintf("transaction %v tried to spend admin "+
 					"thread transaction %v with input at position "+
 					"%d. Only input #0 may spend an admin threads.",
