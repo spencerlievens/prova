@@ -215,8 +215,8 @@ var MainNetParams = Params{
 		// Root keys
 		keySets[btcec.RootKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
 			// TRM Keys
-			"0298e7358757d3e78da04b2c4db32f7dd8b5e76f5ae4184d47100587f33f906a87",
-			"020825bd899f7bcc9b2e9035e4169dbe81e651c9157e5af72c4df7ae9fb43bb838",
+			"024d31e55e3f6c93b11787bff2a5a2c671eb1b3deca35e4c53260a65ea4be6bf9d",
+			"03ac5c0c5e34bcdc4b97a68d8126b15ae311278877c55ebcec34839b1b761ff9db",
 		)
 
 		// Provision Keys
@@ -224,7 +224,7 @@ var MainNetParams = Params{
 			// BitGo Key
 			"024b175f51c0b65b159e52f068f1e8b24e487ec9723967268a41ea952f3e2ed30c",
 			// TRM Key
-			"02a622eafc9a8b0efb6b1963ab9c8f48c68b580397321fef664ac809155a6f7a61",
+			"03e27301983513e043792772f9ba6dceb443ac1f07e46753e95786fb48176bf41b",
 		)
 
 		// Issue Keys
@@ -232,7 +232,7 @@ var MainNetParams = Params{
 			// BitGo Key
 			"024b175f51c0b65b159e52f068f1e8b24e487ec9723967268a41ea952f3e2ed30c",
 			// TRM Key
-			"037c58e3c9a586d7a84ac691c675b16d846ca1ab7571ade8f8baf4f72320684a79",
+			"0248707c5d4267a6b340e108d14aaec1d1ec0a800fc9dd75a8318b3d7eb198590d",
 		)
 
 		// Validate keys
@@ -279,7 +279,7 @@ var MainNetParams = Params{
 		// BitGo ASP Key
 		pubKey1, _ := btcec.ParsePubKey(hexToBytes("033fa570adba7413fbe0fb90f358e823b003371c47dd4e3769028e122f40ea7496"), btcec.S256())
 		// TRM RRS Key
-		pubKey2, _ := btcec.ParsePubKey(hexToBytes("02ff5bac72f8a9dcefeb9993260bbccfa3b7a9db3bd8d26e589b4ecac35cc28adb"), btcec.S256())
+		pubKey2, _ := btcec.ParsePubKey(hexToBytes("0202a0aa7a9b3467fa2b934b751ec35cb8cfe031e2f4f304add323eadd5db282c9"), btcec.S256())
 		return map[btcec.KeyID]*btcec.PublicKey{btcec.KeyID(1): pubKey1, btcec.KeyID(2): pubKey2}
 	}(),
 	PowLimit:                 mainPowLimit,
