@@ -101,8 +101,17 @@ func DecodeAddress(addr string, defaultNet *chaincfg.Params) (Address, error) {
 	}
 
 	if chaincfg.IsProvaAddrID(netID) {
-		if len(decoded) != ripemd160.Size+2*btcec.KeyIDSize {
+		decodedLen := len(decoded)
+		mininumKeyIdsCount := 2
+		maximumKeyIdsCount := 19
+		if decodedLen < ripemd160.Size+(mininumKeyIdsCount*btcec.KeyIDSize) {
 			return nil, errors.New("decoded address is of unknown size")
+		}
+		if decodedLen > ripemd160.Size+(maximumKeyIdsCount*btcec.KeyIDSize) {
+			return nil, errors.New("decoded address exceeds maximum size")
+		}
+		if (decodedLen-ripemd160.Size)%btcec.KeyIDSize != 0 {
+			return nil, errors.New("decoded address has invalid size")
 		}
 		return newAddressProvaFromBytes(decoded, netID)
 	}
@@ -133,7 +142,7 @@ func newAddressProva(pkHash []byte, keyIDs []btcec.KeyID, netID byte) (*AddressP
 	if len(pkHash) != ripemd160.Size {
 		return nil, errors.New("pkHash must be 20 bytes")
 	}
-	// Check for exactly 2 keyIDs
+	// Check for the allowable range of keyid counts.
 	if len(keyIDs) < 2 {
 		return nil, errors.New("keyIDs must have length at least 2")
 	}
@@ -151,11 +160,16 @@ func newAddressProva(pkHash []byte, keyIDs []btcec.KeyID, netID byte) (*AddressP
 
 // newAddressProvaFromBytes is the internal API to create an Prova address
 // directly from the encoded bytes
+//
+// Note: this function assumes that the data is well formed
 func newAddressProvaFromBytes(data []byte, netID byte) (*AddressProva, error) {
+	keyIDs := []btcec.KeyID{}
+	keyIDSize := btcec.KeyIDSize
 	offset := ripemd160.Size
-	keyIDs := []btcec.KeyID{
-		btcec.KeyIDFromAddressBuffer(data[offset:]),
-		btcec.KeyIDFromAddressBuffer(data[offset+btcec.KeyIDSize:]),
+
+	for i := offset; i <= len(data)-keyIDSize; i += keyIDSize {
+		id := btcec.KeyIDFromAddressBuffer(data[i : i+keyIDSize])
+		keyIDs = append(keyIDs, id)
 	}
 	return newAddressProva(data[0:offset], keyIDs, netID)
 }

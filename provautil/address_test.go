@@ -6,29 +6,72 @@
 package provautil_test
 
 import (
-	"bytes"
 	"fmt"
-	"reflect"
-	"testing"
-
+	"github.com/bitgo/prova/btcec"
 	"github.com/bitgo/prova/chaincfg"
 	"github.com/bitgo/prova/provautil"
-	"github.com/bitgo/prova/wire"
+	"github.com/btcsuite/golangcrypto/ripemd160"
+	"testing"
 )
-
-// invalidNet is an invalid bitcoin network.
-const invalidNet = wire.BitcoinNet(0xffffffff)
 
 func TestAddresses(t *testing.T) {
 	tests := []struct {
-		name    string
-		addr    string
-		encoded string
-		valid   bool
-		result  provautil.Address
-		f       func() (provautil.Address, error)
-		net     *chaincfg.Params
-	}{}
+		addr   string
+		keyIDs []btcec.KeyID
+		name   string
+		net    *chaincfg.Params
+		pkHash []byte
+		valid  bool
+	}{
+		{
+			addr:   "G9n66A3tweNBdnrWHtPQhojDvgtTHpKp5Ke5EeHqZM1pv",
+			keyIDs: []btcec.KeyID{1, 2},
+			name:   "mainnet standard address",
+			net:    &chaincfg.MainNetParams,
+			pkHash: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
+			valid:  true,
+		},
+		{
+			addr:   "CBmenNb1jH2fkDXKuEdqUgj3BaLqnGaGAAn6qMQXVv1KzyG8inv6UHMM",
+			keyIDs: []btcec.KeyID{1, 2, 3, 4},
+			name:   "mainnet 4 of 5 address",
+			net:    &chaincfg.MainNetParams,
+			pkHash: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
+			valid:  true,
+		},
+		{
+			addr:   "T9GooXEi927U4tuUkHsyfxtuDwAGFP2RaDXNGVNchBSz3",
+			keyIDs: []btcec.KeyID{1, 2},
+			name:   "testnet standard address",
+			net:    &chaincfg.TestNetParams,
+			pkHash: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
+			valid:  true,
+		},
+		{
+			addr:   "9kT6DCNXS7BcCexSzVMXJ8aZXYxjB4ZGhBqGEU4DKm3vdyZDPbFDPV32np61p76X2Hjepz412YLpoNzwyBuWAWTqsq75ApLf6VaM8zApsumNDXnLLBqR9ZoYDYJgqQU4w2kFMP1e1A",
+			keyIDs: []btcec.KeyID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
+			name:   "large number of key ids",
+			net:    &chaincfg.MainNetParams,
+			pkHash: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
+			valid:  true,
+		},
+		{
+			addr:   "4zia3uJBAsmyZhhjNanqsNPThfGJ6R6BwYuJ6fKc",
+			keyIDs: []btcec.KeyID{1},
+			name:   "only one key id",
+			net:    &chaincfg.TestNetParams,
+			pkHash: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
+			valid:  false,
+		},
+		{
+			addr:   "zFaDkPWYXYgRUvMPFSeE9N7Eu1Hi3WrECgzJLQ1Ye4f1T2dZKgktB3V1U2sqgWYgoMK6Z5RozfmrkwgUxNsnffq21KumgyyJn6rukerMueseUtrgpbU2nKRr3VMHhKRSn5pEACLLKv2eoVz",
+			keyIDs: []btcec.KeyID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
+			name:   "large number of key ids",
+			net:    &chaincfg.MainNetParams,
+			pkHash: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
+			valid:  false,
+		},
+	}
 
 	for _, test := range tests {
 		// Decode addr and compare error against valid.
@@ -38,68 +81,60 @@ func TestAddresses(t *testing.T) {
 			return
 		}
 
-		if err == nil {
-			// Ensure the stringer returns the same address as the
-			// original.
-			if decodedStringer, ok := decoded.(fmt.Stringer); ok {
-				if test.addr != decodedStringer.String() {
-					t.Errorf("%v: String on decoded value does not match expected value: %v != %v",
-						test.name, test.addr, decodedStringer.String())
-					return
-				}
-			}
-
-			// Encode again and compare against the original.
-			encoded := decoded.EncodeAddress()
-			if test.encoded != encoded {
-				t.Errorf("%v: decoding and encoding produced different addressess: %v != %v",
-					test.name, test.encoded, encoded)
-				return
-			}
-
-			// Perform type-specific calculations.
-			var saddr []byte
-
-			// Check script address, as well as the Hash160 method for P2PKH and
-			// P2SH addresses.
-			if !bytes.Equal(saddr, decoded.ScriptAddress()) {
-				t.Errorf("%v: script addresses do not match:\n%x != \n%x",
-					test.name, saddr, decoded.ScriptAddress())
-				return
-			}
-
-			// Ensure the address is for the expected network.
-			if !decoded.IsForNet(test.net) {
-				t.Errorf("%v: calculated network does not match expected",
-					test.name)
-				return
-			}
-		}
-
-		if !test.valid {
-			// If address is invalid, but a creation function exists,
-			// verify that it returns a nil addr and non-nil error.
-			if test.f != nil {
-				_, err := test.f()
-				if err == nil {
-					t.Errorf("%v: address is invalid but creating new address succeeded",
-						test.name)
-					return
-				}
-			}
+		// Exit early for expected errors.
+		if err != nil {
 			continue
 		}
 
-		// Valid test, compare address created with f against expected result.
-		addr, err := test.f()
-		if err != nil {
-			t.Errorf("%v: address is valid but creating new address failed with error %v",
-				test.name, err)
+		// Check that the number of keyids is as expected.
+		if len(test.keyIDs) != len(decoded.ScriptKeyIDs()) {
+			t.Errorf("%v: keyid counts do not match: %d vs %d", test.name, len(test.keyIDs), len(decoded.ScriptKeyIDs()))
 			return
 		}
 
-		if !reflect.DeepEqual(addr, test.result) {
-			t.Errorf("%v: created address does not match expected result",
+		// Check that the keyids are in the equivalent positions.
+		for i, keyID := range decoded.ScriptKeyIDs() {
+			if test.keyIDs[i] != keyID {
+				t.Errorf("%v: keyid does not match: got %d expected %d", test.name, keyID, test.keyIDs[i])
+				return
+			}
+		}
+
+		// Check the script address (public key hash) length.
+		if len(decoded.ScriptAddress()) != ripemd160.Size {
+			t.Errorf("%v: pkhash is incorrect size: got %d expected %d", test.name, len(decoded.ScriptAddress()), ripemd160.Size)
+			return
+		}
+
+		// Check that the pkhash bytes are as expected
+		for i, pkHashByte := range decoded.ScriptAddress() {
+			if test.pkHash[i] != pkHashByte {
+				t.Errorf("%v: pkhash does not match: got %v expected %v", test.name, decoded.ScriptAddress(), test.pkHash)
+				return
+			}
+		}
+
+		// Ensure the stringer returns the same address as the
+		// original.
+		if decodedStringer, ok := decoded.(fmt.Stringer); ok {
+			if test.addr != decodedStringer.String() {
+				t.Errorf("%v: String on decoded value does not match expected value: %v != %v",
+					test.name, test.addr, decodedStringer.String())
+				return
+			}
+		}
+
+		// Encode again and compare against the original.
+		encoded := decoded.EncodeAddress()
+		if test.addr != encoded {
+			t.Errorf("%v: decoding and encoding produced different addressess: %v != %v",
+				test.name, test.addr, encoded)
+			return
+		}
+
+		// Ensure the address is for the expected network.
+		if !decoded.IsForNet(test.net) {
+			t.Errorf("%v: calculated network does not match expected",
 				test.name)
 			return
 		}
