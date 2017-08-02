@@ -3299,6 +3299,11 @@ func handleSetValidateKeys(s *rpcServer, cmd interface{}, closeChan <-chan struc
 		validateKeys[i] = privKey
 	}
 	s.server.cpuMiner.SetValidateKeys(validateKeys)
+	plural := ""
+	if len(c.PrivKeys) != 1 {
+		plural = "s"
+	}
+	rpcsLog.Infof("Set %d validate key%s", len(c.PrivKeys), plural)
 
 	return nil, nil
 }
