@@ -64,11 +64,11 @@ var testGenesisCoinbaseTx = wire.MsgTx{
 				Index: 0xffffffff,
 			},
 			SignatureScript: []byte{
-				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-				0x00, 0x35, 0x80, 0x85, 0x7b, 0xe1, 0x75, 0xc7,
-				0xd5, 0x77, 0xb8, 0x5d, 0xb2, 0xe0, 0x06, 0xd5,
-				0xb8, 0x91, 0x4e, 0x64, 0xab, 0xb7, 0x87, 0x1c,
-				/** From the Blockchain @ 459254 2017-03-28 */
+				0x0e, 0x3d, 0x72, 0x14, 0x29, 0x83, 0xb1, 0x0f,
+				0x99, 0xf9, 0x7b, 0x96, 0x56, 0x95, 0xd3, 0x90,
+				0x85, 0x2b, 0x68, 0x55, 0x97, 0xa1, 0xf5, 0x29,
+				0x2a, 0xae, 0x4f, 0x1d, 0x45, 0xd1, 0x56, 0xd3,
+				/** Bitcoin Block 479958 @ 2017-08-10 */
 			},
 			Sequence: 0xffffffff,
 		},
@@ -144,7 +144,7 @@ var regTestGenesisBlock = wire.MsgBlock{
 		Version:    4,
 		PrevBlock:  chainhash.Hash{}, // 0000000000000000000000000000000000000000000000000000000000000000
 		MerkleRoot: regTestGenesisMerkleRoot,
-		Timestamp:  time.Unix(0x58DC307C, 0), // 2017-03-29 22:09:00 +0000 UTC
+		Timestamp:  time.Unix(0x598C952B, 0), // 2017-08-10 17:31:00 +0000 UTC
 		Bits:       0x200f0f0f,               // 537857807 [0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f]
 		Nonce:      9,
 		Size:       326,
@@ -174,7 +174,7 @@ var testNetGenesisBlock = wire.MsgBlock{
 		Version:    4,
 		PrevBlock:  chainhash.Hash{},         // 0000000000000000000000000000000000000000000000000000000000000000
 		MerkleRoot: testNetGenesisMerkleRoot, // 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
-		Timestamp:  time.Unix(0x58DC307C, 0), // 2017-03-29 22:09:00 +0000 UTC
+		Timestamp:  time.Unix(0x598C952B, 0), // 2017-08-10 17:31:00 +0000 UTC
 		Bits:       0x2007ffff,               // 537395199 [07ffff0000000000000000000000000000000000000000000000000000000000]
 		Nonce:      1,
 		Size:       326,
@@ -198,7 +198,7 @@ var simNetGenesisBlock = wire.MsgBlock{
 		Version:    4,
 		PrevBlock:  chainhash.Hash{}, // 0000000000000000000000000000000000000000000000000000000000000000
 		MerkleRoot: simNetGenesisMerkleRoot,
-		Timestamp:  time.Unix(0x58DC307C, 0), // 2017-03-29 22:09:00 +0000 UTC
+		Timestamp:  time.Unix(0x598C952B, 0), // 2017-08-10 17:31:00 +0000 UTC
 		Bits:       0x207fffff,               // 545259519 [7fffff0000000000000000000000000000000000000000000000000000000000]
 		Nonce:      2,
 		Size:       326,

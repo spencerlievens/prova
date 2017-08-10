@@ -449,22 +449,35 @@ var TestNetParams = Params{
 
 		// Issue keys
 		keySets[btcec.IssueKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			// BitGo Keys
 			"029cd0486fd4a5b260f956e1b16db17cd0e2f8914054b30eddda17950af7033855",
 			"034d3083c7ad8537d5397fbb65aa6794e5db24d8c4ed3a1f4e12285a447c83ffc7",
+
+			// TRM Keys
+			"0358feab3764c99a46cbe403406a473485adafb0f195aac23ab2669eff3409284f",
 		)
 
 		// Provision keys
 		keySets[btcec.ProvisionKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			// BitGo Keys
 			"029cd0486fd4a5b260f956e1b16db17cd0e2f8914054b30eddda17950af7033855",
 			"0307051d31f87efb84839115c09e6160cf7b9ac210860202792e1cea7bd32a7051",
+
+			// TRM Keys
+			"0321fa2bf73dcab470f7e0da5caf64b5ddd670a3833bdac5f7ed1de11a1215808f",
 		)
 
 		// Root keys
 		keySets[btcec.RootKeySet], _ = btcec.ParsePubKeySet(btcec.S256(),
+			// BitGo Keys
 			"023cc2d11d97728d6d69d1d296513e12e0439c225b612f1a24e5d3b3a333d058aa",
 			"029cd0486fd4a5b260f956e1b16db17cd0e2f8914054b30eddda17950af7033855",
 			"03ecf113dd8476ab79a64c7b8eeaf30999744777ed8b31a91387fd76b0d798d9fd",
 			"03ce7f7ee8e5e01de741649b69655f168526ebb476e1fb8f250a825f824cf7b63e",
+
+			// TRM Keys
+			"024f6663321fb4fb6e27e402402bc54205dd3b11e2d7bc8e49eb42a66e93af0b68",
+			"029e47cc0d688425e8613b80dd7385201b2b7ca9dbb98c5a196f7f95464727d6be",
 		)
 
 		// Validate keys
@@ -485,9 +498,14 @@ var TestNetParams = Params{
 		return keySets
 	}(),
 	ASPKeyIdMap: func() btcec.KeyIdMap {
+		// BitGo Keys
 		pubKey1, _ := btcec.ParsePubKey(hexToBytes("036bcc8bc2af28edd3b1b8d25baefa0f06dd4fc243da0587268b5899d5538fc8a6"), btcec.S256())
-		pubKey2, _ := btcec.ParsePubKey(hexToBytes("021497b39f2f32eeaa1083c52ee265d0fad85338fb82bf8c0ae4a1dbe746e4a45b"), btcec.S256())
-		return map[btcec.KeyID]*btcec.PublicKey{btcec.KeyID(1): pubKey1, btcec.KeyID(2): pubKey2}
+		pubKey3, _ := btcec.ParsePubKey(hexToBytes("021497b39f2f32eeaa1083c52ee265d0fad85338fb82bf8c0ae4a1dbe746e4a45b"), btcec.S256())
+
+		// TRM Keys
+		pubKey2, _ := btcec.ParsePubKey(hexToBytes("02cea696aa3388a06a42ede7aab3c50b7229cc98659413c65178b52a86f7499635"), btcec.S256())
+
+		return map[btcec.KeyID]*btcec.PublicKey{btcec.KeyID(1): pubKey1, btcec.KeyID(2): pubKey2, btcec.KeyID(3): pubKey3}
 	}(),
 	PowLimit:                 testNetPowLimit,
 	PowLimitBits:             0x2007ffff,
