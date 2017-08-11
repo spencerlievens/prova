@@ -537,8 +537,10 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 	}
 
 	// Ignore invs from peers that aren't the sync if we are not current.
-	// Helps prevent fetching a mass of orphans.
-	if imsg.peer != b.syncPeer && !b.current() {
+	// Helps prevent fetching a mass of orphans when there are
+	// plenty of peers in a standard network configuration.
+	// UseOnlySyncPeerInv configuration flag enables this optimization.
+	if cfg.UseOnlySyncPeerInv && imsg.peer != b.syncPeer && !b.current() {
 		return
 	}
 

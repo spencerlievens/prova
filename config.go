@@ -61,6 +61,7 @@ const (
 	sampleConfigFilename         = "sample-prova.conf"
 	defaultTxIndex               = false
 	defaultAddrIndex             = false
+	defaultUseOnlySyncPeerInv    = false
 )
 
 var (
@@ -136,6 +137,7 @@ type config struct {
 	CPUProfile           string        `long:"cpuprofile" description:"Write CPU profile to the specified file"`
 	DebugLevel           string        `short:"d" long:"debuglevel" description:"Logging level for all subsystems {trace, debug, info, warn, error, critical} -- You may also specify <subsystem>=<level>,<subsystem2>=<level>,... to set the log level for individual subsystems -- Use show to list available subsystems"`
 	Upnp                 bool          `long:"upnp" description:"Use UPnP to map our listening port outside of NAT"`
+	UseOnlySyncPeerInv   bool          `long:"useonlysyncpeerinv" description:"Use only sync peer inv messages to reduce orphan fetching"`
 	MinRelayTxFee        float64       `long:"minrelaytxfee" description:"The minimum transaction fee in RMG/kB to be considered a non-zero fee."`
 	FreeTxRelayLimit     float64       `long:"limitfreerelay" description:"Limit relay of transactions with no transaction fee to the given amount in thousands of bytes per minute"`
 	RelayPriority        bool          `long:"relaypriority" description:"Require free or low-fee transactions to have high priority for relaying"`
@@ -417,6 +419,7 @@ func loadConfig() (*config, []string, error) {
 		Generate:             defaultGenerate,
 		TxIndex:              defaultTxIndex,
 		AddrIndex:            defaultAddrIndex,
+		UseOnlySyncPeerInv:   defaultUseOnlySyncPeerInv,
 	}
 
 	// Service options which are only added on Windows.
