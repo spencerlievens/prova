@@ -74,6 +74,22 @@ func TestAddresses(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		// Encode the address and check for expected errors
+		addr, err := provautil.NewAddressProva(test.pkHash,
+			test.keyIDs, test.net)
+		if (err == nil) != test.valid {
+			t.Errorf("%v: encoding test failed: %v", test.name, err)
+		}
+		// Exit early for expected errors
+		if err != nil {
+			continue
+		}
+
+		// Compare encoded address against expected
+		if test.addr != addr.EncodeAddress() {
+			t.Errorf("%v: encoding test failed, got addr %v, expected %v", test.name, addr.EncodeAddress(), test.addr)
+		}
+
 		// Decode addr and compare error against valid.
 		decoded, err := provautil.DecodeAddress(test.addr, test.net)
 		if (err == nil) != test.valid {
