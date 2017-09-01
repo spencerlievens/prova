@@ -1,6 +1,8 @@
 Prova
 ====
 
+[![Build Status](https://travis-ci.org/BitGo/prova.svg?branch=master)](https://travis-ci.org/BitGo/prova?branch=master)
+
 Prova is a distributed consensus system for digital asset tokens written in Go (golang).
 Prova was built to support RMG, a digitized form of gold introduced by [The Royal Mint](http://www.royalmint.com/rmg)
 and CME Group.  Features include:
