@@ -286,7 +286,7 @@ type soapEnvelope struct {
 
 // soapRequests performs a soap request with the given parameters and returns
 // the xml replied stripped of the soap headers. in the case that the request is
-// unsuccessful the an error is returned.
+// unsuccessful then an error is returned.
 func soapRequest(url, function, message string) (replyXML []byte, err error) {
 	fullMessage := "<?xml version=\"1.0\" ?>" +
 		"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\r\n" +
@@ -375,7 +375,7 @@ func (n *upnpNAT) AddPortMapping(protocol string, externalPort, internalPort int
 	}
 
 	// TODO: check response to see if the port was forwarded
-	// If the port was not wildcard we don't get an reply with the port in
+	// If the port was not wildcard we don't get a reply with the port in
 	// it. Not sure about wildcard yet. miniupnpc just checks for error
 	// codes here.
 	mappedExternalPort = externalPort
