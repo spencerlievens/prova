@@ -33,8 +33,8 @@ const (
 // elog is used to send messages to the Windows event log.
 var elog *eventlog.Log
 
-// logServiceStartOfDay logs information about Prova when the main server has
-// been started to the Windows event log.
+// logServiceStartOfDay logs information to the Windows event log
+// about Prova when the main server has been started.
 func logServiceStartOfDay(srvr *server) {
 	var message string
 	message += fmt.Sprintf("Version %s\n", version())
@@ -52,15 +52,15 @@ type btcdService struct{}
 // Execute is the main entry point the winsvc package calls when receiving
 // information from the Windows service control manager.  It launches the
 // long-running btcdMain (which is the real meat of btcd), handles service
-// change requests, and notifies the service control manager of changes.
+// change requests and notifies the service control manager of changes.
 func (s *btcdService) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (bool, uint32) {
 	// Service start is pending.
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
 	changes <- svc.Status{State: svc.StartPending}
 
 	// Start btcdMain in a separate goroutine so the service can start
-	// quickly.  Shutdown (along with a potential error) is reported via
-	// doneChan.  serverChan is notified with the main server instance once
+	// quickly. Shutdown (along with a potential error) is reported via
+	// doneChan. serverChan is notified with the main server instance once
 	// it is started so it can be gracefully stopped.
 	doneChan := make(chan error)
 	serverChan := make(chan *server)
@@ -69,7 +69,7 @@ func (s *btcdService) Execute(args []string, r <-chan svc.ChangeRequest, changes
 		doneChan <- err
 	}()
 
-	// Service is now started.
+	// Service has now started.
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
 	var mainServer *server
@@ -106,12 +106,12 @@ loop:
 		}
 	}
 
-	// Service is now stopped.
+	// Service has now stopped.
 	changes <- svc.Status{State: svc.Stopped}
 	return false, 0
 }
 
-// installService attempts to install the Prova service.  Typically this should
+// installService attempts to install the Prova service. Typically this should
 // be done by the msi installer, but it is provided here since it can be useful
 // for development.
 func installService() error {
@@ -153,16 +153,16 @@ func installService() error {
 	defer service.Close()
 
 	// Support events to the event log using the standard "standard" Windows
-	// EventCreate.exe message file.  This allows easy logging of custom
+	// EventCreate.exe message file. This allows easy logging of custom
 	// messges instead of needing to create our own message catalog.
 	eventlog.Remove(svcName)
 	eventsSupported := uint32(eventlog.Error | eventlog.Warning | eventlog.Info)
 	return eventlog.InstallAsEventCreate(svcName, eventsSupported)
 }
 
-// removeService attempts to uninstall the Prova service.  Typically this should
+// removeService attempts to uninstall the Prova service. Typically this should
 // be done by the msi uninstaller, but it is provided here since it can be
-// useful for development.  Not the eventlog entry is intentionally not removed
+// useful for development. The eventlog entry is intentionally not removed
 // since it would invalidate any existing event log messages.
 func removeService() error {
 	// Connect to the windows service manager.
@@ -206,9 +206,9 @@ func startService() error {
 	return nil
 }
 
-// controlService allows commands which change the status of the service.  It
-// also waits for up to 10 seconds for the service to change to the passed
-// state.
+// controlService allows commands which change the status of the service.
+// It also waits for up to 10 seconds for the service to change to the
+// passed state.
 func controlService(c svc.Cmd, to svc.State) error {
 	// Connect to the windows service manager.
 	serviceManager, err := mgr.Connect()
@@ -276,8 +276,8 @@ func performServiceCommand(command string) error {
 // returned to the caller so the application can determine whether to exit (when
 // running as a service) or launch in normal interactive mode.
 func serviceMain() (bool, error) {
-	// Don't run as a service if we're running interactively (or that can't
-	// be determined due to an error).
+	// Don't run as a service if we're running interactively
+	// (or that can't be determined due to an error).
 	isInteractive, err := svc.IsAnInteractiveSession()
 	if err != nil {
 		return false, err
