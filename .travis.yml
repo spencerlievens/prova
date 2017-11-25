@@ -15,7 +15,5 @@ install:
   - go get -u github.com/Masterminds/glide
   - glide install
   - go install . ./cmd/...
-
-run prova insta:
   - cd $GOPATH/src/github.com/bitgo/prova/blockchain
   - go test -v
