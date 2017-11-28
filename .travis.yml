@@ -1,7 +1,7 @@
 language: go
 go:
-  - 1.6.x
-  - 1.7.x
+  - 1.8.x
+  - 1.9.x
 sudo: false
 
 script:
@@ -15,3 +15,5 @@ install:
   - go get -u github.com/Masterminds/glide
   - glide install
   - go install . ./cmd/...
+  - cd $GOPATH/src/github.com/bitgo/prova/blockchain
+  - go test -v
